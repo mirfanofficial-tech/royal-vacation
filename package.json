@@ -1,0 +1,14 @@
+{
+  "name": "royal-vacation",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:client": "npm --prefix client run dev",
+    "dev:admin": "npm --prefix admin run dev",
+    "dev:backend": "uvicorn app.main:app --reload --port 8000 --app-dir backend",
+    "build:client": "npm --prefix client run build",
+    "build:admin": "npm --prefix admin run build",
+    "typecheck": "npm --prefix client run typecheck && npm --prefix admin run typecheck",
+    "lint": "npm --prefix client run lint && npm --prefix admin run lint"
+  }
+}
