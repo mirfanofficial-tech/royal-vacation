@@ -1,71 +1,57 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { mockPaymentGateways, type PaymentGateway } from "@/lib/mock-data";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-const STORAGE_KEY = "rv_admin_settings_payment_gateways";
+import type { PaymentGatewayCreate, PaymentGatewayUpdate } from "@royal-vacation/api-client";
+import { api, callApi } from "@/lib/api";
 
-function load(): PaymentGateway[] {
-  if (typeof window === "undefined") return mockPaymentGateways;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as PaymentGateway[]) : mockPaymentGateways;
-  } catch {
-    return mockPaymentGateways;
-  }
+const PAYMENT_GATEWAYS_KEY = ["admin", "payment-gateways"] as const;
+
+export function usePaymentGatewaysQuery() {
+  return useQuery({
+    queryKey: PAYMENT_GATEWAYS_KEY,
+    queryFn: () => callApi(() => api.admin.paymentGateways.list()),
+  });
 }
 
 export function usePaymentGateways() {
-  const [gateways, setGateways] = useState<PaymentGateway[]>(mockPaymentGateways);
-  const hydrated = useRef(false);
+  const query = usePaymentGatewaysQuery();
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: PAYMENT_GATEWAYS_KEY });
 
-  useEffect(() => {
-    if (!hydrated.current) {
-      hydrated.current = true;
-      setGateways(load());
-    }
-  }, []);
+  const createGateway = useMutation({
+    mutationFn: (body: PaymentGatewayCreate) =>
+      callApi(() => api.admin.paymentGateways.create(body)),
+    onSuccess: invalidate,
+  });
+  const updateGateway = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: PaymentGatewayUpdate }) =>
+      callApi(() => api.admin.paymentGateways.update(id, body)),
+    onSuccess: invalidate,
+  });
+  const deleteGateway = useMutation({
+    mutationFn: (id: string) => callApi(() => api.admin.paymentGateways.remove(id)),
+    onSuccess: invalidate,
+  });
+  const setDefaultGateway = useMutation({
+    mutationFn: (id: string) => callApi(() => api.admin.paymentGateways.setDefault(id)),
+    onSuccess: invalidate,
+  });
 
-  useEffect(() => {
-    if (hydrated.current) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(gateways));
-    }
-  }, [gateways]);
-
-  const setStatus = useCallback((id: string, status: PaymentGateway["status"]) => {
-    setGateways((prev) => prev.map((g) => (g.id === id ? { ...g, status } : g)));
-  }, []);
-
-  const addGateway = useCallback(
-    (gateway: PaymentGateway) => {
-      setGateways((prev) => {
-        const next = gateway.isDefault
-          ? prev.map((g) => ({ ...g, isDefault: false }))
-          : prev;
-        return [...next, gateway];
-      });
-    },
-    []
-  );
-
-  const updateGateway = useCallback(
-    (id: string, patch: Partial<PaymentGateway>) => {
-      setGateways((prev) =>
-        prev.map((g) => (g.id === id ? { ...g, ...patch } : g))
-      );
-    },
-    []
-  );
-
-  const setDefault = useCallback((id: string) => {
-    setGateways((prev) =>
-      prev.map((g) => ({
-        ...g,
-        isDefault: g.id === id,
-        ...(g.id === id ? { status: "active" as const } : {}),
-      }))
-    );
-  }, []);
-
-  return { gateways, addGateway, updateGateway, setStatus, setDefault };
+  return {
+    gateways: query.data ?? [],
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+    createGateway: createGateway.mutateAsync,
+    updateGateway: (id: string, body: PaymentGatewayUpdate) =>
+      updateGateway.mutateAsync({ id, body }),
+    deleteGateway: deleteGateway.mutateAsync,
+    setDefaultGateway: setDefaultGateway.mutateAsync,
+    isMutating:
+      createGateway.isPending ||
+      updateGateway.isPending ||
+      deleteGateway.isPending ||
+      setDefaultGateway.isPending,
+  };
 }

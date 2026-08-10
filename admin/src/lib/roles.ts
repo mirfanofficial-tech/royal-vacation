@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+} from "@tanstack/react-query";
 import {
   BarChart3,
   Building2,
@@ -16,20 +22,23 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import type {
+  RoleCreate,
+  RoleOut,
+  RolePermissionsUpdate,
+  RoleUpdate,
+  UserCreate,
+  UserOut,
+  UserUpdate,
+} from "@royal-vacation/api-client";
+import { api, callApi } from "@/lib/api";
+import { isAuthenticated } from "@/lib/auth";
 import {
-  mockAdminRoles,
-  mockAdminUsers,
   createPermissions,
-  type AdminRole,
-  type AdminUserRecord,
   type ModuleKey,
   type PermissionAction,
   type Permissions,
 } from "@/lib/mock-data";
-import { getSession } from "@/lib/auth";
-
-const ROLES_KEY = "rv_admin_roles";
-const USERS_KEY = "rv_admin_users";
 
 export interface PermissionModuleMeta {
   key: ModuleKey;
@@ -65,127 +74,191 @@ export const permissionModuleIcon: Record<ModuleKey, LucideIcon> = {
   roles: ShieldCheck,
 };
 
-function loadRoles(): AdminRole[] {
-  if (typeof window === "undefined") return mockAdminRoles;
-  try {
-    const raw = window.localStorage.getItem(ROLES_KEY);
-    return raw ? (JSON.parse(raw) as AdminRole[]) : mockAdminRoles;
-  } catch {
-    return mockAdminRoles;
-  }
+const ROLES_KEY = ["admin", "roles"] as const;
+const ADMIN_USERS_KEY = ["admin", "users"] as const;
+const ME_KEY = ["auth", "me"] as const;
+
+// ---- Roles -----------------------------------------------------------------
+
+export function useRolesQuery() {
+  return useQuery({
+    queryKey: ROLES_KEY,
+    queryFn: () => callApi(() => api.admin.roles.list()),
+  });
 }
 
-function loadUsers(): AdminUserRecord[] {
-  if (typeof window === "undefined") return mockAdminUsers;
-  try {
-    const raw = window.localStorage.getItem(USERS_KEY);
-    return raw ? (JSON.parse(raw) as AdminUserRecord[]) : mockAdminUsers;
-  } catch {
-    return mockAdminUsers;
-  }
+function mutateAsyncFn<TVars, TData>(mutation: UseMutationResult<TData, unknown, TVars>) {
+  return mutation.mutateAsync;
 }
 
 export function useRoles() {
-  const [roles, setRoles] = useState<AdminRole[]>(mockAdminRoles);
-  const hydrated = useRef(false);
+  const query = useRolesQuery();
+  const qc = useQueryClient();
 
-  useEffect(() => {
-    if (!hydrated.current) {
-      hydrated.current = true;
-      setRoles(loadRoles());
-    }
-  }, []);
+  const createRole = useMutation({
+    mutationFn: (body: RoleCreate) => callApi(() => api.admin.roles.create(body)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ROLES_KEY }),
+  });
+  const updateRole = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: RoleUpdate }) =>
+      callApi(() => api.admin.roles.update(id, body)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ROLES_KEY }),
+  });
+  const deleteRole = useMutation({
+    mutationFn: (id: string) => callApi(() => api.admin.roles.remove(id)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ROLES_KEY }),
+  });
 
-  useEffect(() => {
-    if (hydrated.current) {
-      window.localStorage.setItem(ROLES_KEY, JSON.stringify(roles));
-    }
-  }, [roles]);
+  return {
+    roles: query.data ?? [],
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+    createRole: mutateAsyncFn(createRole),
+    updateRole: (id: string, body: RoleUpdate) => updateRole.mutateAsync({ id, body }),
+    deleteRole: mutateAsyncFn(deleteRole),
+    isMutating: createRole.isPending || updateRole.isPending || deleteRole.isPending,
+  };
+}
 
-  const addRole = useCallback((role: AdminRole) => {
-    setRoles((prev) => [...prev, role]);
-  }, []);
+export function useRolePermissionsQuery(roleId: string | undefined) {
+  return useQuery({
+    queryKey: [...ROLES_KEY, roleId, "permissions"],
+    queryFn: () => callApi(() => api.admin.roles.permissions(roleId!)),
+    enabled: Boolean(roleId),
+  });
+}
 
-  const updateRole = useCallback((id: string, patch: Partial<AdminRole>) => {
-    setRoles((prev) =>
-      prev.map((role) => (role.id === id ? { ...role, ...patch } : role))
-    );
-  }, []);
+export function useSetRolePermissions(roleId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: RolePermissionsUpdate) =>
+      callApi(() => api.admin.roles.setPermissions(roleId!, body)),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: [...ROLES_KEY, roleId, "permissions"] }),
+  });
+}
 
-  const deleteRole = useCallback((id: string) => {
-    setRoles((prev) => prev.filter((role) => role.id !== id));
-  }, []);
+// ---- Admin (staff) users -----------------------------------------------
 
-  return { roles, addRole, updateRole, deleteRole };
+export function useAdminUsersQuery() {
+  return useQuery({
+    queryKey: ADMIN_USERS_KEY,
+    queryFn: () =>
+      callApi(() => api.admin.users.list({ account_type: "admin", limit: 200 })),
+  });
 }
 
 export function useUsers() {
-  const [users, setUsers] = useState<AdminUserRecord[]>(mockAdminUsers);
-  const hydrated = useRef(false);
+  const query = useAdminUsersQuery();
+  const qc = useQueryClient();
 
-  useEffect(() => {
-    if (!hydrated.current) {
-      hydrated.current = true;
-      setUsers(loadUsers());
-    }
-  }, []);
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
+    qc.invalidateQueries({ queryKey: ME_KEY });
+  };
 
-  useEffect(() => {
-    if (hydrated.current) {
-      window.localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    }
-  }, [users]);
+  const createUser = useMutation({
+    mutationFn: (body: UserCreate) => callApi(() => api.admin.users.create(body)),
+    onSuccess: invalidate,
+  });
+  const updateUser = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UserUpdate }) =>
+      callApi(() => api.admin.users.update(id, body)),
+    onSuccess: invalidate,
+  });
+  const deleteUser = useMutation({
+    mutationFn: (id: string) => callApi(() => api.admin.users.remove(id)),
+    onSuccess: invalidate,
+  });
+  const suspendUser = useMutation({
+    mutationFn: (id: string) => callApi(() => api.admin.users.suspend(id)),
+    onSuccess: invalidate,
+  });
+  const activateUser = useMutation({
+    mutationFn: (id: string) => callApi(() => api.admin.users.activate(id)),
+    onSuccess: invalidate,
+  });
+  const setUserRoles = useMutation({
+    mutationFn: ({ id, roleIds }: { id: string; roleIds: string[] }) =>
+      callApi(() => api.admin.users.setRoles(id, { role_ids: roleIds })),
+    onSuccess: invalidate,
+  });
 
-  const setRoleId = useCallback((userId: string, roleId: string) => {
-    setUsers((prev) =>
-      prev.map((user) => (user.id === userId ? { ...user, roleId } : user))
-    );
-  }, []);
+  return {
+    users: query.data ?? [],
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+    createUser: mutateAsyncFn(createUser),
+    updateUser: (id: string, body: UserUpdate) => updateUser.mutateAsync({ id, body }),
+    deleteUser: mutateAsyncFn(deleteUser),
+    suspendUser: mutateAsyncFn(suspendUser),
+    activateUser: mutateAsyncFn(activateUser),
+    setUserRoles: (id: string, roleIds: string[]) =>
+      setUserRoles.mutateAsync({ id, roleIds }),
+    isMutating:
+      createUser.isPending ||
+      updateUser.isPending ||
+      deleteUser.isPending ||
+      suspendUser.isPending ||
+      activateUser.isPending ||
+      setUserRoles.isPending,
+  };
+}
 
-  const addUser = useCallback((user: AdminUserRecord) => {
-    setUsers((prev) => [...prev, user]);
-  }, []);
+/** Resolves a staff user's single admin-panel role to a RoleOut for display. */
+export function primaryRole(user: Pick<UserOut, "roles">, roles: RoleOut[]): RoleOut | null {
+  return roles.find((r) => user.roles.includes(r.name)) ?? null;
+}
 
-  const updateUser = useCallback(
-    (id: string, patch: Partial<AdminUserRecord>) => {
-      setUsers((prev) =>
-        prev.map((user) => (user.id === id ? { ...user, ...patch } : user))
-      );
-    },
-    []
-  );
+// ---- Current-user permissions (UI-only gate — see DATABASE.md Phase 7) ----
 
-  const deleteUser = useCallback((id: string) => {
-    setUsers((prev) => prev.filter((user) => user.id !== id));
-  }, []);
-
-  return { users, setRoleId, addUser, updateUser, deleteUser };
+export function useCurrentUserQuery() {
+  return useQuery({
+    queryKey: ME_KEY,
+    queryFn: () => callApi(() => api.auth.me()),
+    enabled: isAuthenticated(),
+    staleTime: 60_000,
+  });
 }
 
 export function usePermissions() {
-  const { users } = useUsers();
-  const { roles } = useRoles();
-  const [role, setRole] = useState<AdminRole | null>(null);
-  const [permissions, setPermissions] = useState<Permissions>(
-    createPermissions(true)
+  const { data: me, isLoading: meLoading } = useCurrentUserQuery();
+  const { roles, isLoading: rolesLoading } = useRoles();
+
+  const isSuperAdmin = me?.roles.includes("super_admin") ?? false;
+  const role = useMemo(() => (me ? primaryRole(me, roles) : null), [me, roles]);
+
+  const { data: rolePermissions, isLoading: permissionsLoading } = useRolePermissionsQuery(
+    !isSuperAdmin ? role?.id : undefined
   );
 
-  useEffect(() => {
-    const session = getSession();
-    const user = users.find((u) => u.email === session?.email);
-    const resolved =
-      roles.find((r) => r.id === user?.roleId) ??
-      roles.find((r) => r.id === "role_super_admin") ??
-      null;
-    setRole(resolved);
-    if (resolved) setPermissions(resolved.permissions);
-  }, [users, roles]);
+  const permissions: Permissions = useMemo(() => {
+    if (isSuperAdmin) return createPermissions(true);
+    if (!rolePermissions) return createPermissions(false);
+    const next = createPermissions(false);
+    for (const perm of rolePermissions) {
+      const moduleKey = perm.resource as ModuleKey;
+      if (!next[moduleKey].includes(perm.action as PermissionAction)) {
+        next[moduleKey] = [...next[moduleKey], perm.action as PermissionAction];
+      }
+    }
+    return next;
+  }, [isSuperAdmin, rolePermissions]);
 
   const can = useCallback(
     (module: ModuleKey, action: PermissionAction = "view") =>
-      permissions[module]?.includes(action) ?? false,
-    [permissions]
+      me?.account_type === "admin" && (permissions[module]?.includes(action) ?? false),
+    [me, permissions]
   );
 
-  return { role, permissions, can };
+  return {
+    me: me ?? null,
+    role: isSuperAdmin ? { name: "Super Admin" } : role,
+    isSuperAdmin,
+    permissions,
+    can,
+    isLoading: meLoading || rolesLoading || (Boolean(role) && permissionsLoading),
+  };
 }

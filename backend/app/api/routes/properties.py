@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.deps import require_admin
 from app.db import memory
+from app.models.user import User
 from app.schemas.property import Property, PropertyCreate, PropertyUpdate
 
 router = APIRouter()
@@ -26,7 +27,7 @@ def get_property(property_id: str) -> Property:
 @router.post("/properties", response_model=Property, status_code=status.HTTP_201_CREATED)
 def create_property(
     payload: PropertyCreate,
-    _admin: None = Depends(require_admin),
+    _admin: User = Depends(require_admin),
 ) -> Property:
     property = Property.model_validate(payload, update={"id": f"prp_{uuid4().hex[:12]}"})
     return memory.upsert_property(property)
@@ -36,7 +37,7 @@ def create_property(
 def update_property(
     property_id: str,
     payload: PropertyUpdate,
-    _admin: None = Depends(require_admin),
+    _admin: User = Depends(require_admin),
 ) -> Property:
     existing = memory.get_property(property_id)
     if existing is None:
@@ -49,7 +50,7 @@ def update_property(
 @router.delete("/properties/{property_id}", response_model=None)
 def delete_property(
     property_id: str,
-    _admin: None = Depends(require_admin),
+    _admin: User = Depends(require_admin),
 ) -> JSONResponse:
     if not memory.delete_property(property_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")

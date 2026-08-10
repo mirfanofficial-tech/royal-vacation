@@ -58,6 +58,46 @@ class PartnerProfileUpdate(BaseModel):
     status: str | None = None
 
 
+class PartnerProfileSelfUpdate(BaseModel):
+    """What a partner may edit on their own profile.
+
+    Verification (`is_verified`, `verified_by`/`verified_at`), `status`, and
+    commercial terms (`commission_rate`, `payment_terms`) are admin-controlled
+    and deliberately excluded here.
+    """
+
+    business_name: str | None = None
+    business_registration_number: str | None = None
+    tax_id: str | None = None
+    business_license_url: str | None = None
+    logo_url: str | None = None
+    website: str | None = None
+    business_phone: str | None = None
+    business_email: str | None = None
+    business_address: str | None = None
+    business_city: str | None = None
+    business_country: str | None = None
+    auto_confirm_bookings: bool | None = None
+    max_cancellation_days: int | None = None
+
+
+class PartnerSummaryOut(BaseModel):
+    """Admin-facing row for `GET /admin/partners` — user + partner profile joined."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: UUID
+    email: str
+    first_name: str | None = None
+    last_name: str | None = None
+    account_status: str
+    partner_profile_id: UUID | None = None
+    business_name: str | None = None
+    is_verified: bool | None = None
+    verification_status: str | None = None
+    created_at: datetime
+
+
 class TravelerProfileOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

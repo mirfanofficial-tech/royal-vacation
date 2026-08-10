@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   BadgeCheck,
+  Loader2,
   Lock,
   Save,
   Trash2,
@@ -13,17 +14,20 @@ import {
   Users,
 } from "lucide-react";
 
+import type { RoleOut } from "@royal-vacation/api-client";
+import { api, ApiError, callApi } from "@/lib/api";
 import {
-  useRoles,
-  useUsers,
-  usePermissions,
   permissionModules,
   permissionModuleIcon,
+  useRolePermissionsQuery,
+  useRoles,
+  useSetRolePermissions,
+  useUsers,
+  usePermissions,
 } from "@/lib/roles";
 import {
   ALL_ACTIONS,
   createPermissions,
-  type AdminRole,
   type ModuleKey,
   type PermissionAction,
   type Permissions,
@@ -45,6 +49,12 @@ import { cn } from "@/lib/utils";
 const fieldLabel = "mb-1.5 block text-xs font-medium text-muted-foreground";
 const selectClass =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
+function toPermissionInputs(permissions: Permissions) {
+  return (Object.keys(permissions) as ModuleKey[]).flatMap((module) =>
+    permissions[module].map((action) => ({ module, action }))
+  );
+}
 
 function ModulePermissionCard({
   module,
@@ -83,16 +93,11 @@ function ModulePermissionCard({
       </CardHeader>
       <CardContent className="flex flex-wrap gap-4">
         {ALL_ACTIONS.map((action) => (
-          <label
-            key={action}
-            className="flex cursor-pointer items-center gap-1.5 text-sm capitalize"
-          >
+          <label key={action} className="flex cursor-pointer items-center gap-1.5 text-sm capitalize">
             <Checkbox
               checked={actions.includes(action)}
               disabled={readOnly}
-              onCheckedChange={(checked) =>
-                onToggleAction(action, checked === true)
-              }
+              onCheckedChange={(checked) => onToggleAction(action, checked === true)}
             />
             {action}
           </label>
@@ -107,51 +112,56 @@ function RoleEditor({
   isNew,
   readOnly,
 }: {
-  role: AdminRole | null;
+  role: RoleOut | null;
   isNew: boolean;
   readOnly: boolean;
 }) {
   const router = useRouter();
-  const { updateRole, addRole } = useRoles();
-  const { users, setRoleId } = useUsers();
-
-  const [name, setName] = useState(role?.name ?? "");
-  const [description, setDescription] = useState(role?.description ?? "");
-  const [status, setStatus] = useState<"active" | "inactive">(
-    role?.status ?? "active"
+  const { updateRole, createRole, refetch: refetchRoles } = useRoles();
+  const { users, setUserRoles, isMutating: usersMutating } = useUsers();
+  const { data: loadedPermissions, isLoading: permissionsLoading } = useRolePermissionsQuery(
+    role?.id
   );
-  const [permissions, setPermissions] = useState<Permissions>(() => {
-    if (role) {
-      return {
-        dashboard: [...role.permissions.dashboard],
-        properties: [...role.permissions.properties],
-        bookings: [...role.permissions.bookings],
-        guests: [...role.permissions.guests],
-        modules: [...role.permissions.modules],
-        cms: [...role.permissions.cms],
-        blog: [...role.permissions.blog],
-        reports: [...role.permissions.reports],
-        payments: [...role.permissions.payments],
-        settings: [...role.permissions.settings],
-        roles: [...role.permissions.roles],
-      };
-    }
-    return createPermissions(false);
-  });
+  const setRolePermissions = useSetRolePermissions(role?.id);
+
+  const [name, setName] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [description, setDescription] = useState("");
+  const [level, setLevel] = useState(0);
+  const [status, setStatus] = useState<"active" | "inactive">("active");
+  const [permissions, setPermissions] = useState<Permissions>(createPermissions(false));
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [pendingUserId, setPendingUserId] = useState("");
 
-  const isSuperAdmin = role?.id === "role_super_admin";
+  // `role` arrives asynchronously (react-query) — seed the form once it
+  // loads rather than at first render, when it's still null.
+  useEffect(() => {
+    if (!role) return;
+    setName(role.name);
+    setDisplayName(role.display_name);
+    setDescription(role.description ?? "");
+    setLevel(role.level);
+    setStatus(role.status);
+  }, [role]);
+
+  useEffect(() => {
+    if (!loadedPermissions) return;
+    const next = createPermissions(false);
+    for (const perm of loadedPermissions) {
+      const moduleKey = perm.resource as ModuleKey;
+      next[moduleKey] = [...next[moduleKey], perm.action as PermissionAction];
+    }
+    setPermissions(next);
+  }, [loadedPermissions]);
+
+  const isSuperAdmin = role?.name === "super_admin";
   const locked = readOnly || isSuperAdmin;
 
-  const assignedUsers = users.filter((user) => user.roleId === role?.id);
-  const availableUsers = users.filter(
-    (user) => user.roleId !== role?.id && user.roleId !== ""
-  );
-  const unassignedUsers = useMemo(
-    () => users.filter((user) => user.roleId === ""),
-    [users]
-  );
+  const assignedUsers = role ? users.filter((u) => u.roles.includes(role.name)) : [];
+  const availableUsers = role ? users.filter((u) => !u.roles.includes(role.name)) : [];
+  const unassignedUsers = useMemo(() => users.filter((u) => u.roles.length === 0), [users]);
 
   function toggleAction(module: ModuleKey, action: PermissionAction, checked: boolean) {
     setPermissions((prev) => {
@@ -166,10 +176,7 @@ function RoleEditor({
   }
 
   function toggleModuleAll(module: ModuleKey, checked: boolean) {
-    setPermissions((prev) => ({
-      ...prev,
-      [module]: checked ? [...ALL_ACTIONS] : [],
-    }));
+    setPermissions((prev) => ({ ...prev, [module]: checked ? [...ALL_ACTIONS] : [] }));
   }
 
   function setAll(checked: boolean) {
@@ -182,35 +189,62 @@ function RoleEditor({
     });
   }
 
-  function handleSave() {
-    const id = role?.id ?? `role_${Date.now().toString(36)}`;
-    const payload = {
-      name: name.trim() || "Untitled role",
-      description: description.trim(),
-      status,
-      permissions,
-    };
-    if (isNew) {
-      addRole({ id, ...payload });
-      router.push(`/admin/roles/${id}`);
-    } else {
-      updateRole(role!.id, payload);
-      setSaved(true);
-      window.setTimeout(() => setSaved(false), 2000);
+  async function handleSave() {
+    setError("");
+    setSaving(true);
+    try {
+      if (isNew) {
+        const created = await createRole({
+          name: name.trim(),
+          display_name: displayName.trim() || name.trim(),
+          description: description.trim() || undefined,
+          level,
+          status,
+        });
+        await callApi(() =>
+          api.admin.roles.setPermissions(created.id, {
+            permissions: toPermissionInputs(permissions),
+          })
+        );
+        router.push(`/admin/roles/${created.id}`);
+      } else if (role) {
+        await updateRole(role.id, {
+          display_name: displayName.trim() || role.display_name,
+          description: description.trim(),
+          level,
+          status,
+        });
+        await setRolePermissions.mutateAsync({ permissions: toPermissionInputs(permissions) });
+        await refetchRoles();
+        setSaved(true);
+        window.setTimeout(() => setSaved(false), 2000);
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't save this role.");
+    } finally {
+      setSaving(false);
     }
   }
 
-  function handleRemoveUser(userId: string, userName: string) {
-    if (window.confirm(`Remove ${userName} from this role?`)) {
-      setRoleId(userId, "");
+  async function handleRemoveUser(userId: string, userLabel: string) {
+    if (!window.confirm(`Remove ${userLabel} from this role?`)) return;
+    try {
+      await setUserRoles(userId, []);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't remove this user.");
     }
   }
 
-  function handleAddUser() {
+  async function handleAddUser() {
+    if (!role) return;
     const user = availableUsers.find((u) => u.id === pendingUserId);
     if (!user) return;
-    setRoleId(user.id, role!.id);
-    setPendingUserId("");
+    try {
+      await setUserRoles(user.id, [role.id]);
+      setPendingUserId("");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't assign this user.");
+    }
   }
 
   return (
@@ -228,9 +262,14 @@ function RoleEditor({
           </Button>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold text-navy">
-              {isNew ? "Create role" : role!.name}
+              {isNew ? "Create role" : role!.display_name}
             </h1>
-            <Badge variant={status === "active" ? "default" : "outline"}>
+            <Badge
+              className={cn(
+                "rounded-full",
+                status === "active" ? "bg-rating/10 text-rating" : "bg-muted text-muted-foreground"
+              )}
+            >
               {status === "active" ? "Active" : "Inactive"}
             </Badge>
             {isSuperAdmin && (
@@ -241,49 +280,73 @@ function RoleEditor({
             )}
           </div>
           <p className="text-sm text-muted-foreground">
-            {isNew
-              ? "Define a new role and the permissions it grants."
-              : "Role ID: " + role!.id}
+            {isNew ? "Define a new role and the permissions it grants." : "Role ID: " + role!.id}
           </p>
         </div>
         {!locked && (
-          <Button onClick={handleSave}>
-            <Save data-icon="inline-start" />
+          <Button onClick={handleSave} disabled={saving || !name.trim()}>
+            {saving ? (
+              <Loader2 data-icon="inline-start" className="animate-spin" />
+            ) : (
+              <Save data-icon="inline-start" />
+            )}
             {isNew ? "Create role" : "Save Changes"}
             {saved && <BadgeCheck className="ml-1 size-4 text-gold" />}
           </Button>
         )}
       </div>
 
-      {isSuperAdmin && (
-        <div className="flex items-start gap-2 rounded-lg border border-gold/40 bg-gold/10 px-3 py-2.5 text-sm">
-          <Lock className="mt-0.5 size-4 shrink-0 text-gold" />
-          <span>
-            Super Admin always has full access to every module and cannot be
-            modified.
-          </span>
+      {error && (
+        <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+          {error}
         </div>
       )}
 
-      {!readOnly && !isSuperAdmin && (
+      {isSuperAdmin && (
+        <div className="flex items-start gap-2 rounded-lg border border-gold/40 bg-gold/10 px-3 py-2.5 text-sm">
+          <Lock className="mt-0.5 size-4 shrink-0 text-gold" />
+          <span>Super Admin always has full access to every module and cannot be modified.</span>
+        </div>
+      )}
+
+      {!readOnly && !isSuperAdmin && (permissionsLoading && !isNew ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Role details</CardTitle>
-                <CardDescription>
-                  Basic information shown across the admin panel.
-                </CardDescription>
+                <CardDescription>Basic information shown across the admin panel.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={fieldLabel} htmlFor="role-name">
-                    Role name
+                  <label className={fieldLabel} htmlFor="role-slug">
+                    Internal name
                   </label>
                   <Input
-                    id="role-name"
+                    id="role-slug"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. operations_manager"
+                    disabled={!isNew}
+                  />
+                  {!isNew && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      The internal name can&apos;t be changed after creation.
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className={fieldLabel} htmlFor="role-display-name">
+                    Display name
+                  </label>
+                  <Input
+                    id="role-display-name"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
                     placeholder="e.g. Operations Manager"
                   />
                 </div>
@@ -294,14 +357,27 @@ function RoleEditor({
                   <select
                     id="role-status"
                     value={status}
-                    onChange={(e) =>
-                      setStatus(e.target.value as "active" | "inactive")
-                    }
+                    onChange={(e) => setStatus(e.target.value as "active" | "inactive")}
                     className={selectClass}
                   >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
+                </div>
+                <div>
+                  <label className={fieldLabel} htmlFor="role-level">
+                    Level
+                  </label>
+                  <Input
+                    id="role-level"
+                    type="number"
+                    min={0}
+                    value={level}
+                    onChange={(e) => setLevel(Math.max(0, Number(e.target.value) || 0))}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Higher number = higher-ranked role (informational only).
+                  </p>
                 </div>
                 <div className="sm:col-span-2">
                   <label className={fieldLabel} htmlFor="role-description">
@@ -342,12 +418,8 @@ function RoleEditor({
                       module={module}
                       actions={permissions[module.key]}
                       readOnly={false}
-                      onToggleAction={(action, checked) =>
-                        toggleAction(module.key, action, checked)
-                      }
-                      onToggleAll={(checked) =>
-                        toggleModuleAll(module.key, checked)
-                      }
+                      onToggleAction={(action, checked) => toggleAction(module.key, action, checked)}
+                      onToggleAll={(checked) => toggleModuleAll(module.key, checked)}
                     />
                   ))}
                 </div>
@@ -379,7 +451,7 @@ function RoleEditor({
                     <option value="">Select a user…</option>
                     {availableUsers.map((user) => (
                       <option key={user.id} value={user.id}>
-                        {user.name}
+                        {user.display_name || user.email}
                       </option>
                     ))}
                   </select>
@@ -387,7 +459,7 @@ function RoleEditor({
                     variant="outline"
                     size="sm"
                     onClick={handleAddUser}
-                    disabled={!pendingUserId}
+                    disabled={!pendingUserId || usersMutating}
                   >
                     <UserPlus data-icon="inline-start" />
                     Add
@@ -401,53 +473,59 @@ function RoleEditor({
                     No users assigned yet.
                   </p>
                 )}
-                {assignedUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className="flex items-center justify-between gap-3 bg-muted/30 px-3 py-2.5"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{user.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {user.email}
-                      </p>
+                {assignedUsers.map((user) => {
+                  const label = user.display_name || user.email;
+                  return (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between gap-3 bg-muted/30 px-3 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{label}</p>
+                        <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Badge
+                          className={cn(
+                            "rounded-full capitalize",
+                            user.status === "active"
+                              ? "bg-rating/10 text-rating"
+                              : "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          {user.status}
+                        </Badge>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${label}`}
+                          onClick={() => handleRemoveUser(user.id, label)}
+                          className="text-muted-foreground transition-colors outline-none hover:text-destructive focus-visible:ring-3 focus-visible:ring-ring/50"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Badge
-                        variant={user.status === "active" ? "secondary" : "outline"}
-                      >
-                        {user.status}
-                      </Badge>
-                      <button
-                        type="button"
-                        aria-label={`Remove ${user.name}`}
-                        onClick={() => handleRemoveUser(user.id, user.name)}
-                        className="text-muted-foreground transition-colors outline-none hover:text-destructive focus-visible:ring-3 focus-visible:ring-ring/50"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {unassignedUsers.length > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  {unassignedUsers.length} user(s) currently unassigned — assign
-                  them to a role to restore access.
+                  {unassignedUsers.length} user(s) currently unassigned — assign them to a role to
+                  restore access.
                 </p>
               )}
             </CardContent>
           </Card>
         </div>
-      )}
+      ))}
 
       {(readOnly || isSuperAdmin) && (
         <Card>
           <CardContent className="px-6 py-12 text-center text-sm text-muted-foreground">
             {isSuperAdmin
               ? "Super Admin access is fixed and cannot be edited."
-              : "You have view-only access to roles. Contact a Super Admin to make changes."}
+              : "You have view-only access to roles. Contact a Super Admin if you need access."}
           </CardContent>
         </Card>
       )}
@@ -457,11 +535,21 @@ function RoleEditor({
 
 export default function RoleDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { roles } = useRoles();
+  const { roles, isLoading } = useRoles();
   const { can } = usePermissions();
   const isNew = id === "new";
 
   const role = isNew ? null : roles.find((r) => r.id === id);
+
+  if (!isNew && isLoading) {
+    return (
+      <PermissionGuard module="roles">
+        <div className="flex justify-center py-16">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        </div>
+      </PermissionGuard>
+    );
+  }
 
   if (!isNew && !role) {
     return (

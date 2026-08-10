@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
+  AlertTriangle,
   ArrowLeft,
   BadgeCheck,
   BookOpen,
@@ -23,8 +24,10 @@ import type {
   MarkupType,
   ModuleEnvironment,
   TaxType,
-  ThirdPartyModule,
-} from "@/lib/mock-data";
+  ThirdPartyModuleOut,
+  ThirdPartyModuleUpdate,
+} from "@royal-vacation/api-client";
+import { ApiError } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,6 +67,10 @@ const selectClass =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 const inputClass =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
+function errorMessage(err: unknown, fallback: string) {
+  return err instanceof ApiError ? err.message : fallback;
+}
 
 const tabs = [
   { id: "general", label: "General", icon: SlidersHorizontal },
@@ -109,40 +116,47 @@ function ModuleConfigView({
   providerModule,
   updateModule,
 }: {
-  providerModule: ThirdPartyModule;
-  updateModule: (id: string, patch: Partial<ThirdPartyModule>) => void;
+  providerModule: ThirdPartyModuleOut;
+  updateModule: (id: string, body: ThirdPartyModuleUpdate) => Promise<ThirdPartyModuleOut>;
 }) {
   const [activeTab, setActiveTab] = useState<TabId>("general");
   const [status, setStatus] = useState<"active" | "inactive">(
     providerModule.status
   );
-  const [aiEnabled, setAiEnabled] = useState(providerModule.aiEnabled);
+  const [aiEnabled, setAiEnabled] = useState(providerModule.ai_enabled);
   const [environment, setEnvironment] = useState<ModuleEnvironment>(
     providerModule.environment
   );
   const [b2bType, setB2bType] = useState<MarkupType>(
-    providerModule.markupB2B.type
+    providerModule.markup_b2b.type
   );
   const [b2bValue, setB2bValue] = useState(
-    String(providerModule.markupB2B.value)
+    String(providerModule.markup_b2b.value)
   );
   const [b2cType, setB2cType] = useState<MarkupType>(
-    providerModule.markupB2C.type
+    providerModule.markup_b2c.type
   );
   const [b2cValue, setB2cValue] = useState(
-    String(providerModule.markupB2C.value)
+    String(providerModule.markup_b2c.value)
   );
   const [baseCurrency, setBaseCurrency] = useState(
-    providerModule.baseCurrency
+    providerModule.base_currency
   );
   const [taxType, setTaxType] = useState<TaxType>(providerModule.tax.type);
   const [taxValue, setTaxValue] = useState(String(providerModule.tax.value));
+  // Secret fields start empty — only non-secret values are pre-filled.
+  // Typing a value replaces it on save; leaving it blank keeps the
+  // existing encrypted value unchanged.
   const [credentials, setCredentials] = useState<Record<string, string>>(() =>
     Object.fromEntries(
-      providerModule.credentialFields.map((field) => [field.key, field.value])
+      providerModule.credential_fields
+        .filter((field) => !field.secret)
+        .map((field) => [field.key, field.value ?? ""])
     )
   );
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [test, setTest] = useState<"idle" | "testing" | "success" | "error">(
     "idle"
   );
@@ -150,37 +164,46 @@ function ModuleConfigView({
 
   const currencyCode = baseCurrency.split(" ")[0] ?? baseCurrency;
 
-  function buildDraft(): ThirdPartyModule {
+  function buildDraft(): ThirdPartyModuleOut {
     return {
       ...providerModule,
       status,
-      aiEnabled,
+      ai_enabled: aiEnabled,
       environment,
-      markupB2B: { type: b2bType, value: Number(b2bValue) || 0 },
-      markupB2C: { type: b2cType, value: Number(b2cValue) || 0 },
-      baseCurrency,
+      markup_b2b: { type: b2bType, value: Number(b2bValue) || 0 },
+      markup_b2c: { type: b2cType, value: Number(b2cValue) || 0 },
+      base_currency: baseCurrency,
       tax: { type: taxType, value: Number(taxValue) || 0 },
-      credentialFields: providerModule.credentialFields.map((field) => ({
+      credential_fields: providerModule.credential_fields.map((field) => ({
         ...field,
         value: credentials[field.key] ?? field.value,
       })),
     };
   }
 
-  function handleSave() {
-    const draft = buildDraft();
-    updateModule(providerModule.id, {
-      status,
-      aiEnabled,
-      environment,
-      markupB2B: draft.markupB2B,
-      markupB2C: draft.markupB2C,
-      baseCurrency,
-      tax: draft.tax,
-      credentialFields: draft.credentialFields,
-    });
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2000);
+  async function handleSave() {
+    setSaveError("");
+    setSaving(true);
+    try {
+      await updateModule(providerModule.id, {
+        status,
+        ai_enabled: aiEnabled,
+        environment,
+        markup_b2b: { type: b2bType, value: Number(b2bValue) || 0 },
+        markup_b2c: { type: b2cType, value: Number(b2cValue) || 0 },
+        base_currency: baseCurrency,
+        tax: { type: taxType, value: Number(taxValue) || 0 },
+        credentials: Object.fromEntries(
+          Object.entries(credentials).filter(([, v]) => v.trim() !== "")
+        ),
+      });
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setSaveError(errorMessage(err, "Failed to save configuration."));
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleTest() {
@@ -210,18 +233,30 @@ function ModuleConfigView({
                 {providerModule.name} Configuration
               </h1>
               <Badge variant="secondary">{providerModule.category}</Badge>
-              <Badge variant="outline">ID: {providerModule.moduleId}</Badge>
+              <Badge variant="outline">ID: {providerModule.module_id}</Badge>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               Provider: <span className="font-mono">{providerModule.provider}</span>
             </p>
           </div>
         </div>
-        <Button onClick={handleSave}>
-          <Save data-icon="inline-start" />
-          Save Configuration
-          {saved && <BadgeCheck className="ml-1 size-4 text-gold" />}
-        </Button>
+        <div className="flex flex-col items-end gap-2">
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? (
+              <Loader2 data-icon="inline-start" className="animate-spin" />
+            ) : (
+              <Save data-icon="inline-start" />
+            )}
+            Save Configuration
+            {saved && <BadgeCheck className="ml-1 size-4 text-gold" />}
+          </Button>
+          {saveError && (
+            <p className="flex items-center gap-1.5 text-xs text-destructive">
+              <AlertTriangle className="size-3.5 shrink-0" />
+              {saveError}
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-1 rounded-xl border border-border bg-muted/30 p-1">
@@ -477,7 +512,7 @@ function ModuleConfigView({
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
-                {providerModule.credentialFields.map((field) => (
+                {providerModule.credential_fields.map((field) => (
                   <div key={field.key}>
                     <label
                       className={fieldLabel}
@@ -498,13 +533,21 @@ function ModuleConfigView({
                           [field.key]: e.target.value,
                         }))
                       }
+                      placeholder={
+                        field.secret
+                          ? field.value
+                            ? "Currently set (encrypted)"
+                            : "Not set"
+                          : undefined
+                      }
                       autoComplete="off"
                       spellCheck={false}
                       className={cn(inputClass, "font-mono text-xs")}
                     />
                     {field.secret && (
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Stored encrypted — never shown in plain text.
+                        Stored encrypted — leave blank to keep the current
+                        value.
                       </p>
                     )}
                   </div>
@@ -575,7 +618,7 @@ function ModuleConfigView({
             <CardContent className="space-y-3 text-sm">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-muted-foreground">Module ID</span>
-                <span className="font-mono">{providerModule.moduleId}</span>
+                <span className="font-mono">{providerModule.module_id}</span>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-muted-foreground">Type</span>
@@ -609,7 +652,7 @@ function ModuleConfigView({
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                {providerModule.helpText}
+                {providerModule.help_text}
               </p>
               <div className="space-y-2">
                 <Button
@@ -650,8 +693,28 @@ function ModuleConfigView({
 
 export default function ModuleConfigPage() {
   const { id } = useParams<{ id: string }>();
-  const { modules, updateModule } = useModules();
+  const { modules, isLoading, error, updateModule } = useModules();
   const providerModule = modules.find((m) => m.id === id);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-24">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6 p-6 lg:p-8">
+        <Card>
+          <CardContent className="px-6 py-12 text-center text-sm text-destructive">
+            {errorMessage(error, "Failed to load module.")}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!providerModule) {
     return (

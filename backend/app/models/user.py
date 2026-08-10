@@ -110,6 +110,7 @@ class User(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
 
     role_assignments: Mapped[list["UserRole"]] = relationship(
         back_populates="user",
+        foreign_keys="UserRole.user_id",
         cascade="all, delete-orphan",
     )
     sessions: Mapped[list["UserSession"]] = relationship(
@@ -125,6 +126,7 @@ class User(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     )
     partner_profile: Mapped["PartnerProfile | None"] = relationship(
         back_populates="user",
+        foreign_keys="PartnerProfile.user_id",
         uselist=False,
     )
     traveler_profile: Mapped["TravelerProfile | None"] = relationship(
@@ -175,7 +177,9 @@ class UserRole(UUIDPrimaryKeyMixin, Base):
         ),
     )
 
-    user: Mapped[User] = relationship(back_populates="role_assignments")
+    user: Mapped[User] = relationship(
+        back_populates="role_assignments", foreign_keys=[user_id]
+    )
     role: Mapped["Role"] = relationship(back_populates="assignments")
 
 
@@ -390,7 +394,9 @@ class PartnerProfile(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
         Index("idx_partner_profiles_status", "status"),
     )
 
-    user: Mapped[User] = relationship(back_populates="partner_profile")
+    user: Mapped[User] = relationship(
+        back_populates="partner_profile", foreign_keys=[user_id]
+    )
 
 
 class TravelerProfile(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):

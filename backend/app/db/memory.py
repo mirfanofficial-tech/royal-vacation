@@ -1,33 +1,21 @@
-from app.core.security import hash_password
-from app.schemas.auth import User
 from app.schemas.property import Property
 
 # ---------------------------------------------------------------------------
-# In-memory stores.
+# In-memory store for the property catalog only.
 # Placeholder until a real database is wired in. Replace with a PostgreSQL
 # repository layer in packages/db when moving to production.
+#
+# User accounts, auth, admin, partner and profile data all live in Postgres
+# now (see app/models/user.py + app/api/routes/auth.py, admin/, partner.py,
+# profile.py) — this module no longer holds any user state.
 # ---------------------------------------------------------------------------
 
-_USERS: dict[str, User] = {}
 _PROPERTIES: dict[str, Property] = {}
-
-_ADMIN_EMAIL = "admin@royalvacation.com"
-_ADMIN_PASSWORD = "admin12345"
 
 
 def seed_demo_data() -> None:
-    if _USERS:
+    if _PROPERTIES:
         return
-
-    admin_id = "usr_admin_1"
-    _USERS[admin_id] = User(
-        id=admin_id,
-        email=_ADMIN_EMAIL,
-        name="Royal Vacation Admin",
-        hashed_password=hash_password(_ADMIN_PASSWORD),
-        role="admin",
-    )
-
     seed_properties()
 
 
@@ -75,23 +63,6 @@ def seed_properties() -> None:
     ]
     for item in sample:
         _PROPERTIES[item["id"]] = Property.model_validate(item)
-
-
-def get_admin_credentials() -> tuple[str, str]:
-    return _ADMIN_EMAIL, _ADMIN_PASSWORD
-
-
-def get_user_by_email(email: str) -> User | None:
-    return next((u for u in _USERS.values() if u.email == email), None)
-
-
-def get_user_by_id(user_id: str) -> User | None:
-    return _USERS.get(user_id)
-
-
-def create_user(user: User) -> User:
-    _USERS[user.id] = user
-    return user
 
 
 def list_properties() -> list[Property]:

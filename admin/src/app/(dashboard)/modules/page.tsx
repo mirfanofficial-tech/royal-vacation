@@ -6,6 +6,7 @@ import {
   Boxes,
   Car,
   Compass,
+  Loader2,
   Plane,
   Plug,
   Search,
@@ -16,8 +17,9 @@ import {
   Star,
 } from "lucide-react";
 
+import type { ThirdPartyModuleOut } from "@royal-vacation/api-client";
 import { useModules } from "@/lib/modules";
-import type { ThirdPartyModule } from "@/lib/mock-data";
+import { ApiError } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +30,10 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+
+function errorMessage(err: unknown, fallback: string) {
+  return err instanceof ApiError ? err.message : fallback;
+}
 
 const statusVariant = {
   active: "default",
@@ -51,12 +57,12 @@ function categoryIcon(category: string) {
   return Plug;
 }
 
-function credentialState(module: ThirdPartyModule): {
+function credentialState(module: ThirdPartyModuleOut): {
   complete: boolean;
   label: string;
 } {
-  const required = module.credentialFields.filter((field) => field.required);
-  const missing = required.filter((field) => !field.value.trim());
+  const required = module.credential_fields.filter((field) => field.required);
+  const missing = required.filter((field) => !(field.value ?? "").trim());
   if (required.length === 0)
     return { complete: true, label: "No credentials required" };
   if (missing.length === 0)
@@ -68,7 +74,7 @@ function credentialState(module: ThirdPartyModule): {
 }
 
 export default function ModulesPage() {
-  const { modules } = useModules();
+  const { modules, isLoading, error } = useModules();
   const [query, setQuery] = useState("");
 
   const filtered = modules.filter((module) =>
@@ -78,7 +84,7 @@ export default function ModulesPage() {
   );
 
   const active = modules.filter((m) => m.status === "active").length;
-  const aiEnabled = modules.filter((m) => m.aiEnabled).length;
+  const aiEnabled = modules.filter((m) => m.ai_enabled).length;
   const inProduction = modules.filter((m) => m.environment === "production")
     .length;
 
@@ -98,6 +104,12 @@ export default function ModulesPage() {
           transfers and more.
         </p>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm break-words text-destructive">
+          {errorMessage(error, "Failed to load modules.")}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map(({ label, value, icon: Icon }) => (
@@ -127,6 +139,11 @@ export default function ModulesPage() {
         </div>
       </div>
 
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
         {filtered.map((module) => {
           const Icon = categoryIcon(module.category);
@@ -141,7 +158,7 @@ export default function ModulesPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold">{module.name}</p>
-                      {module.aiEnabled && (
+                      {module.ai_enabled && (
                         <Badge variant="outline" className="text-gold">
                           <Sparkles data-icon="inline-start" className="size-3" />
                           AI
@@ -162,7 +179,7 @@ export default function ModulesPage() {
                     {module.environment}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    ID: {module.moduleId} · {module.provider}
+                    ID: {module.module_id} · {module.provider}
                   </span>
                 </div>
 
@@ -198,6 +215,7 @@ export default function ModulesPage() {
           </Card>
         )}
       </div>
+      )}
     </div>
   );
 }

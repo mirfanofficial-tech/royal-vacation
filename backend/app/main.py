@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, health, profiles, properties, reference, roles, users
+from app.api.routes import auth, health, partner, profile, properties, reference
+from app.api.routes import admin as admin_module
 from app.core.config import settings
 from app.db import memory
 
@@ -24,12 +25,16 @@ def create_app() -> FastAPI:
 
     prefix = settings.api_v1_prefix
     app.include_router(health.router, prefix=prefix, tags=["health"])
+    # Authentication — public account lifecycle (register/login/logout/...).
     app.include_router(auth.router, prefix=f"{prefix}/auth", tags=["auth"])
+    # Admin management — user, partner and role administration.
+    app.include_router(admin_module.router, prefix=f"{prefix}/admin", tags=["admin"])
+    # Partner management — self-service for property-agent accounts.
+    app.include_router(partner.router, prefix=f"{prefix}/partner", tags=["partner"])
+    # User profile — self-service for any authenticated account.
+    app.include_router(profile.router, prefix=f"{prefix}/profile", tags=["profile"])
     app.include_router(properties.router, prefix=prefix, tags=["properties"])
-    app.include_router(users.router, prefix=f"{prefix}/users", tags=["users"])
-    app.include_router(roles.router, prefix=f"{prefix}/roles", tags=["roles"])
     app.include_router(reference.router, prefix=f"{prefix}/reference", tags=["reference"])
-    app.include_router(profiles.router, prefix=f"{prefix}/profiles", tags=["profiles"])
 
     @app.on_event("startup")
     def on_startup() -> None:

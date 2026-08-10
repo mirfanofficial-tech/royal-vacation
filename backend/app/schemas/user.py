@@ -61,6 +61,43 @@ class UserRolesUpdate(BaseModel):
     role_ids: list[UUID] = []
 
 
+class ProfileUpdate(BaseModel):
+    """Self-service subset of `UserUpdate` — no `password` or `status`.
+
+    Password changes go through the dedicated change-password flow, and
+    account status is admin-controlled only.
+    """
+
+    first_name: str | None = None
+    last_name: str | None = None
+    display_name: str | None = None
+    phone: str | None = None
+    date_of_birth: date | None = None
+    gender: str | None = None
+    country: str | None = None
+    city: str | None = None
+    address: str | None = None
+    zip_code: str | None = None
+
+    @field_validator("gender")
+    @classmethod
+    def validate_gender(cls, v: str | None) -> str | None:
+        if v is not None and v not in ("male", "female", "prefer_not_to_say"):
+            raise ValueError("gender must be one of: male, female, prefer_not_to_say")
+        return v
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=8)
+    new_password: str = Field(min_length=8)
+
+
+class PreferencesUpdate(BaseModel):
+    preferred_currency: str | None = None
+    preferred_language: str | None = None
+    timezone: str | None = None
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

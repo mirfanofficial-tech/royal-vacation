@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 
+import { Providers } from "@/lib/providers";
+
 import "./globals.css";
 
 const outfit = Outfit({
@@ -21,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${outfit.variable} h-full antialiased`}>
       <body className="flex min-h-screen flex-col bg-muted/40 text-foreground">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

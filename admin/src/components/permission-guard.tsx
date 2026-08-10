@@ -1,6 +1,6 @@
 "use client";
 
-import { ShieldX } from "lucide-react";
+import { Loader2, ShieldX } from "lucide-react";
 
 import { usePermissions } from "@/lib/roles";
 import type { ModuleKey, PermissionAction } from "@/lib/mock-data";
@@ -14,7 +14,15 @@ export function PermissionGuard({
   action?: PermissionAction;
   children: React.ReactNode;
 }) {
-  const { can, role } = usePermissions();
+  const { can, role, isLoading } = usePermissions();
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!can(module, action)) {
     return (

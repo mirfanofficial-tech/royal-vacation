@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 import {
+  Loader2,
   Mail,
   MoreHorizontal,
   Pencil,
   Plus,
+  RefreshCw,
   Search,
-  Send,
   Trash2,
   UserCheck,
   UserMinus,
@@ -15,9 +16,11 @@ import {
   Users,
 } from "lucide-react";
 
-import { useUsers, useRoles, usePermissions } from "@/lib/roles";
+import type { AccountStatus, UserOut } from "@royal-vacation/api-client";
+import { ApiError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
-import type { AdminUserStatus, AdminUserRecord } from "@/lib/mock-data";
+import { primaryRole, useRoles, useUsers, usePermissions } from "@/lib/roles";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,15 +48,26 @@ import {
 } from "@/components/ui/sheet";
 import { PermissionGuard } from "@/components/permission-guard";
 
-const statusVariant: Record<AdminUserStatus, "default" | "secondary" | "outline"> = {
-  active: "default",
-  invited: "outline",
-  inactive: "secondary",
+const statusBadge: Record<AccountStatus, string> = {
+  active: "bg-rating/10 text-rating",
+  invited: "bg-amber-600/10 text-amber-600",
+  pending: "bg-amber-600/10 text-amber-600",
+  inactive: "bg-muted text-muted-foreground",
+  suspended: "bg-destructive/10 text-destructive",
+  deleted: "bg-destructive/10 text-destructive",
 };
 
 const fieldLabel = "mb-1.5 block text-xs font-medium text-muted-foreground";
 const selectClass =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
+function displayName(user: UserOut) {
+  return (
+    user.display_name ||
+    [user.first_name, user.last_name].filter(Boolean).join(" ") ||
+    user.email
+  );
+}
 
 function initialsOf(name: string) {
   return name
@@ -64,20 +78,43 @@ function initialsOf(name: string) {
     .toUpperCase();
 }
 
+function formatLastActive(value: string | null | undefined) {
+  if (!value) return "Never signed in";
+  return new Date(value).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function generateTempPassword() {
+  const bytes = new Uint8Array(9);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, "").slice(0, 12);
+}
+
+function errorMessage(err: unknown, fallback: string) {
+  return err instanceof ApiError ? err.message : fallback;
+}
+
 export default function UsersPage() {
-  const { users, addUser, updateUser, deleteUser } = useUsers();
+  const { users, isLoading, createUser, updateUser, deleteUser, suspendUser, activateUser, setUserRoles, isMutating } =
+    useUsers();
   const { roles } = useRoles();
-  const { can } = usePermissions();
+  const { can, isSuperAdmin } = usePermissions();
 
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | AdminUserStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | AccountStatus>("all");
   const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
 
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [editing, setEditing] = useState<AdminUserRecord | null>(null);
-  const [name, setName] = useState("");
+  const [editing, setEditing] = useState<UserOut | null>(null);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [tempPassword, setTempPassword] = useState("");
   const [roleId, setRoleId] = useState("");
 
   const currentEmail = getSession()?.email;
@@ -85,91 +122,115 @@ export default function UsersPage() {
   const filtered = useMemo(
     () =>
       users.filter((user) => {
-        const matchesQuery = `${user.name} ${user.email}`
+        const matchesQuery = `${displayName(user)} ${user.email}`
           .toLowerCase()
           .includes(query.toLowerCase());
-        const matchesRole = roleFilter === "all" || user.roleId === roleFilter;
-        const matchesStatus =
-          statusFilter === "all" || user.status === statusFilter;
+        const matchesRole =
+          roleFilter === "all" || primaryRole(user, roles)?.id === roleFilter;
+        const matchesStatus = statusFilter === "all" || user.status === statusFilter;
         return matchesQuery && matchesRole && matchesStatus;
       }),
-    [users, query, roleFilter, statusFilter]
+    [users, roles, query, roleFilter, statusFilter]
   );
 
   const active = users.filter((u) => u.status === "active").length;
-  const invited = users.filter((u) => u.status === "invited").length;
-  const inactive = users.filter((u) => u.status === "inactive").length;
+  const invited = users.filter((u) => u.status === "invited" || u.status === "pending").length;
+  const suspended = users.filter((u) => u.status === "suspended").length;
 
   const stats = [
     { label: "Total users", value: users.length, icon: Users },
     { label: "Active", value: active, icon: UserCheck },
     { label: "Invited", value: invited, icon: UserPlus },
-    { label: "Inactive", value: inactive, icon: UserMinus },
+    { label: "Suspended", value: suspended, icon: UserMinus },
   ];
-
-  function roleName(id: string) {
-    return roles.find((r) => r.id === id)?.name ?? "Unassigned";
-  }
 
   function flash(message: string) {
     setNotice(message);
-    window.setTimeout(() => setNotice(""), 3500);
+    setError("");
+    window.setTimeout(() => setNotice(""), 6000);
   }
 
-  function openInvite() {
+  function flashError(message: string) {
+    setError(message);
+    setNotice("");
+  }
+
+  function openAdd() {
     setEditing(null);
-    setName("");
+    setFirstName("");
+    setLastName("");
     setEmail("");
-    setRoleId(roles[0]?.id ?? "");
+    setTempPassword(generateTempPassword());
+    setRoleId(roles.find((r) => r.status === "active")?.id ?? "");
     setSheetOpen(true);
   }
 
-  function openEdit(user: AdminUserRecord) {
+  function openEdit(user: UserOut) {
     setEditing(user);
-    setName(user.name);
+    setFirstName(user.first_name ?? "");
+    setLastName(user.last_name ?? "");
     setEmail(user.email);
-    setRoleId(user.roleId);
+    setTempPassword("");
+    setRoleId(primaryRole(user, roles)?.id ?? "");
     setSheetOpen(true);
   }
 
-  function handleSave() {
-    if (editing) {
-      updateUser(editing.id, {
-        name: name.trim() || editing.name,
-        email: email.trim() || editing.email,
-        roleId,
-      });
-      flash(`Changes saved for ${editing.name}.`);
-    } else {
-      const newUser: AdminUserRecord = {
-        id: `user_${Date.now().toString(36)}`,
-        name: name.trim() || "New user",
-        email: email.trim(),
-        roleId,
-        status: "invited",
-        lastActive: "—",
-      };
-      addUser(newUser);
-      flash(`Invitation sent to ${newUser.email}.`);
+  async function handleSave() {
+    try {
+      if (editing) {
+        await updateUser(editing.id, {
+          first_name: firstName.trim() || undefined,
+          last_name: lastName.trim() || undefined,
+          display_name: [firstName, lastName].filter(Boolean).join(" ") || undefined,
+        });
+        if (roleId && roleId !== primaryRole(editing, roles)?.id) {
+          await setUserRoles(editing.id, [roleId]);
+        }
+        flash(`Changes saved for ${displayName(editing)}.`);
+      } else {
+        const created = await createUser({
+          email: email.trim(),
+          password: tempPassword,
+          first_name: firstName.trim() || undefined,
+          last_name: lastName.trim() || undefined,
+          display_name: [firstName, lastName].filter(Boolean).join(" ") || undefined,
+          account_type: "admin",
+          status: "invited",
+          role_ids: roleId ? [roleId] : [],
+        });
+        flash(
+          `${displayName(created)} was created. Temporary password: "${tempPassword}" — ` +
+            "share it with them directly, there's no email delivery configured yet."
+        );
+      }
+      setSheetOpen(false);
+    } catch (err) {
+      flashError(errorMessage(err, "Couldn't save this user. Please try again."));
     }
-    setSheetOpen(false);
   }
 
-  function handleDelete(user: AdminUserRecord) {
-    if (window.confirm(`Delete user "${user.name}"? This cannot be undone.`)) {
-      deleteUser(user.id);
-      flash(`User ${user.name} deleted.`);
+  async function handleDelete(user: UserOut) {
+    if (!window.confirm(`Delete user "${displayName(user)}"? This cannot be undone.`)) return;
+    try {
+      await deleteUser(user.id);
+      flash(`User ${displayName(user)} deleted.`);
+    } catch (err) {
+      flashError(errorMessage(err, "Couldn't delete this user."));
     }
   }
 
-  function handleToggleStatus(user: AdminUserRecord) {
-    const next = user.status === "active" ? "inactive" : "active";
-    updateUser(user.id, { status: next });
-    flash(`${user.name} is now ${next}.`);
-  }
-
-  function handleResend(user: AdminUserRecord) {
-    flash(`Invitation re-sent to ${user.email}.`);
+  async function handleToggleStatus(user: UserOut) {
+    try {
+      if (user.status === "active") {
+        await suspendUser(user.id);
+        flash(`${displayName(user)} is now suspended.`);
+      } else {
+        await activateUser(user.id);
+        flash(`${displayName(user)} is now active.`);
+      }
+    } catch (err) {
+      flashError(errorMessage(err, "Couldn't update this user's status."));
+    }
   }
 
   return (
@@ -179,21 +240,27 @@ export default function UsersPage() {
           <div>
             <h1 className="text-2xl font-semibold text-navy">Users</h1>
             <p className="text-sm text-muted-foreground">
-              Invite team members, assign roles and manage account access.
+              Admin-panel staff accounts, their roles and access.
             </p>
           </div>
           {can("roles", "create") && (
-            <Button onClick={openInvite}>
+            <Button onClick={openAdd}>
               <Plus data-icon="inline-start" />
-              Invite user
+              Add user
             </Button>
           )}
         </div>
 
         {notice && (
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm break-words text-emerald-800">
             <UserCheck className="size-4 shrink-0" />
             {notice}
+          </div>
+        )}
+        {error && (
+          <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+            <UserMinus className="size-4 shrink-0" />
+            {error}
           </div>
         )}
 
@@ -204,61 +271,65 @@ export default function UsersPage() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   {label}
                 </CardTitle>
-                <Icon className="size-4 text-muted-foreground" />
+                <span className="flex size-8 items-center justify-center rounded-lg bg-navy/5 text-navy">
+                  <Icon className="size-4" />
+                </span>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-semibold">{value}</p>
+                <p className="text-2xl font-semibold tracking-tight">{value}</p>
               </CardContent>
             </Card>
           ))}
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle>All users</CardTitle>
-            <CardDescription>
-              {filtered.length} of {users.length} users shown.
-            </CardDescription>
+          <CardHeader className="border-b">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <CardTitle>All users</CardTitle>
+                <CardDescription>
+                  {filtered.length} of {users.length} users shown.
+                </CardDescription>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search users…"
+                    aria-label="Search users"
+                    className="h-8 w-56 pl-8"
+                  />
+                </div>
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  aria-label="Filter by role"
+                >
+                  <option value="all">All roles</option>
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.display_name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as "all" | AccountStatus)}
+                  className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  aria-label="Filter by status"
+                >
+                  <option value="all">All statuses</option>
+                  <option value="active">Active</option>
+                  <option value="invited">Invited</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="flex flex-wrap items-center gap-2 border-b border-border px-6 py-3">
-              <div className="relative w-full sm:w-64">
-                <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search users…"
-                  className="pl-8"
-                />
-              </div>
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className={selectClass}
-                aria-label="Filter by role"
-              >
-                <option value="all">All roles</option>
-                {roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={statusFilter}
-                onChange={(e) =>
-                  setStatusFilter(e.target.value as "all" | AdminUserStatus)
-                }
-                className={selectClass}
-                aria-label="Filter by status"
-              >
-                <option value="all">All statuses</option>
-                <option value="active">Active</option>
-                <option value="invited">Invited</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -271,89 +342,94 @@ export default function UsersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {filtered.map((user) => {
-                    const isSelf = user.email === currentEmail;
-                    return (
-                      <tr key={user.id} className="hover:bg-muted/40">
-                        <td className="max-w-md px-6 py-3">
-                          <div className="flex items-center gap-3">
-                            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-navy/10 text-xs font-semibold text-navy">
-                              {initialsOf(user.name)}
-                            </span>
-                            <div className="min-w-0">
-                              <p className="truncate font-medium">
-                                {user.name}
-                                {isSelf && (
-                                  <span className="ml-2 text-xs text-muted-foreground">
-                                    (you)
-                                  </span>
-                                )}
-                              </p>
-                              <p className="truncate text-xs text-muted-foreground">
-                                {user.email}
-                              </p>
+                  {isLoading && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center">
+                        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+                      </td>
+                    </tr>
+                  )}
+                  {!isLoading &&
+                    filtered.map((user) => {
+                      const isSelf = user.email === currentEmail;
+                      const role = primaryRole(user, roles);
+                      const name = displayName(user);
+                      return (
+                        <tr key={user.id} className="hover:bg-muted/40">
+                          <td className="max-w-md px-6 py-3">
+                            <div className="flex items-center gap-3">
+                              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-navy/10 text-xs font-semibold text-navy">
+                                {initialsOf(name)}
+                              </span>
+                              <div className="min-w-0">
+                                <p className="truncate font-medium">
+                                  {name}
+                                  {isSelf && (
+                                    <span className="ml-2 text-xs text-muted-foreground">
+                                      (you)
+                                    </span>
+                                  )}
+                                </p>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {user.email}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-3">
-                          <Badge variant="secondary">{roleName(user.roleId)}</Badge>
-                        </td>
-                        <td className="px-6 py-3">
-                          <Badge variant={statusVariant[user.status]}>
-                            {user.status}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-3 text-muted-foreground">
-                          {user.lastActive}
-                        </td>
-                        <td className="px-6 py-3 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              aria-label="User actions"
-                              className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
-                            >
-                              <MoreHorizontal className="size-4" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" alignOffset={-8}>
-                              {can("roles", "edit") && (
-                                <DropdownMenuItem onClick={() => openEdit(user)}>
-                                  <Pencil />
-                                  Edit
-                                </DropdownMenuItem>
-                              )}
-                              {user.status === "invited" && (
-                                <DropdownMenuItem onClick={() => handleResend(user)}>
-                                  <Send />
-                                  Resend invite
-                                </DropdownMenuItem>
-                              )}
-                              {can("roles", "edit") && !isSelf && (
-                                <DropdownMenuItem
-                                  onClick={() => handleToggleStatus(user)}
-                                >
-                                  <UserMinus />
-                                  {user.status === "active" ? "Deactivate" : "Activate"}
-                                </DropdownMenuItem>
-                              )}
-                              {can("roles", "delete") && !isSelf && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    variant="destructive"
-                                    onClick={() => handleDelete(user)}
-                                  >
-                                    <Trash2 />
-                                    Delete
+                          </td>
+                          <td className="px-6 py-3">
+                            <Badge variant="secondary">
+                              {role?.display_name ?? "Unassigned"}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-3">
+                            <Badge className={cn("rounded-full capitalize", statusBadge[user.status])}>
+                              {user.status}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-3 text-muted-foreground">
+                            {formatLastActive(user.last_login_at)}
+                          </td>
+                          <td className="px-6 py-3 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                aria-label="User actions"
+                                disabled={isMutating}
+                                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                              >
+                                <MoreHorizontal className="size-4" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" alignOffset={-8}>
+                                {can("roles", "edit") && (
+                                  <DropdownMenuItem onClick={() => openEdit(user)}>
+                                    <Pencil />
+                                    Edit
                                   </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {filtered.length === 0 && (
+                                )}
+                                {can("roles", "edit") && !isSelf && (
+                                  <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
+                                    <UserMinus />
+                                    {user.status === "active" ? "Suspend" : "Activate"}
+                                  </DropdownMenuItem>
+                                )}
+                                {isSuperAdmin && !isSelf && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      variant="destructive"
+                                      onClick={() => handleDelete(user)}
+                                    >
+                                      <Trash2 />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  {!isLoading && filtered.length === 0 && (
                     <tr>
                       <td
                         colSpan={5}
@@ -372,25 +448,38 @@ export default function UsersPage() {
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetContent>
             <SheetHeader>
-              <SheetTitle>{editing ? "Edit user" : "Invite user"}</SheetTitle>
+              <SheetTitle>{editing ? "Edit user" : "Add user"}</SheetTitle>
               <SheetDescription>
                 {editing
                   ? "Update the user's profile and role."
-                  : "Send an invitation to join the admin panel."}
+                  : "Create a staff account with admin-panel access."}
               </SheetDescription>
             </SheetHeader>
 
             <div className="space-y-5 px-4">
-              <div>
-                <label className={fieldLabel} htmlFor="user-name">
-                  Full name
-                </label>
-                <Input
-                  id="user-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Alex Morgan"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={fieldLabel} htmlFor="user-first-name">
+                    First name
+                  </label>
+                  <Input
+                    id="user-first-name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Alex"
+                  />
+                </div>
+                <div>
+                  <label className={fieldLabel} htmlFor="user-last-name">
+                    Last name
+                  </label>
+                  <Input
+                    id="user-last-name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Morgan"
+                  />
+                </div>
               </div>
               <div>
                 <label className={fieldLabel} htmlFor="user-email">
@@ -402,8 +491,42 @@ export default function UsersPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="alex@royalvacation.com"
+                  disabled={Boolean(editing)}
                 />
+                {editing && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Email can&apos;t be changed after the account is created.
+                  </p>
+                )}
               </div>
+              {!editing && (
+                <div>
+                  <label className={fieldLabel} htmlFor="user-temp-password">
+                    Temporary password
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="user-temp-password"
+                      value={tempPassword}
+                      onChange={(e) => setTempPassword(e.target.value)}
+                      className="font-mono"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label="Regenerate password"
+                      onClick={() => setTempPassword(generateTempPassword())}
+                    >
+                      <RefreshCw />
+                    </Button>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    There&apos;s no email delivery configured yet — share this with the
+                    user directly so they can sign in.
+                  </p>
+                </div>
+              )}
               <div>
                 <label className={fieldLabel} htmlFor="user-role">
                   Role
@@ -414,11 +537,12 @@ export default function UsersPage() {
                   onChange={(e) => setRoleId(e.target.value)}
                   className={selectClass}
                 >
+                  <option value="">Unassigned</option>
                   {roles
                     .filter((role) => role.status === "active")
                     .map((role) => (
                       <option key={role.id} value={role.id}>
-                        {role.name}
+                        {role.display_name}
                       </option>
                     ))}
                 </select>
@@ -434,10 +558,14 @@ export default function UsersPage() {
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={!email.trim() || !roleId}
+                disabled={!email.trim() || (!editing && !tempPassword) || isMutating}
               >
-                <Mail data-icon="inline-start" />
-                {editing ? "Save changes" : "Send invite"}
+                {isMutating ? (
+                  <Loader2 data-icon="inline-start" className="animate-spin" />
+                ) : (
+                  <Mail data-icon="inline-start" />
+                )}
+                {editing ? "Save changes" : "Create user"}
               </Button>
             </SheetFooter>
           </SheetContent>

@@ -2,29 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export interface SiteLanguage {
-  code: string;
-  label: string;
-  enabled: boolean;
-}
-
 export interface SiteSettings {
   defaultCurrency: string;
   currencyPosition: "before" | "after";
   decimals: string;
   defaultLanguage: string;
-  languages: SiteLanguage[];
 }
-
-export const currencyOptions = [
-  "AED",
-  "USD",
-  "EUR",
-  "GBP",
-  "SAR",
-  "KWD",
-  "QAR",
-];
 
 export const currencyPositions = [
   { value: "before", label: "Before amount (AED 1,200)" },
@@ -42,13 +25,6 @@ const DEFAULTS: SiteSettings = {
   currencyPosition: "before",
   decimals: "0",
   defaultLanguage: "en",
-  languages: [
-    { code: "en", label: "English", enabled: true },
-    { code: "ar", label: "العربية (Arabic)", enabled: false },
-    { code: "fr", label: "Français", enabled: false },
-    { code: "de", label: "Deutsch", enabled: false },
-    { code: "es", label: "Español", enabled: false },
-  ],
 };
 
 const STORAGE_KEY = "rv_admin_site_settings";
@@ -57,7 +33,7 @@ function loadSettings(): SiteSettings {
   if (typeof window === "undefined") return DEFAULTS;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as SiteSettings;
+    if (raw) return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<SiteSettings>) };
   } catch {
     // ignore corrupt storage
   }
@@ -85,16 +61,5 @@ export function useSiteSettings() {
     setSettings((prev) => ({ ...prev, ...patch }));
   }, []);
 
-  const toggleLanguage = useCallback((code: string) => {
-    setSettings((prev) => ({
-      ...prev,
-      languages: prev.languages.map((language) =>
-        language.code === code
-          ? { ...language, enabled: !language.enabled }
-          : language
-      ),
-    }));
-  }, []);
-
-  return { settings, update, toggleLanguage };
+  return { settings, update };
 }

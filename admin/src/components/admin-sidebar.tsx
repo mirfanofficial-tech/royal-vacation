@@ -18,6 +18,8 @@ import {
   List,
   LogOut,
   Newspaper,
+  PanelLeftClose,
+  PanelLeftOpen,
   PanelsTopLeft,
   Plug,
   ReceiptText,
@@ -31,7 +33,8 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { clearSession, getSession, type AdminSession } from "@/lib/auth";
+import { logout } from "@/lib/api";
+import { getSession, type AdminSession } from "@/lib/auth";
 import { usePermissions } from "@/lib/roles";
 import type { ModuleKey } from "@/lib/mock-data";
 
@@ -106,6 +109,7 @@ const navItems: NavItem[] = [
     children: [
       { href: "/admin/users", label: "User Management", icon: Users, module: "roles" },
       { href: "/admin/roles", label: "Roles & Permissions", icon: ShieldCheck, module: "roles" },
+      { href: "/admin/partners", label: "Partners", icon: Building2, module: "roles" },
     ],
   },
   {
@@ -123,10 +127,16 @@ const navItems: NavItem[] = [
   },
 ];
 
-const linkClass =
-  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors";
+const activeRow = "bg-navy/[0.07] text-navy font-semibold";
+const inactiveRow = "text-muted-foreground hover:bg-muted hover:text-foreground";
 
-export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
+export function AdminSidebar({
+  collapsed = false,
+  onToggleCollapse,
+}: {
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -152,8 +162,8 @@ export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
         .toUpperCase()
     : "RV";
 
-  function handleSignOut() {
-    clearSession();
+  async function handleSignOut() {
+    await logout();
     router.push("/login");
   }
 
@@ -174,183 +184,197 @@ export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
   return (
     <aside
       className={cn(
-        "flex h-screen shrink-0 flex-col border-r border-border bg-white transition-[width] duration-200",
-        collapsed ? "w-16" : "w-64"
+        "flex h-screen shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200",
+        collapsed ? "w-20" : "w-64"
       )}
     >
       <div
         className={cn(
-          "flex items-center gap-2.5 border-b border-border px-5 py-4",
-          collapsed && "justify-center px-0"
+          "flex items-center gap-2.5 px-4 py-4",
+          collapsed && "flex-col gap-2.5 px-2.5"
         )}
       >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-navy text-gold">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-navy text-gold">
           <Hotel className="size-5" />
         </span>
         {!collapsed && (
-          <div>
-            <p className="text-sm font-semibold text-navy">Royal Vacation</p>
-            <p className="text-xs text-muted-foreground">Admin Panel</p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-navy">Royal Vacation</p>
+            <p className="truncate text-xs text-muted-foreground">Admin Panel</p>
           </div>
+        )}
+        {onToggleCollapse && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+          </button>
         )}
       </div>
 
-      <nav className={cn("flex-1 space-y-1 overflow-y-auto", collapsed ? "p-2" : "p-3")}>
-        {visibleNav.map((item) => {
-          const Icon = item.icon;
-          const active =
-            item.children?.length
-              ? isActive(item.href) || hasActiveChild(item)
-              : isActive(item.href);
-          const open =
-            expanded[item.href] ?? hasActiveChild(item);
+      <div className="mx-4 border-t border-border" />
 
-          if (!item.children) {
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                title={collapsed ? item.label : undefined}
-                className={cn(
-                  linkClass,
-                  collapsed && "justify-center px-0",
-                  active
-                    ? "bg-navy text-white"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Icon className="size-4 shrink-0" />
-                {!collapsed && item.label}
-              </Link>
-            );
-          }
+      <nav className={cn("flex-1 space-y-0.5 overflow-y-auto py-3", collapsed ? "px-2.5" : "px-3")}>
+          {visibleNav.map((item) => {
+            const Icon = item.icon;
+            const active =
+              item.children?.length
+                ? isActive(item.href) || hasActiveChild(item)
+                : isActive(item.href);
+            const open = expanded[item.href] ?? hasActiveChild(item);
 
-          if (collapsed) {
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                title={item.label}
-                className={cn(
-                  linkClass,
-                  "justify-center px-0",
-                  active
-                    ? "bg-navy/10 text-navy"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Icon className="size-4 shrink-0" />
-              </Link>
-            );
-          }
-
-          return (
-            <div key={item.href}>
-              <div className="flex items-center gap-1">
+            if (!item.children) {
+              return (
                 <Link
+                  key={item.href}
                   href={item.href}
+                  title={collapsed ? item.label : undefined}
                   className={cn(
-                    linkClass,
-                    "flex-1",
-                    active
-                      ? "bg-navy/10 text-navy"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
+                    collapsed && "justify-center px-0",
+                    active ? activeRow : inactiveRow
                   )}
                 >
-                  <Icon className="size-4" />
-                  {item.label}
+                  <Icon className="size-4 shrink-0" />
+                  {!collapsed && item.label}
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => toggle(item)}
-                  aria-expanded={open}
-                  aria-label={open ? "Collapse" : "Expand"}
+              );
+            }
+
+            if (collapsed) {
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={item.label}
                   className={cn(
-                    "flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50",
-                    active && "text-navy hover:bg-navy/10 hover:text-navy"
+                    "flex items-center justify-center rounded-xl px-0 py-2.5 text-sm transition-colors",
+                    active ? activeRow : inactiveRow
                   )}
                 >
-                  <ChevronDown
+                  <Icon className="size-4 shrink-0" />
+                </Link>
+              );
+            }
+
+            return (
+              <div key={item.href}>
+                <div
+                  className={cn(
+                    "flex items-center gap-1 rounded-xl transition-colors",
+                    active && activeRow
+                  )}
+                >
+                  <Link
+                    href={item.href}
                     className={cn(
-                      "size-4 transition-transform duration-200",
-                      open && "rotate-180"
+                      "flex flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
+                      !active && inactiveRow
                     )}
-                  />
-                </button>
-              </div>
-              <div
-                className={cn(
-                  "grid transition-[grid-template-rows,opacity] duration-200 ease-out",
-                  open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                )}
-              >
-                <div className="overflow-hidden">
-                  <div className="ml-2 mt-1 space-y-0.5 rounded-lg border border-border/70 bg-muted/40 p-1.5">
-                    {item.children
-                      .filter((child) => can(child.module, "view"))
-                      .map((child) => {
-                      const ChildIcon = child.icon;
-                      const childActive = isActive(child.href);
-                      return (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          className={cn(
-                            "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
-                            childActive
-                              ? "bg-navy text-white shadow-sm"
-                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                          )}
-                        >
-                          <ChildIcon
-                            className={cn("size-4", childActive && "text-gold")}
-                          />
-                          {child.label}
-                        </Link>
-                      );
-                    })}
+                  >
+                    <Icon className="size-4 shrink-0" />
+                    {item.label}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => toggle(item)}
+                    aria-expanded={open}
+                    aria-label={open ? "Collapse" : "Expand"}
+                    className={cn(
+                      "mr-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50",
+                      active && "text-navy hover:bg-navy/10 hover:text-navy"
+                    )}
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "size-4 transition-transform duration-200",
+                        open && "rotate-180"
+                      )}
+                    />
+                  </button>
+                </div>
+                <div
+                  className={cn(
+                    "grid transition-[grid-template-rows,opacity] duration-200 ease-out",
+                    open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    <div className="mt-0.5 ml-5 space-y-0.5 border-l border-border py-0.5 pl-3">
+                      {item.children
+                        .filter((child) => can(child.module, "view"))
+                        .map((child) => {
+                        const ChildIcon = child.icon;
+                        const childActive = isActive(child.href);
+                        return (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            className={cn(
+                              "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
+                              childActive ? activeRow : inactiveRow
+                            )}
+                          >
+                            <ChildIcon className="size-3.5 shrink-0" />
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </nav>
+            );
+          })}
+        </nav>
 
-      <div className={cn("border-t border-border", collapsed ? "p-2" : "p-3")}>
-        <div
-          className={cn(
-            "flex items-center gap-3 rounded-lg px-2 py-2",
-            collapsed && "justify-center px-0"
-          )}
-        >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-navy/10 text-xs font-semibold text-navy">
-            {initials}
-          </span>
-          {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">
-                {session?.name ?? "Admin"}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {session?.email ?? "admin@royalvacation.com"}
-              </p>
-            </div>
+        <div className={cn("mt-auto p-3", collapsed ? "px-2.5" : "px-3")}>
+          <div
+            className={cn(
+              "flex items-center gap-2.5 rounded-xl border border-border bg-muted/40 p-2",
+              collapsed && "justify-center"
+            )}
+          >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-semibold text-gold">
+              {initials}
+            </span>
+            {!collapsed && (
+              <>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {session?.name ?? "Admin"}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {session?.email ?? "admin@royalvacation.com"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  title="Sign out"
+                  aria-label="Sign out"
+                  className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors outline-none hover:bg-white hover:text-destructive focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <LogOut className="size-4" />
+                </button>
+              </>
+            )}
+          </div>
+          {collapsed && (
+            <button
+              type="button"
+              onClick={handleSignOut}
+              title="Sign out"
+              aria-label="Sign out"
+              className="mt-1.5 flex w-full items-center justify-center rounded-xl py-2 text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-destructive focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <LogOut className="size-4" />
+            </button>
           )}
         </div>
-        <button
-          type="button"
-          onClick={handleSignOut}
-          title={collapsed ? "Sign out" : undefined}
-          className={cn(
-            "mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-            collapsed && "justify-center px-0"
-          )}
-        >
-          <LogOut className="size-4 shrink-0" />
-          {!collapsed && "Sign out"}
-        </button>
-      </div>
     </aside>
   );
 }

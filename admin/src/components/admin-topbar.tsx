@@ -21,7 +21,8 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { clearSession, getSession, type AdminSession } from "@/lib/auth";
+import { logout } from "@/lib/api";
+import { getSession, type AdminSession } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -136,8 +137,8 @@ export function AdminTopbar({
 
   const unread = notifications.filter((n) => !n.read).length;
 
-  function handleSignOut() {
-    clearSession();
+  async function handleSignOut() {
+    await logout();
     router.push("/login");
   }
 

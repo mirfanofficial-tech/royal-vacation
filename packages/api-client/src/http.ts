@@ -46,7 +46,10 @@ export class ApiClient {
   constructor({ baseUrl, getToken, fetch: fetchImpl }: ApiClientOptions) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
     this.getToken = getToken ?? (() => undefined);
-    this.fetchImpl = fetchImpl ?? globalThis.fetch;
+    // globalThis.fetch requires `this === globalThis` when invoked in
+    // browsers ("Illegal invocation" otherwise) — bind it since we always
+    // call it as `this.fetchImpl(...)`.
+    this.fetchImpl = fetchImpl ?? globalThis.fetch.bind(globalThis);
   }
 
   async request<T>(path: string, options: RequestOptions = {}): Promise<T> {

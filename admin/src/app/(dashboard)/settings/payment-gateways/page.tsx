@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   BadgeCheck,
   Check,
@@ -12,28 +12,35 @@ import {
   EyeOff,
   KeyRound,
   Link2,
+  Loader2,
+  MoreHorizontal,
   Plus,
   Power,
   Star,
+  Trash2,
   Wrench,
 } from "lucide-react";
 
-import { usePaymentGateways } from "@/lib/payment-gateways";
 import type {
-  GatewayCallbacks,
-  GatewayCredentials,
-  PaymentGateway,
+  PaymentGatewayOut,
   PaymentGatewayStatus,
-} from "@/lib/mock-data";
+  PaymentGatewayUpdate,
+} from "@royal-vacation/api-client";
+import { ApiError } from "@/lib/api";
+import { usePaymentGateways } from "@/lib/payment-gateways";
+import { useCurrencies } from "@/lib/reference";
+import { usePermissions } from "@/lib/roles";
+import { PermissionGuard } from "@/components/permission-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sheet,
   SheetContent,
@@ -44,13 +51,10 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-const statusVariant: Record<
-  PaymentGatewayStatus,
-  "default" | "secondary" | "outline"
-> = {
-  active: "default",
-  test: "secondary",
-  inactive: "outline",
+const statusBadge: Record<PaymentGatewayStatus, string> = {
+  active: "bg-rating/10 text-rating",
+  test: "bg-amber-600/10 text-amber-600",
+  inactive: "bg-muted text-muted-foreground",
 };
 
 const statusBadgeLabel: Record<PaymentGatewayStatus, string> = {
@@ -59,24 +63,23 @@ const statusBadgeLabel: Record<PaymentGatewayStatus, string> = {
   inactive: "Inactive",
 };
 
-const currencyOptions = [
-  "AED",
-  "USD",
-  "EUR",
-  "GBP",
-  "SAR",
-  "KWD",
-  "QAR",
-  "OMR",
-  "BHD",
-  "EGP",
-];
-
 const fieldLabel = "mb-1.5 block text-xs font-medium text-muted-foreground";
 const selectClass =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 const inputWithEyeClass =
   "h-8 w-full rounded-lg border border-input bg-transparent pr-9 pl-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
+function errorMessage(err: unknown, fallback: string) {
+  return err instanceof ApiError ? err.message : fallback;
+}
+
+function slugify(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
 
 function SecretInput({
   id,
@@ -123,39 +126,78 @@ function SecretInput({
 
 function GatewayCard({
   gateway,
-  setStatus,
-  setDefault,
-  updateGateway,
+  onUpdate,
+  onDelete,
+  onSetDefault,
+  isMutating,
+  canEdit,
+  canDelete,
 }: {
-  gateway: PaymentGateway;
-  setStatus: (id: string, status: PaymentGatewayStatus) => void;
-  setDefault: (id: string) => void;
-  updateGateway: (id: string, patch: Partial<PaymentGateway>) => void;
+  gateway: PaymentGatewayOut;
+  onUpdate: (id: string, body: PaymentGatewayUpdate) => Promise<unknown>;
+  onDelete: (gateway: PaymentGatewayOut) => void;
+  onSetDefault: (gateway: PaymentGatewayOut) => void;
+  isMutating: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const [credentials, setCredentials] = useState<GatewayCredentials>(
-    gateway.credentials
-  );
-  const [callbacks, setCallbacks] = useState<GatewayCallbacks>(
-    gateway.callbacks
-  );
+  const [publicKey, setPublicKey] = useState(gateway.credentials.public_key ?? "");
+  const [merchantId, setMerchantId] = useState(gateway.credentials.merchant_id ?? "");
+  const [secretKey, setSecretKey] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
+  const [successUrl, setSuccessUrl] = useState(gateway.success_url ?? "");
+  const [cancelUrl, setCancelUrl] = useState(gateway.cancel_url ?? "");
+  const [webhookUrl, setWebhookUrl] = useState(gateway.webhook_url ?? "");
 
   const dirty =
-    JSON.stringify(credentials) !== JSON.stringify(gateway.credentials) ||
-    JSON.stringify(callbacks) !== JSON.stringify(gateway.callbacks);
+    publicKey !== (gateway.credentials.public_key ?? "") ||
+    merchantId !== (gateway.credentials.merchant_id ?? "") ||
+    secretKey !== "" ||
+    webhookSecret !== "" ||
+    successUrl !== (gateway.success_url ?? "") ||
+    cancelUrl !== (gateway.cancel_url ?? "") ||
+    webhookUrl !== (gateway.webhook_url ?? "");
 
-  function handleSaveCredentials() {
-    updateGateway(gateway.id, { credentials, callbacks });
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2000);
+  async function handleSaveCredentials() {
+    try {
+      await onUpdate(gateway.id, {
+        credentials: {
+          public_key: publicKey,
+          merchant_id: merchantId,
+          ...(secretKey ? { secret_key: secretKey } : {}),
+          ...(webhookSecret ? { webhook_secret: webhookSecret } : {}),
+        },
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        webhook_url: webhookUrl,
+      });
+      setSecretKey("");
+      setWebhookSecret("");
+      setSaved(true);
+      setError("");
+      window.setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(errorMessage(err, "Couldn't save credentials."));
+    }
+  }
+
+  async function handleStatusChange(status: PaymentGatewayStatus) {
+    try {
+      await onUpdate(gateway.id, { status });
+      setError("");
+    } catch (err) {
+      setError(errorMessage(err, "Couldn't update status."));
+    }
   }
 
   async function copyWebhook() {
     try {
-      await navigator.clipboard.writeText(callbacks.webhookUrl);
+      await navigator.clipboard.writeText(webhookUrl);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -175,20 +217,34 @@ function GatewayCard({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-semibold">{gateway.name}</p>
-              <Badge variant={statusVariant[gateway.status]}>
+              <Badge className={cn("rounded-full", statusBadge[gateway.status])}>
                 {statusBadgeLabel[gateway.status]}
               </Badge>
-              {gateway.isDefault && (
+              {gateway.is_default && (
                 <Badge variant="outline" className="text-gold">
                   <Star data-icon="inline-start" className="size-3" />
                   Default
                 </Badge>
               )}
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {gateway.description}
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{gateway.description}</p>
           </div>
+          {canDelete && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label={`${gateway.name} actions`}
+                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                <MoreHorizontal className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" alignOffset={-8}>
+                <DropdownMenuItem variant="destructive" onClick={() => onDelete(gateway)}>
+                  <Trash2 />
+                  Delete gateway
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
@@ -213,15 +269,17 @@ function GatewayCard({
             API keys & callbacks
           </span>
           <ChevronDown
-            className={cn(
-              "size-4 text-muted-foreground transition-transform",
-              expanded && "rotate-180"
-            )}
+            className={cn("size-4 text-muted-foreground transition-transform", expanded && "rotate-180")}
           />
         </button>
 
         {expanded && (
           <div className="space-y-5">
+            {error && (
+              <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {error}
+              </p>
+            )}
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="inline-flex items-center gap-2 text-sm font-semibold">
@@ -236,67 +294,59 @@ function GatewayCard({
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label
-                    className={fieldLabel}
-                    htmlFor={`${gateway.id}-public-key`}
-                  >
+                  <label className={fieldLabel} htmlFor={`${gateway.id}-public-key`}>
                     Public key
                   </label>
                   <Input
                     id={`${gateway.id}-public-key`}
-                    value={credentials.publicKey}
-                    onChange={(e) =>
-                      setCredentials({
-                        ...credentials,
-                        publicKey: e.target.value,
-                      })
-                    }
+                    value={publicKey}
+                    onChange={(e) => setPublicKey(e.target.value)}
                     className="font-mono text-xs"
                     autoComplete="off"
                     spellCheck={false}
+                    disabled={!canEdit}
                   />
                 </div>
                 <SecretInput
                   id={`${gateway.id}-secret-key`}
                   label="Secret key"
-                  value={credentials.secretKey}
-                  onChange={(value) =>
-                    setCredentials({ ...credentials, secretKey: value })
+                  value={secretKey}
+                  placeholder={
+                    gateway.credentials.secret_key_preview
+                      ? `Currently: ${gateway.credentials.secret_key_preview}`
+                      : "Not set"
                   }
+                  onChange={setSecretKey}
                 />
                 <div>
-                  <label
-                    className={fieldLabel}
-                    htmlFor={`${gateway.id}-merchant-id`}
-                  >
+                  <label className={fieldLabel} htmlFor={`${gateway.id}-merchant-id`}>
                     Merchant ID
                   </label>
                   <Input
                     id={`${gateway.id}-merchant-id`}
-                    value={credentials.merchantId}
-                    onChange={(e) =>
-                      setCredentials({
-                        ...credentials,
-                        merchantId: e.target.value,
-                      })
-                    }
+                    value={merchantId}
+                    onChange={(e) => setMerchantId(e.target.value)}
                     className="font-mono text-xs"
                     autoComplete="off"
                     spellCheck={false}
+                    disabled={!canEdit}
                   />
                 </div>
                 <SecretInput
                   id={`${gateway.id}-webhook-secret`}
                   label="Webhook secret"
-                  value={credentials.webhookSecret}
-                  onChange={(value) =>
-                    setCredentials({ ...credentials, webhookSecret: value })
+                  value={webhookSecret}
+                  placeholder={
+                    gateway.credentials.webhook_secret_preview
+                      ? `Currently: ${gateway.credentials.webhook_secret_preview}`
+                      : "Not set"
                   }
+                  onChange={setWebhookSecret}
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Secret keys are stored encrypted and only shown to admins with
-                payment permissions.
+                Secret keys are stored encrypted and never shown in full — leave a field blank
+                to keep the current value.
               </p>
             </div>
 
@@ -307,64 +357,43 @@ function GatewayCard({
               </h3>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
-                  <label
-                    className={fieldLabel}
-                    htmlFor={`${gateway.id}-success-url`}
-                  >
+                  <label className={fieldLabel} htmlFor={`${gateway.id}-success-url`}>
                     Success URL
                   </label>
                   <Input
                     id={`${gateway.id}-success-url`}
-                    value={callbacks.successUrl}
-                    onChange={(e) =>
-                      setCallbacks({
-                        ...callbacks,
-                        successUrl: e.target.value,
-                      })
-                    }
+                    value={successUrl}
+                    onChange={(e) => setSuccessUrl(e.target.value)}
                     className="font-mono text-xs"
                     spellCheck={false}
+                    disabled={!canEdit}
                   />
                 </div>
                 <div>
-                  <label
-                    className={fieldLabel}
-                    htmlFor={`${gateway.id}-cancel-url`}
-                  >
+                  <label className={fieldLabel} htmlFor={`${gateway.id}-cancel-url`}>
                     Cancel URL
                   </label>
                   <Input
                     id={`${gateway.id}-cancel-url`}
-                    value={callbacks.cancelUrl}
-                    onChange={(e) =>
-                      setCallbacks({
-                        ...callbacks,
-                        cancelUrl: e.target.value,
-                      })
-                    }
+                    value={cancelUrl}
+                    onChange={(e) => setCancelUrl(e.target.value)}
                     className="font-mono text-xs"
                     spellCheck={false}
+                    disabled={!canEdit}
                   />
                 </div>
                 <div>
-                  <label
-                    className={fieldLabel}
-                    htmlFor={`${gateway.id}-webhook-url`}
-                  >
+                  <label className={fieldLabel} htmlFor={`${gateway.id}-webhook-url`}>
                     Webhook URL
                   </label>
                   <div className="relative">
                     <Input
                       id={`${gateway.id}-webhook-url`}
-                      value={callbacks.webhookUrl}
-                      onChange={(e) =>
-                        setCallbacks({
-                          ...callbacks,
-                          webhookUrl: e.target.value,
-                        })
-                      }
+                      value={webhookUrl}
+                      onChange={(e) => setWebhookUrl(e.target.value)}
                       className="pr-9 font-mono text-xs"
                       spellCheck={false}
+                      disabled={!canEdit}
                     />
                     <button
                       type="button"
@@ -372,36 +401,31 @@ function GatewayCard({
                       onClick={copyWebhook}
                       className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
                     >
-                      {copied ? (
-                        <Check className="size-4 text-emerald-600" />
-                      ) : (
-                        <Copy className="size-4" />
-                      )}
+                      {copied ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
                     </button>
                   </div>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Tell {gateway.name} where to redirect guests after payment and
-                where to deliver webhook events.
+                Tell {gateway.name} where to redirect guests after payment and where to deliver
+                webhook events.
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-              {saved && (
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600">
-                  <BadgeCheck className="size-4" />
-                  Saved
-                </span>
-              )}
-              <Button
-                size="sm"
-                onClick={handleSaveCredentials}
-                disabled={!dirty}
-              >
-                Save credentials
-              </Button>
-            </div>
+            {canEdit && (
+              <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+                {saved && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+                    <BadgeCheck className="size-4" />
+                    Saved
+                  </span>
+                )}
+                <Button size="sm" onClick={handleSaveCredentials} disabled={!dirty || isMutating}>
+                  {isMutating && <Loader2 data-icon="inline-start" className="animate-spin" />}
+                  Save credentials
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -410,31 +434,28 @@ function GatewayCard({
             <span className="text-muted-foreground">Status</span>
             <select
               value={gateway.status}
-              onChange={(e) =>
-                setStatus(gateway.id, e.target.value as PaymentGatewayStatus)
-              }
+              onChange={(e) => handleStatusChange(e.target.value as PaymentGatewayStatus)}
               className={selectClass}
               aria-label={`${gateway.name} status`}
+              disabled={!canEdit || isMutating}
             >
               <option value="active">Active</option>
               <option value="test">Test mode</option>
               <option value="inactive">Inactive</option>
             </select>
           </label>
-          {gateway.isDefault ? (
+          {gateway.is_default ? (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
               <BadgeCheck className="size-4 text-gold" />
               Used for bookings
             </span>
           ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDefault(gateway.id)}
-            >
-              <Power data-icon="inline-start" />
-              Make default
-            </Button>
+            canEdit && (
+              <Button variant="outline" size="sm" onClick={() => onSetDefault(gateway)} disabled={isMutating}>
+                <Power data-icon="inline-start" />
+                Make default
+              </Button>
+            )
           )}
         </div>
       </CardContent>
@@ -442,60 +463,109 @@ function GatewayCard({
   );
 }
 
-export default function PaymentGatewaysSettingsPage() {
-  const { gateways, addGateway, updateGateway, setStatus, setDefault } =
-    usePaymentGateways();
+function PaymentGatewaysCatalog() {
+  const {
+    gateways,
+    isLoading,
+    createGateway,
+    updateGateway,
+    deleteGateway,
+    setDefaultGateway,
+    isMutating,
+  } = usePaymentGateways();
+  const { currencies } = useCurrencies();
+  const { can } = usePermissions();
+
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+
   const [sheetOpen, setSheetOpen] = useState(false);
   const [name, setName] = useState("");
+  const [code, setCode] = useState("");
+  const [codeTouched, setCodeTouched] = useState(false);
   const [description, setDescription] = useState("");
-  const [gatewayStatus, setGatewayStatus] =
-    useState<PaymentGatewayStatus>("test");
-  const [currencies, setCurrencies] = useState<string[]>(["AED"]);
+  const [gatewayStatus, setGatewayStatus] = useState<PaymentGatewayStatus>("test");
+  const [selectedCurrencies, setSelectedCurrencies] = useState<string[]>(["AED"]);
   const [makeDefault, setMakeDefault] = useState(false);
+
+  const currencyOptions = useMemo(
+    () => currencies.filter((c) => c.is_active).map((c) => c.code),
+    [currencies]
+  );
+
+  function flash(message: string) {
+    setNotice(message);
+    setError("");
+    window.setTimeout(() => setNotice(""), 5000);
+  }
+
+  function flashError(message: string) {
+    setError(message);
+    setNotice("");
+  }
 
   function openCreate() {
     setName("");
+    setCode("");
+    setCodeTouched(false);
     setDescription("");
     setGatewayStatus("test");
-    setCurrencies(["AED"]);
+    setSelectedCurrencies(["AED"]);
     setMakeDefault(false);
     setSheetOpen(true);
   }
 
+  function handleNameChange(value: string) {
+    setName(value);
+    if (!codeTouched) setCode(slugify(value));
+  }
+
   function toggleCurrency(currency: string) {
-    setCurrencies((prev) =>
-      prev.includes(currency)
-        ? prev.filter((c) => c !== currency)
-        : [...prev, currency]
+    setSelectedCurrencies((prev) =>
+      prev.includes(currency) ? prev.filter((c) => c !== currency) : [...prev, currency]
     );
   }
 
-  function handleSave() {
+  async function handleSave() {
     const trimmedName = name.trim();
-    if (!trimmedName || currencies.length === 0) return;
-    addGateway({
-      id: `gateway_${Date.now().toString(36)}`,
-      name: trimmedName,
-      description: description.trim() || "Custom payment gateway.",
-      status: makeDefault ? "active" : gatewayStatus,
-      isDefault: makeDefault,
-      currencies,
-      credentials: {
-        publicKey: "",
-        secretKey: "",
-        merchantId: "",
-        webhookSecret: "",
-      },
-      callbacks: {
-        successUrl: "",
-        cancelUrl: "",
-        webhookUrl: "",
-      },
-    });
-    setSheetOpen(false);
+    const trimmedCode = code.trim();
+    if (!trimmedName || !trimmedCode || selectedCurrencies.length === 0) return;
+    try {
+      await createGateway({
+        code: trimmedCode,
+        name: trimmedName,
+        description: description.trim() || "Custom payment gateway.",
+        status: makeDefault ? "active" : gatewayStatus,
+        is_default: makeDefault,
+        currencies: selectedCurrencies,
+      });
+      flash(`${trimmedName} added to your payment gateways.`);
+      setSheetOpen(false);
+    } catch (err) {
+      flashError(errorMessage(err, "Couldn't add this gateway."));
+    }
   }
 
-  const defaultGateway = gateways.find((g) => g.isDefault);
+  async function handleDelete(gateway: PaymentGatewayOut) {
+    if (!window.confirm(`Delete "${gateway.name}"? This cannot be undone.`)) return;
+    try {
+      await deleteGateway(gateway.id);
+      flash(`${gateway.name} deleted.`);
+    } catch (err) {
+      flashError(errorMessage(err, "Couldn't delete this gateway."));
+    }
+  }
+
+  async function handleSetDefault(gateway: PaymentGatewayOut) {
+    try {
+      await setDefaultGateway(gateway.id);
+      flash(`${gateway.name} is now the default gateway.`);
+    } catch (err) {
+      flashError(errorMessage(err, "Couldn't set this gateway as default."));
+    }
+  }
+
+  const defaultGateway = gateways.find((g) => g.is_default);
   const activeCount = gateways.filter((g) => g.status === "active").length;
   const testCount = gateways.filter((g) => g.status === "test").length;
 
@@ -503,15 +573,11 @@ export default function PaymentGatewaysSettingsPage() {
     { label: "Total gateways", value: gateways.length, icon: CreditCard },
     { label: "Active", value: activeCount, icon: CheckCircle2 },
     { label: "In test mode", value: testCount, icon: Wrench },
-    {
-      label: "Default",
-      value: defaultGateway?.name ?? "—",
-      icon: Star,
-    },
+    { label: "Default", value: defaultGateway?.name ?? "—", icon: Star },
   ];
 
   return (
-    <div className="space-y-6 p-6 lg:p-8">
+    <>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-navy">Payment Gateways</h1>
@@ -519,51 +585,79 @@ export default function PaymentGatewaysSettingsPage() {
             Manage payment providers, their API keys and callback URLs.
           </p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus data-icon="inline-start" />
-          Add gateway
-        </Button>
+        {can("settings", "create") && (
+          <Button onClick={openCreate}>
+            <Plus data-icon="inline-start" />
+            Add gateway
+          </Button>
+        )}
       </div>
+
+      {notice && (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm break-words text-emerald-800">
+          <BadgeCheck className="size-4 shrink-0" />
+          {notice}
+        </div>
+      )}
+      {error && (
+        <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm break-words text-destructive">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map(({ label, value, icon: Icon }) => (
           <Card key={label}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {label}
-              </CardTitle>
-              <Icon className="size-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+              <span className="flex size-8 items-center justify-center rounded-lg bg-navy/5 text-navy">
+                <Icon className="size-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <p className="truncate text-2xl font-semibold">
-                {typeof value === "string" && value !== "—"
-                  ? value
-                  : String(value)}
+              <p className="truncate text-2xl font-semibold tracking-tight">
+                {typeof value === "string" && value !== "—" ? value : String(value)}
               </p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {gateways.map((gateway) => (
-          <GatewayCard
-            key={gateway.id}
-            gateway={gateway}
-            setStatus={setStatus}
-            setDefault={setDefault}
-            updateGateway={updateGateway}
-          />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {gateways.map((gateway) => (
+            <GatewayCard
+              key={gateway.id}
+              gateway={gateway}
+              onUpdate={updateGateway}
+              onDelete={handleDelete}
+              onSetDefault={handleSetDefault}
+              isMutating={isMutating}
+              canEdit={can("settings", "edit")}
+              canDelete={can("settings", "delete")}
+            />
+          ))}
+          {gateways.length === 0 && (
+            <Card className="lg:col-span-2">
+              <CardContent className="px-6 py-12 text-center text-sm text-muted-foreground">
+                No payment gateways yet — add one to start accepting payments.
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent>
           <SheetHeader>
             <SheetTitle>Add gateway</SheetTitle>
             <SheetDescription>
-              Register a new payment provider for bookings. You can add API
-              keys and callbacks after saving.
+              Register a new payment provider for bookings. You can add API keys and callbacks
+              after saving.
             </SheetDescription>
           </SheetHeader>
 
@@ -575,9 +669,27 @@ export default function PaymentGatewaysSettingsPage() {
               <Input
                 id="gateway-name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="e.g. Adyen"
               />
+            </div>
+            <div>
+              <label className={fieldLabel} htmlFor="gateway-code">
+                Code
+              </label>
+              <Input
+                id="gateway-code"
+                value={code}
+                onChange={(e) => {
+                  setCodeTouched(true);
+                  setCode(slugify(e.target.value));
+                }}
+                placeholder="adyen"
+                className="font-mono text-sm"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                A unique identifier — auto-filled from the name, editable.
+              </p>
             </div>
             <div>
               <label className={fieldLabel} htmlFor="gateway-description">
@@ -597,9 +709,7 @@ export default function PaymentGatewaysSettingsPage() {
               <select
                 id="gateway-status"
                 value={gatewayStatus}
-                onChange={(e) =>
-                  setGatewayStatus(e.target.value as PaymentGatewayStatus)
-                }
+                onChange={(e) => setGatewayStatus(e.target.value as PaymentGatewayStatus)}
                 className={selectClass}
               >
                 <option value="test">Test mode</option>
@@ -611,7 +721,7 @@ export default function PaymentGatewaysSettingsPage() {
               <span className={fieldLabel}>Supported currencies</span>
               <div className="flex flex-wrap gap-1.5">
                 {currencyOptions.map((currency) => {
-                  const selected = currencies.includes(currency);
+                  const selected = selectedCurrencies.includes(currency);
                   return (
                     <button
                       key={currency}
@@ -631,9 +741,9 @@ export default function PaymentGatewaysSettingsPage() {
                 })}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {currencies.length === 0
+                {selectedCurrencies.length === 0
                   ? "Select at least one currency."
-                  : `${currencies.length} selected.`}
+                  : `${selectedCurrencies.length} selected.`}
               </p>
             </div>
             <label className="flex cursor-pointer items-center gap-2 text-sm">
@@ -653,13 +763,24 @@ export default function PaymentGatewaysSettingsPage() {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!name.trim() || currencies.length === 0}
+              disabled={!name.trim() || !code.trim() || selectedCurrencies.length === 0 || isMutating}
             >
+              {isMutating && <Loader2 data-icon="inline-start" className="animate-spin" />}
               Add gateway
             </Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
-    </div>
+    </>
+  );
+}
+
+export default function PaymentGatewaysSettingsPage() {
+  return (
+    <PermissionGuard module="settings">
+      <div className="space-y-6 p-6 lg:p-8">
+        <PaymentGatewaysCatalog />
+      </div>
+    </PermissionGuard>
   );
 }

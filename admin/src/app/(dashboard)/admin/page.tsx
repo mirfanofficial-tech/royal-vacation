@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, Users } from "lucide-react";
+import { ArrowRight, Building2, ShieldCheck, Users } from "lucide-react";
 
 import { PermissionGuard } from "@/components/permission-guard";
 import {
@@ -26,6 +26,13 @@ const sections = [
     description:
       "Define roles and fine-grained permissions across every module.",
     accent: "bg-rating/10 text-rating",
+  },
+  {
+    href: "/admin/partners",
+    icon: Building2,
+    title: "Partners",
+    description: "Review and verify property agents registered on the platform.",
+    accent: "bg-gold/10 text-gold",
   },
 ];
 

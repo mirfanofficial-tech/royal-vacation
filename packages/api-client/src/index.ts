@@ -1,23 +1,241 @@
-import { ApiClient } from "./http";
+import { ApiClient } from "./http.js";
 import type {
   AuthResponse,
+  ChangePasswordRequest,
+  ConfirmResetRequest,
+  CountryCreate,
+  CountryOut,
+  CountryUpdate,
+  CurrencyCreate,
+  CurrencyOut,
+  CurrencyUpdate,
   HealthResponse,
+  LanguageCreate,
+  LanguageOut,
+  LanguageUpdate,
   LoginRequest,
+  LogoutRequest,
+  MessageResponse,
+  PartnerListParams,
+  PartnerProfileOut,
+  PartnerProfileSelfUpdate,
+  PartnerProfileUpdate,
+  PartnerSummaryOut,
+  PasswordResetRequest,
+  PasswordResetRequestOut,
+  PaymentGatewayCreate,
+  PaymentGatewayOut,
+  PaymentGatewayUpdate,
+  PermissionOut,
+  PreferencesUpdate,
+  ProfileUpdate,
   Property,
   PropertyCreate,
   PropertyUpdate,
-} from "./types";
+  RefreshTokenRequest,
+  RegisterRequest,
+  RoleCreate,
+  RoleOut,
+  RolePermissionsUpdate,
+  RoleUpdate,
+  ThirdPartyModuleOut,
+  ThirdPartyModuleUpdate,
+  TokenPair,
+  TravelerProfileOut,
+  TravelerProfileUpdate,
+  UserActivityLogOut,
+  UserCreate,
+  UserListParams,
+  UserOut,
+  UserRolesUpdate,
+  UserSessionOut,
+  UserUpdate,
+  VerifyEmailRequest,
+} from "./types.js";
 
 export class RoyalVacationApi extends ApiClient {
   health() {
     return this.get<HealthResponse>("/api/v1/health");
   }
 
+  // ---- Authentication — public account lifecycle ----------------------
+
   auth = {
+    register: (body: RegisterRequest) =>
+      this.post<AuthResponse>("/api/v1/auth/register", body),
     login: (body: LoginRequest) =>
       this.post<AuthResponse>("/api/v1/auth/login", body),
-    me: () => this.get<AuthResponse["user"]>("/api/v1/auth/me"),
+    logout: (body: LogoutRequest) =>
+      this.post<void>("/api/v1/auth/logout", body),
+    refreshToken: (body: RefreshTokenRequest) =>
+      this.post<TokenPair>("/api/v1/auth/refresh-token", body),
+    verifyEmail: (body: VerifyEmailRequest) =>
+      this.post<MessageResponse>("/api/v1/auth/verify-email", body),
+    resetPassword: (body: PasswordResetRequest) =>
+      this.post<PasswordResetRequestOut>("/api/v1/auth/reset-password", body),
+    confirmReset: (body: ConfirmResetRequest) =>
+      this.post<MessageResponse>("/api/v1/auth/confirm-reset", body),
+    me: () => this.get<UserOut>("/api/v1/auth/me"),
   };
+
+  // ---- Admin management — admin-gated -----------------------------------
+
+  admin = {
+    users: {
+      list: (params: UserListParams = {}) =>
+        this.get<UserOut[]>("/api/v1/admin/users", { query: params }),
+      get: (id: string) => this.get<UserOut>(`/api/v1/admin/users/${id}`),
+      create: (body: UserCreate) =>
+        this.post<UserOut>("/api/v1/admin/users", body),
+      update: (id: string, body: UserUpdate) =>
+        this.put<UserOut>(`/api/v1/admin/users/${id}`, body),
+      remove: (id: string) => this.delete<void>(`/api/v1/admin/users/${id}`),
+      suspend: (id: string) =>
+        this.post<UserOut>(`/api/v1/admin/users/${id}/suspend`),
+      activate: (id: string) =>
+        this.post<UserOut>(`/api/v1/admin/users/${id}/activate`),
+      setRoles: (id: string, body: UserRolesUpdate) =>
+        this.put<UserOut>(`/api/v1/admin/users/${id}/roles`, body),
+      sessions: (id: string, activeOnly = false) =>
+        this.get<UserSessionOut[]>(`/api/v1/admin/users/${id}/sessions`, {
+          query: { active_only: activeOnly },
+        }),
+      activity: (id: string, limit = 50) =>
+        this.get<UserActivityLogOut[]>(`/api/v1/admin/users/${id}/activity`, {
+          query: { limit },
+        }),
+    },
+    partners: {
+      list: (params: PartnerListParams = {}) =>
+        this.get<PartnerSummaryOut[]>("/api/v1/admin/partners", {
+          query: params,
+        }),
+      verify: (userId: string) =>
+        this.post<PartnerProfileOut>(`/api/v1/admin/partners/${userId}/verify`),
+    },
+    roles: {
+      list: () => this.get<RoleOut[]>("/api/v1/admin/roles"),
+      get: (id: string) => this.get<RoleOut>(`/api/v1/admin/roles/${id}`),
+      create: (body: RoleCreate) =>
+        this.post<RoleOut>("/api/v1/admin/roles", body),
+      update: (id: string, body: RoleUpdate) =>
+        this.patch<RoleOut>(`/api/v1/admin/roles/${id}`, body),
+      remove: (id: string) => this.delete<void>(`/api/v1/admin/roles/${id}`),
+      permissions: (id: string) =>
+        this.get<PermissionOut[]>(`/api/v1/admin/roles/${id}/permissions`),
+      setPermissions: (id: string, body: RolePermissionsUpdate) =>
+        this.put<PermissionOut[]>(`/api/v1/admin/roles/${id}/permissions`, body),
+    },
+    profiles: {
+      getPartner: (userId: string) =>
+        this.get<PartnerProfileOut>(`/api/v1/admin/profiles/partners/${userId}`),
+      updatePartner: (userId: string, body: PartnerProfileUpdate) =>
+        this.patch<PartnerProfileOut>(
+          `/api/v1/admin/profiles/partners/${userId}`,
+          body
+        ),
+      getTraveler: (userId: string) =>
+        this.get<TravelerProfileOut>(
+          `/api/v1/admin/profiles/travelers/${userId}`
+        ),
+      updateTraveler: (userId: string, body: TravelerProfileUpdate) =>
+        this.patch<TravelerProfileOut>(
+          `/api/v1/admin/profiles/travelers/${userId}`,
+          body
+        ),
+    },
+    reference: {
+      currencies: {
+        list: () => this.get<CurrencyOut[]>("/api/v1/admin/reference/currencies"),
+        get: (id: string) =>
+          this.get<CurrencyOut>(`/api/v1/admin/reference/currencies/${id}`),
+        create: (body: CurrencyCreate) =>
+          this.post<CurrencyOut>("/api/v1/admin/reference/currencies", body),
+        update: (id: string, body: CurrencyUpdate) =>
+          this.patch<CurrencyOut>(`/api/v1/admin/reference/currencies/${id}`, body),
+        remove: (id: string) =>
+          this.delete<void>(`/api/v1/admin/reference/currencies/${id}`),
+      },
+      languages: {
+        list: () => this.get<LanguageOut[]>("/api/v1/admin/reference/languages"),
+        get: (id: string) =>
+          this.get<LanguageOut>(`/api/v1/admin/reference/languages/${id}`),
+        create: (body: LanguageCreate) =>
+          this.post<LanguageOut>("/api/v1/admin/reference/languages", body),
+        update: (id: string, body: LanguageUpdate) =>
+          this.patch<LanguageOut>(`/api/v1/admin/reference/languages/${id}`, body),
+        remove: (id: string) =>
+          this.delete<void>(`/api/v1/admin/reference/languages/${id}`),
+      },
+      countries: {
+        list: () => this.get<CountryOut[]>("/api/v1/admin/reference/countries"),
+        get: (id: string) =>
+          this.get<CountryOut>(`/api/v1/admin/reference/countries/${id}`),
+        create: (body: CountryCreate) =>
+          this.post<CountryOut>("/api/v1/admin/reference/countries", body),
+        update: (id: string, body: CountryUpdate) =>
+          this.patch<CountryOut>(`/api/v1/admin/reference/countries/${id}`, body),
+        remove: (id: string) =>
+          this.delete<void>(`/api/v1/admin/reference/countries/${id}`),
+      },
+    },
+    paymentGateways: {
+      list: () => this.get<PaymentGatewayOut[]>("/api/v1/admin/payment-gateways"),
+      get: (id: string) =>
+        this.get<PaymentGatewayOut>(`/api/v1/admin/payment-gateways/${id}`),
+      create: (body: PaymentGatewayCreate) =>
+        this.post<PaymentGatewayOut>("/api/v1/admin/payment-gateways", body),
+      update: (id: string, body: PaymentGatewayUpdate) =>
+        this.patch<PaymentGatewayOut>(`/api/v1/admin/payment-gateways/${id}`, body),
+      remove: (id: string) =>
+        this.delete<void>(`/api/v1/admin/payment-gateways/${id}`),
+      setDefault: (id: string) =>
+        this.post<PaymentGatewayOut>(`/api/v1/admin/payment-gateways/${id}/set-default`),
+    },
+    modules: {
+      list: () => this.get<ThirdPartyModuleOut[]>("/api/v1/admin/modules"),
+      get: (id: string) => this.get<ThirdPartyModuleOut>(`/api/v1/admin/modules/${id}`),
+      update: (id: string, body: ThirdPartyModuleUpdate) =>
+        this.patch<ThirdPartyModuleOut>(`/api/v1/admin/modules/${id}`, body),
+    },
+  };
+
+  // ---- Partner management — self-service for the calling partner --------
+
+  partner = {
+    getProfile: () => this.get<PartnerProfileOut>("/api/v1/partner/profile"),
+    updateProfile: (body: PartnerProfileSelfUpdate) =>
+      this.put<PartnerProfileOut>("/api/v1/partner/profile", body),
+    // Not implemented on the backend yet — properties/bookings aren't
+    // DB-modeled with partner ownership. Both throw ApiError(501).
+    listProperties: () => this.get<never>("/api/v1/partner/properties"),
+    createProperty: () => this.post<never>("/api/v1/partner/properties"),
+    listBookings: () => this.get<never>("/api/v1/partner/bookings"),
+  };
+
+  // ---- User profile — self-service for any authenticated account --------
+
+  profile = {
+    get: () => this.get<UserOut>("/api/v1/profile"),
+    update: (body: ProfileUpdate) => this.put<UserOut>("/api/v1/profile", body),
+    changePassword: (body: ChangePasswordRequest) =>
+      this.post<void>("/api/v1/profile/change-password", body),
+    updatePreferences: (body: PreferencesUpdate) =>
+      this.put<UserOut>("/api/v1/profile/preferences", body),
+    // Not implemented on the backend yet — no bookings table. Throws
+    // ApiError(501).
+    listBookings: () => this.get<never>("/api/v1/profile/bookings"),
+  };
+
+  // ---- Public reference data ---------------------------------------------
+
+  reference = {
+    currencies: () => this.get<CurrencyOut[]>("/api/v1/reference/currencies"),
+    languages: () => this.get<LanguageOut[]>("/api/v1/reference/languages"),
+    countries: () => this.get<CountryOut[]>("/api/v1/reference/countries"),
+  };
+
+  // ---- Public property catalog -------------------------------------------
 
   properties = {
     list: () => this.get<Property[]>("/api/v1/properties"),
@@ -31,5 +249,5 @@ export class RoyalVacationApi extends ApiClient {
   };
 }
 
-export * from "./http";
-export * from "./types";
+export * from "./http.js";
+export * from "./types.js";
