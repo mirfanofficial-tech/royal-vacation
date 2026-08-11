@@ -760,7 +760,8 @@ export type ModuleKey =
   | "reports"
   | "payments"
   | "settings"
-  | "roles";
+  | "roles"
+  | "stays";
 
 export const ALL_ACTIONS: PermissionAction[] = [
   "view",
@@ -781,6 +782,7 @@ export interface Permissions {
   payments: PermissionAction[];
   settings: PermissionAction[];
   roles: PermissionAction[];
+  stays: PermissionAction[];
 }
 
 export function createPermissions(full = false): Permissions {
@@ -797,6 +799,7 @@ export function createPermissions(full = false): Permissions {
     payments: [...actions],
     settings: [...actions],
     roles: [...actions],
+    stays: [...actions],
   };
 }
 

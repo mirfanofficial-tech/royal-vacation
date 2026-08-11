@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   BadgeCheck,
   Coins,
@@ -10,6 +11,7 @@ import {
   Plus,
   Save,
   Search,
+  Star,
   ToggleLeft,
   Trash2,
 } from "lucide-react";
@@ -37,14 +39,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 const statusBadge = {
@@ -72,7 +66,6 @@ function CurrencyCatalog() {
   const {
     currencies,
     isLoading,
-    createCurrency,
     updateCurrency,
     deleteCurrency,
     isMutating,
@@ -83,13 +76,6 @@ function CurrencyCatalog() {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [editing, setEditing] = useState<CurrencyOut | null>(null);
-  const [code, setCode] = useState("");
-  const [symbol, setSymbol] = useState("");
-  const [name, setName] = useState("");
-  const [rate, setRate] = useState("1");
 
   const filtered = useMemo(
     () =>
@@ -121,48 +107,6 @@ function CurrencyCatalog() {
     setNotice("");
   }
 
-  function openAdd() {
-    setEditing(null);
-    setCode("");
-    setSymbol("");
-    setName("");
-    setRate("1");
-    setSheetOpen(true);
-  }
-
-  function openEdit(currency: CurrencyOut) {
-    setEditing(currency);
-    setCode(currency.code);
-    setSymbol(currency.symbol);
-    setName(currency.name);
-    setRate(String(currency.rate_to_aed));
-    setSheetOpen(true);
-  }
-
-  async function handleSave() {
-    try {
-      if (editing) {
-        await updateCurrency(editing.id, {
-          symbol: symbol.trim() || undefined,
-          name: name.trim() || undefined,
-          rate_to_aed: Number(rate) || undefined,
-        });
-        flash(`${name || editing.name} updated.`);
-      } else {
-        await createCurrency({
-          code: code.trim(),
-          symbol: symbol.trim(),
-          name: name.trim(),
-          rate_to_aed: Number(rate) || 1,
-        });
-        flash(`${code.trim().toUpperCase()} added to the currency catalog.`);
-      }
-      setSheetOpen(false);
-    } catch (err) {
-      flashError(errorMessage(err, "Couldn't save this currency."));
-    }
-  }
-
   async function handleToggleActive(currency: CurrencyOut) {
     try {
       await updateCurrency(currency.id, { is_active: !currency.is_active });
@@ -192,7 +136,7 @@ function CurrencyCatalog() {
           </p>
         </div>
         {can("settings", "create") && (
-          <Button onClick={openAdd}>
+          <Button render={<Link href="/settings/currency/add" />}>
             <Plus data-icon="inline-start" />
             Add currency
           </Button>
@@ -298,14 +242,22 @@ function CurrencyCatalog() {
                         {currency.rate_to_aed}
                       </td>
                       <td className="px-6 py-3">
-                        <Badge
-                          className={cn(
-                            "rounded-full",
-                            currency.is_active ? statusBadge.active : statusBadge.inactive
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Badge
+                            className={cn(
+                              "rounded-full",
+                              currency.is_active ? statusBadge.active : statusBadge.inactive
+                            )}
+                          >
+                            {currency.is_active ? "Active" : "Inactive"}
+                          </Badge>
+                          {currency.is_default && (
+                            <Badge className="rounded-full bg-gold/10 text-gold">
+                              <Star data-icon="inline-start" className="size-3" />
+                              Default
+                            </Badge>
                           )}
-                        >
-                          {currency.is_active ? "Active" : "Inactive"}
-                        </Badge>
+                        </div>
                       </td>
                       <td className="px-6 py-3 text-right">
                         <DropdownMenu>
@@ -319,7 +271,9 @@ function CurrencyCatalog() {
                           <DropdownMenuContent align="end" alignOffset={-8}>
                             {can("settings", "edit") && (
                               <>
-                                <DropdownMenuItem onClick={() => openEdit(currency)}>
+                                <DropdownMenuItem
+                                  render={<Link href={`/settings/currency/${currency.id}`} />}
+                                >
                                   <Pencil />
                                   Edit
                                 </DropdownMenuItem>
@@ -360,98 +314,6 @@ function CurrencyCatalog() {
       </Card>
 
       <DisplayPreferences currencies={currencies} />
-
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{editing ? "Edit currency" : "Add currency"}</SheetTitle>
-            <SheetDescription>
-              {editing
-                ? "Update this currency's display details and exchange rate."
-                : "Add a new currency to the catalog."}
-            </SheetDescription>
-          </SheetHeader>
-
-          <div className="space-y-5 px-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={fieldLabel} htmlFor="currency-code">
-                  Code
-                </label>
-                <Input
-                  id="currency-code"
-                  value={code}
-                  maxLength={3}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  placeholder="USD"
-                  className="font-mono uppercase"
-                  disabled={Boolean(editing)}
-                />
-                {editing && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Code can&apos;t be changed after creation.
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className={fieldLabel} htmlFor="currency-symbol">
-                  Symbol
-                </label>
-                <Input
-                  id="currency-symbol"
-                  value={symbol}
-                  onChange={(e) => setSymbol(e.target.value)}
-                  placeholder="$"
-                />
-              </div>
-            </div>
-            <div>
-              <label className={fieldLabel} htmlFor="currency-name">
-                Name
-              </label>
-              <Input
-                id="currency-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="US Dollar"
-              />
-            </div>
-            <div>
-              <label className={fieldLabel} htmlFor="currency-rate">
-                Rate to AED
-              </label>
-              <Input
-                id="currency-rate"
-                type="number"
-                min={0}
-                step="0.000001"
-                value={rate}
-                onChange={(e) => setRate(e.target.value)}
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                How many AED one unit of this currency is worth.
-              </p>
-            </div>
-          </div>
-
-          <SheetFooter>
-            <Button variant="outline" onClick={() => setSheetOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={!code.trim() || !symbol.trim() || !name.trim() || isMutating}
-            >
-              {isMutating ? (
-                <Loader2 data-icon="inline-start" className="animate-spin" />
-              ) : (
-                <Save data-icon="inline-start" />
-              )}
-              {editing ? "Save changes" : "Add currency"}
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
     </>
   );
 }

@@ -49,8 +49,8 @@ export function DateRangePicker({
           triggerClassName
         )}
       >
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-          <CalendarIcon className="h-3.5 w-3.5 text-navy" />
+        <span className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+          <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
           {label}
         </span>
         <span className={cn("text-sm text-muted-foreground", valueClassName)}>

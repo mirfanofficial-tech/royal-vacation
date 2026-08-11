@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Crown } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function GeniusBanner() {
@@ -18,7 +18,7 @@ export function GeniusBanner() {
 
         <div className="relative flex flex-col items-start gap-4 px-8 py-10 sm:px-12 sm:py-12">
           <div className="flex items-center gap-2">
-            <Crown className="h-6 w-6 text-gold-light" />
+            <Sparkles className="h-6 w-6 text-gold-light" />
             <span className="font-heading text-2xl font-bold text-gold-light">Genius</span>
           </div>
           <h2 className="max-w-md font-heading text-2xl font-bold text-white sm:text-3xl">

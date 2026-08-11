@@ -1,6 +1,18 @@
 import { ApiClient } from "./http.js";
 import type {
   AuthResponse,
+  BlogCategoryCreate,
+  BlogCategoryOut,
+  BlogCategoryUpdate,
+  BlogCommentAdminOut,
+  BlogCommentCreate,
+  BlogCommentModerate,
+  BlogCommentPublicOut,
+  BlogCommentReplyCreate,
+  BlogPostCreate,
+  BlogPostOut,
+  BlogPostSummaryOut,
+  BlogPostUpdate,
   ChangePasswordRequest,
   ConfirmResetRequest,
   CountryCreate,
@@ -31,6 +43,9 @@ import type {
   ProfileUpdate,
   Property,
   PropertyCreate,
+  PropertyTypeCreate,
+  PropertyTypeOut,
+  PropertyTypeUpdate,
   PropertyUpdate,
   RefreshTokenRequest,
   RegisterRequest,
@@ -38,6 +53,11 @@ import type {
   RoleOut,
   RolePermissionsUpdate,
   RoleUpdate,
+  SiteThemeOut,
+  SiteThemeUpdate,
+  StaySettingCreate,
+  StaySettingOut,
+  StaySettingUpdate,
   ThirdPartyModuleOut,
   ThirdPartyModuleUpdate,
   TokenPair,
@@ -198,6 +218,83 @@ export class RoyalVacationApi extends ApiClient {
       update: (id: string, body: ThirdPartyModuleUpdate) =>
         this.patch<ThirdPartyModuleOut>(`/api/v1/admin/modules/${id}`, body),
     },
+    theme: {
+      get: () => this.get<SiteThemeOut>("/api/v1/admin/theme"),
+      update: (body: SiteThemeUpdate) => this.patch<SiteThemeOut>("/api/v1/admin/theme", body),
+      uploadLogo: (file: File) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        return this.postForm<SiteThemeOut>("/api/v1/admin/theme/logo", formData);
+      },
+    },
+    stays: {
+      list: (settingType?: string) =>
+        this.get<StaySettingOut[]>("/api/v1/admin/stays/settings", {
+          query: settingType ? { setting_type: settingType } : undefined,
+        }),
+      get: (id: string) => this.get<StaySettingOut>(`/api/v1/admin/stays/settings/${id}`),
+      create: (body: StaySettingCreate) =>
+        this.post<StaySettingOut>("/api/v1/admin/stays/settings", body),
+      update: (id: string, body: StaySettingUpdate) =>
+        this.patch<StaySettingOut>(`/api/v1/admin/stays/settings/${id}`, body),
+      remove: (id: string) => this.delete<void>(`/api/v1/admin/stays/settings/${id}`),
+      propertyTypes: {
+        list: () => this.get<PropertyTypeOut[]>("/api/v1/admin/stays/property-types"),
+        get: (id: string) =>
+          this.get<PropertyTypeOut>(`/api/v1/admin/stays/property-types/${id}`),
+        create: (body: PropertyTypeCreate) =>
+          this.post<PropertyTypeOut>("/api/v1/admin/stays/property-types", body),
+        update: (id: string, body: PropertyTypeUpdate) =>
+          this.patch<PropertyTypeOut>(`/api/v1/admin/stays/property-types/${id}`, body),
+        remove: (id: string) =>
+          this.delete<void>(`/api/v1/admin/stays/property-types/${id}`),
+        uploadImage: (id: string, file: File) => {
+          const formData = new FormData();
+          formData.append("file", file);
+          return this.postForm<PropertyTypeOut>(
+            `/api/v1/admin/stays/property-types/${id}/image`,
+            formData
+          );
+        },
+      },
+    },
+    blog: {
+      categories: {
+        list: () => this.get<BlogCategoryOut[]>("/api/v1/admin/blog/categories"),
+        get: (id: string) => this.get<BlogCategoryOut>(`/api/v1/admin/blog/categories/${id}`),
+        create: (body: BlogCategoryCreate) =>
+          this.post<BlogCategoryOut>("/api/v1/admin/blog/categories", body),
+        update: (id: string, body: BlogCategoryUpdate) =>
+          this.patch<BlogCategoryOut>(`/api/v1/admin/blog/categories/${id}`, body),
+        remove: (id: string) => this.delete<void>(`/api/v1/admin/blog/categories/${id}`),
+      },
+      posts: {
+        list: (params?: { category_id?: string; status?: string; q?: string }) =>
+          this.get<BlogPostSummaryOut[]>("/api/v1/admin/blog/posts", { query: params }),
+        get: (id: string) => this.get<BlogPostOut>(`/api/v1/admin/blog/posts/${id}`),
+        create: (body: BlogPostCreate) => this.post<BlogPostOut>("/api/v1/admin/blog/posts", body),
+        update: (id: string, body: BlogPostUpdate) =>
+          this.patch<BlogPostOut>(`/api/v1/admin/blog/posts/${id}`, body),
+        remove: (id: string) => this.delete<void>(`/api/v1/admin/blog/posts/${id}`),
+        uploadCoverImage: (id: string, file: File) => {
+          const formData = new FormData();
+          formData.append("file", file);
+          return this.postForm<BlogPostOut>(
+            `/api/v1/admin/blog/posts/${id}/cover-image`,
+            formData
+          );
+        },
+      },
+      comments: {
+        list: (params?: { status?: string; blog_post_id?: string }) =>
+          this.get<BlogCommentAdminOut[]>("/api/v1/admin/blog/comments", { query: params }),
+        moderate: (id: string, body: BlogCommentModerate) =>
+          this.patch<BlogCommentAdminOut>(`/api/v1/admin/blog/comments/${id}`, body),
+        remove: (id: string) => this.delete<void>(`/api/v1/admin/blog/comments/${id}`),
+        reply: (id: string, body: BlogCommentReplyCreate) =>
+          this.post<BlogCommentAdminOut>(`/api/v1/admin/blog/comments/${id}/reply`, body),
+      },
+    },
   };
 
   // ---- Partner management — self-service for the calling partner --------
@@ -233,6 +330,36 @@ export class RoyalVacationApi extends ApiClient {
     currencies: () => this.get<CurrencyOut[]>("/api/v1/reference/currencies"),
     languages: () => this.get<LanguageOut[]>("/api/v1/reference/languages"),
     countries: () => this.get<CountryOut[]>("/api/v1/reference/countries"),
+  };
+
+  // ---- Public site theme --------------------------------------------------
+
+  theme = {
+    get: () => this.get<SiteThemeOut>("/api/v1/theme"),
+  };
+
+  // ---- Public property types -----------------------------------------------
+
+  propertyTypes = {
+    list: () => this.get<PropertyTypeOut[]>("/api/v1/property-types"),
+  };
+
+  // ---- Public blog ---------------------------------------------------------
+
+  blog = {
+    categories: {
+      list: () => this.get<BlogCategoryOut[]>("/api/v1/blog/categories"),
+    },
+    posts: {
+      list: (params?: { category?: string; q?: string; limit?: number; offset?: number }) =>
+        this.get<BlogPostSummaryOut[]>("/api/v1/blog/posts", { query: params }),
+      get: (slug: string) => this.get<BlogPostOut>(`/api/v1/blog/posts/${slug}`),
+    },
+    comments: {
+      list: (slug: string) => this.get<BlogCommentPublicOut[]>(`/api/v1/blog/posts/${slug}/comments`),
+      create: (slug: string, body: BlogCommentCreate) =>
+        this.post<BlogCommentPublicOut>(`/api/v1/blog/posts/${slug}/comments`, body),
+    },
   };
 
   // ---- Public property catalog -------------------------------------------

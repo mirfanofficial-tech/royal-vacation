@@ -14,6 +14,8 @@ class CurrencyOut(BaseModel):
     name: str
     rate_to_aed: Decimal
     is_active: bool
+    country_code: str | None = None
+    is_default: bool
     created_at: datetime
     updated_at: datetime
 
@@ -24,6 +26,8 @@ class CurrencyCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     rate_to_aed: Decimal = Field(default=Decimal("1"), gt=0)
     is_active: bool = True
+    country_code: str | None = Field(default=None, min_length=2, max_length=2)
+    is_default: bool = False
 
     @field_validator("code")
     @classmethod
@@ -36,6 +40,8 @@ class CurrencyUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     rate_to_aed: Decimal | None = Field(default=None, gt=0)
     is_active: bool | None = None
+    country_code: str | None = Field(default=None, min_length=2, max_length=2)
+    is_default: bool | None = None
 
 
 class LanguageOut(BaseModel):

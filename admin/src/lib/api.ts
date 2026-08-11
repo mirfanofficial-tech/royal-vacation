@@ -9,10 +9,22 @@ import {
   userToSession,
 } from "@/lib/auth";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
 export const api = new RoyalVacationApi({
-  baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000",
+  baseUrl: API_BASE_URL,
   getToken: getAccessToken,
 });
+
+/**
+ * Resolves a backend-relative asset path (e.g. an uploaded logo's
+ * `/static/uploads/...` URL) against the API origin — otherwise the browser
+ * resolves it against the admin app's own origin instead of the backend's.
+ * Absolute URLs pass through unchanged.
+ */
+export function resolveAssetUrl(path: string): string {
+  return /^https?:\/\//.test(path) ? path : `${API_BASE_URL}${path}`;
+}
 
 async function login(email: string, password: string) {
   const res = await api.auth.login({ email, password });

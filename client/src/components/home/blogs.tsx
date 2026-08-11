@@ -1,36 +1,40 @@
-import Image from "next/image";
+"use client";
+
 import Link from "next/link";
-import { featuredBlogs } from "@/lib/mock-data";
+import { ChevronRight, Loader2 } from "lucide-react";
+
+import { BlogPostCard } from "@/components/blog/blog-post-card";
+import { useLatestBlogPostsQuery } from "@/lib/blog";
 
 export function Blogs() {
+  const { data: posts = [], isLoading } = useLatestBlogPostsQuery(4);
+
+  if (!isLoading && posts.length === 0) return null;
+
   return (
     <section className="mx-auto max-w-[1400px] px-6 py-10 lg:px-10">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="font-heading text-2xl font-bold text-navy">Featured Blogs</h2>
-        <Link href="#" className="text-sm font-semibold text-gold hover:underline">
+        <Link
+          href="/blog"
+          className="flex items-center text-sm font-semibold text-gold hover:underline"
+        >
           View all
+          <ChevronRight className="h-3.5 w-3.5" />
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {featuredBlogs.map((post) => (
-          <Link key={post.id} href="#" className="group flex flex-col gap-3">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-xl">
-              <Image
-                src={post.image}
-                alt={post.title}
-                fill
-                className="object-cover transition-transform duration-300 group-hover:scale-105"
-                sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-              />
-            </div>
-            <h3 className="line-clamp-2 font-heading text-base font-semibold text-navy group-hover:underline">
-              {post.title}
-            </h3>
-            <p className="text-xs text-muted-foreground">{post.date}</p>
-          </Link>
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {posts.map((post) => (
+            <BlogPostCard key={post.id} post={post} variant="minimal" />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

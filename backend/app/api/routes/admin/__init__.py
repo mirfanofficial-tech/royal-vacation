@@ -8,12 +8,18 @@ combined into a single router mounted once in app/main.py.
 from fastapi import APIRouter
 
 from app.api.routes.admin import (
+    blog_categories,
+    blog_comments,
+    blog_posts,
     modules,
     partners,
     payment_gateways,
     profiles,
+    property_types,
     reference,
     roles,
+    stays,
+    theme,
     users,
 )
 
@@ -35,5 +41,13 @@ router.include_router(
     payment_gateways.router, prefix="/payment-gateways", tags=["admin:payment-gateways"]
 )
 router.include_router(modules.router, prefix="/modules", tags=["admin:modules"])
+router.include_router(theme.router, prefix="/theme", tags=["admin:theme"])
+router.include_router(stays.router, prefix="/stays/settings", tags=["admin:stays"])
+router.include_router(
+    property_types.router, prefix="/stays/property-types", tags=["admin:property-types"]
+)
+router.include_router(blog_categories.router, prefix="/blog/categories", tags=["admin:blog"])
+router.include_router(blog_posts.router, prefix="/blog/posts", tags=["admin:blog"])
+router.include_router(blog_comments.router, prefix="/blog/comments", tags=["admin:blog"])
 
 __all__ = ["router"]

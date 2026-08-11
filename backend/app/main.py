@@ -1,7 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import auth, health, partner, profile, properties, reference
+from app.api.routes import (
+    auth,
+    blog,
+    health,
+    partner,
+    profile,
+    properties,
+    property_types,
+    reference,
+    theme,
+)
 from app.api.routes import admin as admin_module
 from app.core.config import settings
 from app.db import memory
@@ -35,6 +46,13 @@ def create_app() -> FastAPI:
     app.include_router(profile.router, prefix=f"{prefix}/profile", tags=["profile"])
     app.include_router(properties.router, prefix=prefix, tags=["properties"])
     app.include_router(reference.router, prefix=f"{prefix}/reference", tags=["reference"])
+    app.include_router(theme.router, prefix=f"{prefix}/theme", tags=["theme"])
+    app.include_router(
+        property_types.router, prefix=f"{prefix}/property-types", tags=["property-types"]
+    )
+    app.include_router(blog.router, prefix=f"{prefix}/blog", tags=["blog"])
+
+    app.mount("/static", StaticFiles(directory="static"), name="static")
 
     @app.on_event("startup")
     def on_startup() -> None:

@@ -23,7 +23,8 @@ export type PermissionModule =
   | "reports"
   | "payments"
   | "settings"
-  | "roles";
+  | "roles"
+  | "stays";
 export type PermissionAction = "view" | "create" | "edit" | "delete";
 
 // ---- Health ----------------------------------------------------------------
@@ -522,6 +523,8 @@ export interface CurrencyOut {
   name: string;
   rate_to_aed: number;
   is_active: boolean;
+  country_code?: string | null;
+  is_default: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -532,6 +535,8 @@ export interface CurrencyCreate {
   name: string;
   rate_to_aed?: number;
   is_active?: boolean;
+  country_code?: string;
+  is_default?: boolean;
 }
 
 export interface CurrencyUpdate {
@@ -539,6 +544,8 @@ export interface CurrencyUpdate {
   name?: string;
   rate_to_aed?: number;
   is_active?: boolean;
+  country_code?: string | null;
+  is_default?: boolean;
 }
 
 export interface LanguageOut {
@@ -628,4 +635,221 @@ export interface PropertyUpdate {
   currency?: string;
   image_url?: string;
   amenities?: string[];
+}
+
+// ---- Site theme (singleton) ---------------------------------------------
+
+export type HeaderVariant = "default" | "classic" | "variant_2" | "variant_3" | "variant_4" | "variant_5";
+export type FooterVariant = "classic" | "variant_2" | "variant_3" | "variant_4" | "variant_5";
+export type FontSizeOption = "sm" | "md" | "lg" | "xl";
+export type FontFamilyOption = "outfit" | "inter" | "poppins" | "playfair_display" | "roboto";
+
+export interface SiteThemeOut {
+  id: string;
+  header_variant: HeaderVariant;
+  footer_variant: FooterVariant;
+  heading_font_size: FontSizeOption;
+  paragraph_font_size: FontSizeOption;
+  font_family: FontFamilyOption;
+  logo_url?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SiteThemeUpdate {
+  header_variant?: HeaderVariant;
+  footer_variant?: FooterVariant;
+  heading_font_size?: FontSizeOption;
+  paragraph_font_size?: FontSizeOption;
+  font_family?: FontFamilyOption;
+}
+
+// ---- Stays Config ---------------------------------------------------------
+
+export type StaySettingType =
+  | "stay_amenity"
+  | "room_type"
+  | "room_amenity"
+  | "accommodation"
+  | "board";
+
+export interface StaySettingOut {
+  id: string;
+  setting_type: StaySettingType;
+  name: string;
+  is_active: boolean;
+  /** Keyed by language code, e.g. `{ fr: "Wifi gratuit", vi: "..." }`. */
+  translations: Record<string, string>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaySettingCreate {
+  setting_type: StaySettingType;
+  name: string;
+  is_active?: boolean;
+  translations?: Record<string, string>;
+}
+
+export interface StaySettingUpdate {
+  name?: string;
+  is_active?: boolean;
+  translations?: Record<string, string>;
+}
+
+// ---- Property Types ---------------------------------------------------
+
+export interface PropertyTypeOut {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  count_label?: string | null;
+  image_url?: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PropertyTypeCreate {
+  name: string;
+  slug: string;
+  description?: string;
+  count_label?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface PropertyTypeUpdate {
+  name?: string;
+  slug?: string;
+  description?: string;
+  count_label?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+// ---- Blog -------------------------------------------------------------
+
+export type BlogPostStatus = "draft" | "published" | "scheduled";
+export type BlogCommentStatus = "pending" | "approved" | "rejected";
+
+export interface BlogCategoryOut {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  color: string;
+  post_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BlogCategoryCreate {
+  name: string;
+  slug: string;
+  description?: string;
+  color?: string;
+}
+
+export interface BlogCategoryUpdate {
+  name?: string;
+  slug?: string;
+  description?: string;
+  color?: string;
+}
+
+export interface BlogPostTranslationValue {
+  title: string;
+  content: string;
+}
+
+export interface BlogPostSummaryOut {
+  id: string;
+  title: string;
+  slug: string;
+  category_id?: string | null;
+  category_name?: string | null;
+  category_slug?: string | null;
+  excerpt?: string | null;
+  cover_image_url?: string | null;
+  tags: string[];
+  status: BlogPostStatus;
+  author_name: string;
+  views: number;
+  comment_count: number;
+  published_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BlogPostOut extends BlogPostSummaryOut {
+  content: string;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  translations: Record<string, BlogPostTranslationValue>;
+}
+
+export interface BlogPostCreate {
+  title: string;
+  slug: string;
+  category_id?: string | null;
+  excerpt?: string;
+  content?: string;
+  tags?: string[];
+  status?: BlogPostStatus;
+  author_name?: string;
+  meta_title?: string;
+  meta_description?: string;
+  published_at?: string | null;
+  translations?: Record<string, BlogPostTranslationValue>;
+}
+
+export interface BlogPostUpdate {
+  title?: string;
+  slug?: string;
+  category_id?: string | null;
+  excerpt?: string;
+  content?: string;
+  tags?: string[];
+  status?: BlogPostStatus;
+  author_name?: string;
+  meta_title?: string;
+  meta_description?: string;
+  published_at?: string | null;
+  translations?: Record<string, BlogPostTranslationValue>;
+}
+
+export interface BlogCommentPublicOut {
+  id: string;
+  parent_comment_id?: string | null;
+  author_name: string;
+  body: string;
+  is_admin_reply: boolean;
+  status: BlogCommentStatus;
+  created_at: string;
+}
+
+export interface BlogCommentAdminOut extends BlogCommentPublicOut {
+  blog_post_id: string;
+  post_title: string;
+  post_slug: string;
+  author_email: string;
+  updated_at: string;
+}
+
+export interface BlogCommentCreate {
+  author_name: string;
+  author_email: string;
+  body: string;
+  parent_comment_id?: string | null;
+}
+
+export interface BlogCommentModerate {
+  status: "approved" | "rejected";
+}
+
+export interface BlogCommentReplyCreate {
+  body: string;
 }

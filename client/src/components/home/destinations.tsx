@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -14,10 +15,14 @@ export function Destinations() {
     <section className="mx-auto max-w-[1400px] px-6 py-10 lg:px-10">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="font-heading text-2xl font-bold text-navy">
-          Popular with travelers from Pakistan
+          Popular with travelers from Dubai
         </h2>
-        <Link href="#" className="text-sm font-semibold text-gold hover:underline">
+        <Link
+          href="#"
+          className="flex items-center text-sm font-semibold text-gold hover:underline"
+        >
           View all
+          <ChevronRight className="h-3.5 w-3.5" />
         </Link>
       </div>
 
@@ -32,7 +37,7 @@ export function Destinations() {
                 href={`/search?destination=${encodeURIComponent(
                   `${destination.city}, ${destination.country}`
                 )}`}
-                className="group relative block aspect-[4/5] overflow-hidden rounded-xl"
+                className="group relative block aspect-[4/3] overflow-hidden rounded-xl"
               >
                 <Image
                   src={destination.image}

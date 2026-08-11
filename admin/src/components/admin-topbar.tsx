@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bell,
+  Building2,
   CheckCheck,
   ChevronRight,
+  Coins,
   HelpCircle,
   LogOut,
   Newspaper,
@@ -16,24 +18,72 @@ import {
   Search,
   Settings2,
   ShieldCheck,
+  SlidersHorizontal,
+  Tag,
   UserRound,
   Users,
+  type LucideIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { logout } from "@/lib/api";
 import { getSession, type AdminSession } from "@/lib/auth";
+import { usePermissions } from "@/lib/roles";
+import type { ModuleKey } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+interface QuickCreateItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  module: ModuleKey;
+}
+
+interface QuickCreateGroup {
+  label: string;
+  items: QuickCreateItem[];
+}
+
+const quickCreateGroups: QuickCreateGroup[] = [
+  {
+    label: "Stays",
+    items: [
+      { href: "/stays/property-types/add", label: "Property type", icon: Building2, module: "stays" },
+      { href: "/stays/config/add", label: "Stays setting", icon: SlidersHorizontal, module: "stays" },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { href: "/settings/currency/add", label: "Currency", icon: Coins, module: "settings" },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { href: "/blogs/new", label: "Blog post", icon: Newspaper, module: "blog" },
+      { href: "/blogs/categories?new=1", label: "Blog category", icon: Tag, module: "blog" },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
+      { href: "/admin/roles/new", label: "Role", icon: ShieldCheck, module: "roles" },
+      { href: "/admin/users", label: "Invite user", icon: Users, module: "roles" },
+    ],
+  },
+];
 
 interface NavNotification {
   id: string;
@@ -130,6 +180,14 @@ export function AdminTopbar({
   const [notifications, setNotifications] =
     useState<NavNotification[]>(initialNotifications);
   const [query, setQuery] = useState("");
+  const { can } = usePermissions();
+
+  const visibleQuickCreateGroups = quickCreateGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => can(item.module, "create")),
+    }))
+    .filter((group) => group.items.length > 0);
 
   useEffect(() => {
     setSession(getSession());
@@ -147,7 +205,7 @@ export function AdminTopbar({
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-white/80 px-3 backdrop-blur sm:gap-3 sm:px-5">
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-white/80 px-3 shadow-sm backdrop-blur sm:gap-3 sm:px-5">
       <Button
         variant="ghost"
         size="icon-sm"
@@ -206,30 +264,34 @@ export function AdminTopbar({
               <span className="hidden lg:inline">New</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" alignOffset={-8} className="w-52">
-            <DropdownMenuLabel>Quick actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              render={<Link href="/blogs/new" />}
-            >
-              <Newspaper />
-              New blog post
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              render={<Link href="/admin/roles/new" />}
-            >
-              <ShieldCheck />
-              New role
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              render={<Link href="/admin/users" />}
-            >
-              <Users />
-              Invite user
-            </DropdownMenuItem>
+          <DropdownMenuContent align="end" alignOffset={-8} className="w-60">
+            <p className="px-2 py-1.5 text-sm font-semibold text-foreground">Quick create</p>
+            {visibleQuickCreateGroups.length === 0 && (
+              <p className="px-2 py-3 text-xs text-muted-foreground">
+                Nothing available for your role.
+              </p>
+            )}
+            {visibleQuickCreateGroups.map((group, i) => (
+              <Fragment key={group.label}>
+                {i > 0 && <DropdownMenuSeparator />}
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="text-[11px] font-medium text-muted-foreground">
+                    {group.label}
+                  </DropdownMenuLabel>
+                  {group.items.map((item) => {
+                    const ItemIcon = item.icon;
+                    return (
+                      <DropdownMenuItem key={item.href} render={<Link href={item.href} />}>
+                        <ItemIcon />
+                        {item.label}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuGroup>
+              </Fragment>
+            ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              render={<Link href="/settings" />}
-            >
+            <DropdownMenuItem render={<Link href="/settings" />}>
               <Settings2 />
               Site settings
             </DropdownMenuItem>

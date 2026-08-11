@@ -8,7 +8,7 @@ rows only) used by booking flows — that file is untouched by this one.
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,8 +57,14 @@ async def create_currency(payload: CurrencyCreate, db: AsyncSession = Depends(ge
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Currency code already exists"
         )
-    currency = Currency(**payload.model_dump())
+    currency = Currency(**payload.model_dump(exclude={"is_default"}))
     db.add(currency)
+
+    if payload.is_default:
+        await db.flush()
+        await db.execute(update(Currency).values(is_default=False))
+        currency.is_default = True
+
     await db.commit()
     await db.refresh(currency)
     return CurrencyOut.model_validate(currency)
@@ -75,8 +81,17 @@ async def update_currency(
     currency_id: str, payload: CurrencyUpdate, db: AsyncSession = Depends(get_db)
 ) -> CurrencyOut:
     currency = await _get_currency(db, currency_id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    is_default = data.pop("is_default", None)
+    for field, value in data.items():
         setattr(currency, field, value)
+
+    if is_default is True:
+        await db.execute(update(Currency).values(is_default=False))
+        currency.is_default = True
+    elif is_default is False:
+        currency.is_default = False
+
     await db.commit()
     await db.refresh(currency)
     return CurrencyOut.model_validate(currency)
@@ -220,4 +235,14 @@ async def update_country(
 async def delete_country(country_id: str, db: AsyncSession = Depends(get_db)) -> None:
     country = await _get_country(db, country_id)
     await db.delete(country)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "This country is assigned to one or more currencies and can't be deleted. "
+                "Deactivate it instead."
+            ),
+        )

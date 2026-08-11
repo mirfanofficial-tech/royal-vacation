@@ -17,14 +17,15 @@ import {
   LayoutDashboard,
   List,
   LogOut,
+  MessageSquare,
   Newspaper,
-  PanelLeftClose,
-  PanelLeftOpen,
   PanelsTopLeft,
+  Palette,
   Plug,
   ReceiptText,
   Settings,
   ShieldCheck,
+  SlidersHorizontal,
   Undo2,
   UserCog,
   Users,
@@ -33,9 +34,10 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { logout } from "@/lib/api";
+import { logout, resolveAssetUrl } from "@/lib/api";
 import { getSession, type AdminSession } from "@/lib/auth";
 import { usePermissions } from "@/lib/roles";
+import { useThemeQuery } from "@/lib/theme";
 import type { ModuleKey } from "@/lib/mock-data";
 
 interface NavChild {
@@ -55,42 +57,52 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, module: "dashboard" },
-  { href: "/properties", label: "Properties", icon: Building2, module: "properties" },
-  { href: "/bookings", label: "Bookings", icon: CalendarCheck, module: "bookings" },
-  { href: "/guests", label: "Guests", icon: Users, module: "guests" },
-  { href: "/modules", label: "Modules", icon: Plug, module: "modules" },
+  // { href: "/properties", label: "Properties", icon: Building2, module: "properties" },
+  // { href: "/bookings", label: "Bookings", icon: CalendarCheck, module: "bookings" },
+  // { href: "/guests", label: "Guests", icon: Users, module: "guests" },
+  // { href: "/modules", label: "Modules", icon: Plug, module: "modules" },
   {
-    href: "/reports",
-    label: "Reports",
-    icon: BarChart3,
-    module: "reports",
+    href: "/stays",
+    label: "Stays",
+    icon: Hotel,
+    module: "stays",
     children: [
-      { href: "/reports/finance", label: "Finance", icon: BarChart3, module: "reports" },
-      { href: "/reports/occupancy", label: "Occupancy", icon: Hotel, module: "reports" },
-      { href: "/reports/payouts", label: "Payouts", icon: Coins, module: "reports" },
+      { href: "/stays/config", label: "Stays Config", icon: SlidersHorizontal, module: "stays" },
+      { href: "/stays/property-types", label: "Property Types", icon: Building2, module: "stays" },
     ],
   },
-  {
-    href: "/payments",
-    label: "Payments",
-    icon: Wallet,
-    module: "payments",
-    children: [
-      { href: "/payments/transactions", label: "Transactions", icon: CreditCard, module: "payments" },
-      { href: "/payments/invoices", label: "Invoices", icon: ReceiptText, module: "payments" },
-      { href: "/payments/refunds", label: "Refunds", icon: Undo2, module: "payments" },
-    ],
-  },
-  {
-    href: "/cms",
-    label: "CMS",
-    icon: PanelsTopLeft,
-    module: "cms",
-    children: [
-      { href: "/cms/pages", label: "Pages", icon: FileText, module: "cms" },
-      { href: "/cms/menus", label: "Menus", icon: List, module: "cms" },
-    ],
-  },
+  // {
+  //   href: "/reports",
+  //   label: "Reports",
+  //   icon: BarChart3,
+  //   module: "reports",
+  //   children: [
+  //     { href: "/reports/finance", label: "Finance", icon: BarChart3, module: "reports" },
+  //     { href: "/reports/occupancy", label: "Occupancy", icon: Hotel, module: "reports" },
+  //     { href: "/reports/payouts", label: "Payouts", icon: Coins, module: "reports" },
+  //   ],
+  // },
+  // {
+  //   href: "/payments",
+  //   label: "Payments",
+  //   icon: Wallet,
+  //   module: "payments",
+  //   children: [
+  //     { href: "/payments/transactions", label: "Transactions", icon: CreditCard, module: "payments" },
+  //     { href: "/payments/invoices", label: "Invoices", icon: ReceiptText, module: "payments" },
+  //     { href: "/payments/refunds", label: "Refunds", icon: Undo2, module: "payments" },
+  //   ],
+  // },
+  // {
+  //   href: "/cms",
+  //   label: "CMS",
+  //   icon: PanelsTopLeft,
+  //   module: "cms",
+  //   children: [
+  //     { href: "/cms/pages", label: "Pages", icon: FileText, module: "cms" },
+  //     { href: "/cms/menus", label: "Menus", icon: List, module: "cms" },
+  //   ],
+  // },
   {
     href: "/blogs",
     label: "Blog",
@@ -99,32 +111,34 @@ const navItems: NavItem[] = [
     children: [
       { href: "/blogs", label: "Posts", icon: Newspaper, module: "blog" },
       { href: "/blogs/categories", label: "Categories", icon: Newspaper, module: "blog" },
+      { href: "/blogs/comments", label: "Comments", icon: MessageSquare, module: "blog" },
     ],
   },
-  {
-    href: "/admin",
-    label: "Administration",
-    icon: UserCog,
-    module: "roles",
-    children: [
-      { href: "/admin/users", label: "User Management", icon: Users, module: "roles" },
-      { href: "/admin/roles", label: "Roles & Permissions", icon: ShieldCheck, module: "roles" },
-      { href: "/admin/partners", label: "Partners", icon: Building2, module: "roles" },
-    ],
-  },
-  {
-    href: "/settings",
-    label: "Settings",
-    icon: Settings,
-    module: "settings",
-    children: [
-      { href: "/settings", label: "General", icon: Settings, module: "settings" },
-      { href: "/settings/currency", label: "Currency", icon: Coins, module: "settings" },
-      { href: "/settings/language", label: "Language", icon: Languages, module: "settings" },
-      { href: "/settings/countries", label: "Countries", icon: Globe2, module: "settings" },
-      { href: "/settings/payment-gateways", label: "Payment Gateways", icon: CreditCard, module: "settings" },
-    ],
-  },
+  // {
+  //   href: "/admin",
+  //   label: "Administration",
+  //   icon: UserCog,
+  //   module: "roles",
+  //   children: [
+  //     { href: "/admin/users", label: "User Management", icon: Users, module: "roles" },
+  //     { href: "/admin/roles", label: "Roles & Permissions", icon: ShieldCheck, module: "roles" },
+  //     { href: "/admin/partners", label: "Partners", icon: Building2, module: "roles" },
+  //   ],
+  // },
+  // {
+  //   href: "/settings",
+  //   label: "Settings",
+  //   icon: Settings,
+  //   module: "settings",
+  //   children: [
+  //     { href: "/settings", label: "General", icon: Settings, module: "settings" },
+  //     { href: "/settings/currency", label: "Currency", icon: Coins, module: "settings" },
+  //     { href: "/settings/language", label: "Language", icon: Languages, module: "settings" },
+  //     { href: "/settings/countries", label: "Countries", icon: Globe2, module: "settings" },
+  //     { href: "/settings/payment-gateways", label: "Payment Gateways", icon: CreditCard, module: "settings" },
+  //     { href: "/settings/themes", label: "Themes", icon: Palette, module: "settings" },
+  //   ],
+  // },
 ];
 
 const activeRow = "bg-navy/[0.07] text-navy font-semibold";
@@ -132,11 +146,10 @@ const inactiveRow = "text-muted-foreground hover:bg-muted hover:text-foreground"
 
 export function AdminSidebar({
   collapsed = false,
-  onToggleCollapse,
 }: {
   collapsed?: boolean;
-  onToggleCollapse?: () => void;
 }) {
+  const { data: theme } = useThemeQuery();
   const pathname = usePathname();
   const router = useRouter();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -184,7 +197,7 @@ export function AdminSidebar({
   return (
     <aside
       className={cn(
-        "flex h-screen shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200",
+        "flex h-screen shrink-0 flex-col border-r border-border bg-card shadow-[1px_0_3px_rgba(15,23,42,0.04)] transition-[width] duration-200",
         collapsed ? "w-20" : "w-64"
       )}
     >
@@ -194,24 +207,23 @@ export function AdminSidebar({
           collapsed && "flex-col gap-2.5 px-2.5"
         )}
       >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-navy text-gold">
-          <Hotel className="size-5" />
+        <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-navy text-gold shadow-sm">
+          {theme?.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={resolveAssetUrl(theme.logo_url)}
+              alt="Logo"
+              className="size-full object-contain"
+            />
+          ) : (
+            <Hotel className="size-5" />
+          )}
         </span>
         {!collapsed && (
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-navy">Royal Vacation</p>
             <p className="truncate text-xs text-muted-foreground">Admin Panel</p>
           </div>
-        )}
-        {onToggleCollapse && (
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
-          </button>
         )}
       </div>
 
@@ -338,7 +350,7 @@ export function AdminSidebar({
               collapsed && "justify-center"
             )}
           >
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-semibold text-gold">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-semibold text-gold shadow-sm">
               {initials}
             </span>
             {!collapsed && (

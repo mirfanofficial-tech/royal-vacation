@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import { Heart, MapPin } from "lucide-react";
 import { useFavorites } from "@/components/providers/favorites-provider";
 import type { Property } from "@/lib/mock-data";
 
@@ -22,6 +22,9 @@ export function PropertyCard({ property }: { property: Property }) {
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
           />
         </Link>
+        <span className="absolute top-3 left-3 z-10 rounded-md bg-navy-dark/80 px-1.5 py-0.5 text-xs font-bold text-white">
+          {property.rating.toFixed(1)}
+        </span>
         <button
           type="button"
           aria-label={favorited ? "Remove from favorites" : "Save to favorites"}
@@ -51,7 +54,16 @@ export function PropertyCard({ property }: { property: Property }) {
         <h3 className="line-clamp-1 font-heading text-base font-semibold text-navy hover:underline">
           <Link href={`/property/${property.id}`}>{property.name}</Link>
         </h3>
-        <p className="text-sm text-muted-foreground">{property.location}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="truncate text-sm text-muted-foreground">{property.location}</p>
+          <button
+            type="button"
+            className="flex shrink-0 items-center gap-1 text-xs font-medium text-navy hover:underline"
+          >
+            <MapPin className="h-3 w-3" />
+            Show on map
+          </button>
+        </div>
 
         <div className="mt-auto pt-2 text-sm">
           <span className="text-muted-foreground">From </span>

@@ -11,6 +11,7 @@ import {
   BarChart3,
   Building2,
   CalendarCheck,
+  Hotel,
   LayoutDashboard,
   Newspaper,
   PanelsTopLeft,
@@ -58,6 +59,7 @@ export const permissionModules: PermissionModuleMeta[] = [
   { key: "payments", label: "Payments", description: "Transactions, invoices and refunds." },
   { key: "settings", label: "Settings", description: "Currency, language, payments." },
   { key: "roles", label: "Roles & Permissions", description: "Role and access control." },
+  { key: "stays", label: "Stays", description: "Stay/room amenities, types and boards." },
 ];
 
 export const permissionModuleIcon: Record<ModuleKey, LucideIcon> = {
@@ -72,6 +74,7 @@ export const permissionModuleIcon: Record<ModuleKey, LucideIcon> = {
   payments: Wallet,
   settings: Settings,
   roles: ShieldCheck,
+  stays: Hotel,
 };
 
 const ROLES_KEY = ["admin", "roles"] as const;

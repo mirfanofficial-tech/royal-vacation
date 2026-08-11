@@ -26,6 +26,7 @@ export function SearchBar() {
   const [checkIn, setCheckIn] = useState<Date | undefined>();
   const [checkOut, setCheckOut] = useState<Date | undefined>();
   const [adults, setAdults] = useState(2);
+  const [children, setChildren] = useState(0);
   const [rooms, setRooms] = useState(1);
 
   const {
@@ -42,6 +43,7 @@ export function SearchBar() {
     if (checkIn) params.set("checkIn", checkIn.toISOString());
     if (checkOut) params.set("checkOut", checkOut.toISOString());
     params.set("adults", String(adults));
+    params.set("children", String(children));
     params.set("rooms", String(rooms));
     router.push(`/search?${params.toString()}`);
   });
@@ -49,11 +51,11 @@ export function SearchBar() {
   return (
     <form
       onSubmit={onSubmit}
-      className="grid w-full grid-cols-1 gap-3 rounded-2xl bg-white p-3 shadow-xl md:grid-cols-[1.4fr_1fr_1fr_auto] md:gap-0 md:divide-x md:divide-border md:rounded-full md:p-2"
+      className="grid w-full grid-cols-1 gap-3 rounded-2xl bg-white p-2 shadow-xl md:grid-cols-[1.4fr_1fr_1fr_auto] md:items-stretch md:gap-0 md:divide-x md:divide-border md:rounded-full md:p-1.5"
     >
-      <div className="flex flex-col gap-1 px-4 py-2">
-        <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-          <MapPin className="h-3.5 w-3.5 text-navy" />
+      <div className="flex flex-col justify-center gap-0.5 px-4 py-2">
+        <label className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+          <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
           Where are you going?
         </label>
         <Input
@@ -68,23 +70,24 @@ export function SearchBar() {
       </div>
 
       <DateRangePicker
-        label="Check-in / Check-out"
+        label="Check-in - Check-out"
         checkIn={checkIn}
         checkOut={checkOut}
         onCheckInChange={setCheckIn}
         onCheckOutChange={setCheckOut}
-        triggerClassName="px-4 py-2"
+        triggerClassName="justify-center px-4 py-2"
         numberOfMonths={2}
       />
 
       <Popover>
-        <PopoverTrigger className="flex flex-col items-start gap-1 px-4 py-2 text-left">
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <Users className="h-3.5 w-3.5 text-navy" />
+        <PopoverTrigger className="flex flex-col items-start justify-center gap-0.5 px-4 py-2 text-left">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+            <Users className="h-3.5 w-3.5 text-muted-foreground" />
             Guests &amp; rooms
           </span>
           <span className="text-sm text-muted-foreground">
-            {adults} adults &middot; {rooms} room{rooms > 1 ? "s" : ""}
+            {adults} adults &middot; {children} children &middot; {rooms} room
+            {rooms > 1 ? "s" : ""}
           </span>
         </PopoverTrigger>
         <PopoverContent className="w-64 space-y-4" align="start">
@@ -102,6 +105,26 @@ export function SearchBar() {
               <button
                 type="button"
                 onClick={() => setAdults((v) => v + 1)}
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-border hover:bg-muted"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Children</span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setChildren((v) => Math.max(0, v - 1))}
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-border hover:bg-muted"
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </button>
+              <span className="w-4 text-center text-sm">{children}</span>
+              <button
+                type="button"
+                onClick={() => setChildren((v) => v + 1)}
                 className="flex h-7 w-7 items-center justify-center rounded-full border border-border hover:bg-muted"
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -131,10 +154,10 @@ export function SearchBar() {
         </PopoverContent>
       </Popover>
 
-      <div className="flex items-center px-1 py-1 md:py-0">
+      <div className="flex items-stretch">
         <Button
           type="submit"
-          className="h-12 w-full gap-2 rounded-full bg-navy px-6 text-white hover:bg-navy-light md:w-auto"
+          className="h-12 w-full gap-2 rounded-full bg-navy px-6 text-white hover:bg-navy-light md:h-auto md:w-auto"
         >
           <Search className="h-4 w-4" />
           Search

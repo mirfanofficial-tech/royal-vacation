@@ -6,7 +6,6 @@ import {
   Car,
   FerrisWheel,
   CarTaxiFront,
-  ChevronDown,
   CircleHelp,
   Menu,
   Heart,
@@ -22,6 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { navLinks } from "@/lib/mock-data";
 import { WishlistLink } from "@/components/layout/wishlist-link";
+import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 
 const navIcons = {
   bed: Bed,
@@ -70,22 +70,9 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2 shrink-0 sm:gap-3 lg:gap-4">
-          <button className="hidden items-center gap-1 text-sm font-medium text-foreground md:flex">
-            PKR <ChevronDown className="h-3.5 w-3.5" />
-          </button>
-          <span
-            className="hidden h-6 w-6 items-center justify-center overflow-hidden rounded-full text-base leading-none md:flex"
-            aria-hidden
-          >
-            🇵🇰
-          </span>
-          <button
-            type="button"
-            aria-label="Help"
-            className="hidden h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground hover:border-navy hover:text-navy md:flex"
-          >
-            <CircleHelp className="h-3.5 w-3.5" />
-          </button>
+          <div className="hidden md:flex">
+            <LocaleSwitcher />
+          </div>
           <WishlistLink />
           {/* <Link
             href="#"
@@ -156,14 +143,10 @@ export function Header() {
               </nav>
 
               <div className="mt-2 flex flex-col gap-1 border-t border-border px-4 pt-4">
-                <button className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted">
-                  <span className="flex items-center gap-2">
-                    <span aria-hidden>🇵🇰</span> Currency
-                  </span>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    PKR <ChevronDown className="h-3.5 w-3.5" />
-                  </span>
-                </button>
+                <div className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-foreground">
+                  <span>Language &amp; currency</span>
+                  <LocaleSwitcher />
+                </div>
                 <SheetClose
                   nativeButton={false}
                   render={

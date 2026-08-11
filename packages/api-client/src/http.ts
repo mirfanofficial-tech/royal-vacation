@@ -63,16 +63,19 @@ export class ApiClient {
     }
 
     const token = this.getToken();
+    // FormData bodies (file uploads) must be sent as-is, with no explicit
+    // Content-Type — the browser sets the multipart boundary itself.
+    const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
     const response = await this.fetchImpl(url.toString(), {
       method,
       signal,
       credentials,
       headers: {
-        "Content-Type": "application/json",
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...headers,
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isFormData ? (body as FormData) : JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -98,6 +101,10 @@ export class ApiClient {
 
   post<T>(path: string, body?: unknown, options: Omit<RequestOptions, "method" | "body"> = {}) {
     return this.request<T>(path, { ...options, method: "POST", body });
+  }
+
+  postForm<T>(path: string, formData: FormData, options: Omit<RequestOptions, "method" | "body"> = {}) {
+    return this.request<T>(path, { ...options, method: "POST", body: formData });
   }
 
   put<T>(path: string, body?: unknown, options: Omit<RequestOptions, "method" | "body"> = {}) {

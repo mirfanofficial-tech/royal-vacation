@@ -1,4 +1,5 @@
 import { Wallet, Award, Headset, ShieldCheck } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const badges = [
   {
@@ -22,14 +23,22 @@ const badges = [
   {
     id: "secure",
     icon: ShieldCheck,
-    title: "Secure & Safe",
+    title: "Secure Booking",
     description: "Your data and payments are always protected",
   },
 ];
 
-export function TrustBadgesRow() {
+export function TrustBadgesRow({
+  variant = "card",
+}: {
+  variant?: "card" | "plain";
+}) {
   return (
-    <div className="rounded-2xl border border-border bg-white p-6">
+    <div
+      className={cn(
+        variant === "card" && "rounded-2xl border border-border bg-white p-6"
+      )}
+    >
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {badges.map((badge) => (
           <div key={badge.id} className="flex items-start gap-3">

@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from sqlalchemy import CHAR, Boolean, CheckConstraint, Numeric, String, text
+from sqlalchemy import CHAR, Boolean, CheckConstraint, ForeignKey, Index, Numeric, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, CreatedAtMixin, UpdatedAtMixin, UUIDPrimaryKeyMixin
@@ -22,9 +22,23 @@ class Currency(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
         server_default=text("true"),
         nullable=False,
     )
+    country_code: Mapped[str | None] = mapped_column(
+        CHAR(2), ForeignKey("countries.code", ondelete="RESTRICT")
+    )
+    is_default: Mapped[bool] = mapped_column(
+        Boolean,
+        server_default=text("false"),
+        nullable=False,
+    )
 
     __table_args__ = (
         CheckConstraint("rate_to_aed > 0", name="currencies_rate_check"),
+        Index(
+            "uq_currencies_default",
+            "is_default",
+            unique=True,
+            postgresql_where=text("is_default"),
+        ),
     )
 
 

@@ -15,10 +15,7 @@ export default function DashboardLayout({
   return (
     <AuthGuard>
       <div className="flex h-screen overflow-hidden">
-        <AdminSidebar
-          collapsed={collapsed}
-          onToggleCollapse={() => setCollapsed((c) => !c)}
-        />
+        <AdminSidebar collapsed={collapsed} />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <AdminTopbar
             collapsed={collapsed}

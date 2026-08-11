@@ -3,6 +3,7 @@ import { Outfit } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { FavoritesProvider } from "@/components/providers/favorites-provider";
+import { LocaleProvider } from "@/components/providers/locale-provider";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -24,7 +25,9 @@ export default function RootLayout({
     <html lang="en" className={`${outfit.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col overflow-x-hidden">
         <QueryProvider>
-          <FavoritesProvider>{children}</FavoritesProvider>
+          <LocaleProvider>
+            <FavoritesProvider>{children}</FavoritesProvider>
+          </LocaleProvider>
         </QueryProvider>
       </body>
     </html>

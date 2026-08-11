@@ -1,55 +1,62 @@
-import Link from "next/link";
-import { Building2, Building, Palmtree, Home, Warehouse, TreePine, ChevronRight } from "lucide-react";
-import { propertyTypes } from "@/lib/mock-data";
+"use client";
 
-const typeIcons = {
-  hotel: Building2,
-  apartment: Building,
-  resort: Palmtree,
-  villa: Home,
-  guesthouse: Warehouse,
-  cabin: TreePine,
-};
+import Image from "next/image";
+import Link from "next/link";
+import { ChevronRight, Loader2 } from "lucide-react";
+import { resolveAssetUrl } from "@/lib/api";
+import { usePropertyTypesQuery } from "@/lib/property-types";
 
 export function PropertyTypes() {
+  const { data: propertyTypes = [], isLoading } = usePropertyTypesQuery();
+
+  if (!isLoading && propertyTypes.length === 0) return null;
+
   return (
     <section className="mx-auto max-w-[1400px] px-6 py-10 lg:px-10">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="font-heading text-2xl font-bold text-navy">Browse by property type</h2>
-        <Link href="/search" className="text-sm font-semibold text-gold hover:underline">
+        <Link
+          href="/search"
+          className="flex items-center text-sm font-semibold text-gold hover:underline"
+        >
           View all
+          <ChevronRight className="h-3.5 w-3.5" />
         </Link>
       </div>
 
-      <div className="relative flex items-center gap-4">
-        <div className="grid flex-1 grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          {propertyTypes.map((type) => {
-            const Icon = typeIcons[type.icon];
-            return (
-              <Link
-                key={type.id}
-                href={`/search?propertyType=${type.id}`}
-                className="flex flex-col items-center gap-3 rounded-xl border border-border px-4 py-6 text-center transition-colors hover:border-navy hover:shadow-md"
-              >
-                <Icon className="h-7 w-7 text-gold" strokeWidth={1.5} />
-                <span>
-                  <span className="block text-sm font-semibold text-foreground">
-                    {type.name}
-                  </span>
-                  <span className="block text-xs text-muted-foreground">{type.count}</span>
-                </span>
-              </Link>
-            );
-          })}
+      {isLoading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-        <button
-          type="button"
-          aria-label="Show more property types"
-          className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-white shadow-sm hover:bg-muted lg:flex"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          {propertyTypes.map((type) => (
+            <Link
+              key={type.id}
+              href={`/search?propertyType=${type.slug}`}
+              className="group overflow-hidden rounded-xl border border-border bg-white transition-shadow hover:shadow-md"
+            >
+              <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+                {type.image_url && (
+                  <Image
+                    src={resolveAssetUrl(type.image_url)}
+                    alt={type.name}
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    sizes="(min-width: 1024px) 16vw, (min-width: 640px) 33vw, 50vw"
+                  />
+                )}
+              </div>
+              <div className="px-3 py-3 text-center">
+                <p className="text-sm font-semibold text-foreground">{type.name}</p>
+                {type.count_label && (
+                  <p className="text-xs text-muted-foreground">{type.count_label}</p>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
