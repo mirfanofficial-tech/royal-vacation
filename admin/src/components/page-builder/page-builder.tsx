@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   BadgeCheck,
   Eye,
+  History,
   Info,
   Loader2,
   Monitor,
@@ -25,7 +26,7 @@ import type {
   CmsPageUpdate,
 } from "@royal-vacation/api-client";
 import { ApiError, resolveAssetUrl } from "@/lib/api";
-import { useCmsPages } from "@/lib/cms";
+import { useCmsPages, useCmsPageRevisions } from "@/lib/cms";
 import { useLanguages } from "@/lib/reference";
 import {
   createDefaultBlocks,
@@ -35,9 +36,17 @@ import {
 } from "@/lib/page-builder-types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { VersionHistoryPanel, type VersionHistoryField } from "@/components/version-history-panel";
 import { BlockPalette } from "./block-palette";
 import { Canvas } from "./canvas";
 import { BlockInspector, NO_PARENT, type PageFieldsState } from "./block-inspector";
+
+const REVISION_FIELDS: VersionHistoryField[] = [
+  { key: "title", label: "Title" },
+  { key: "excerpt", label: "Excerpt" },
+  { key: "meta_title", label: "Meta title" },
+  { key: "meta_description", label: "Meta description" },
+];
 
 const deviceWidths: Record<string, string> = {
   desktop: "max-w-none",
@@ -65,6 +74,22 @@ export function PageBuilder({
 }) {
   const { updatePage, uploadFeaturedImage } = useCmsPages();
   const { languages } = useLanguages();
+  const {
+    revisions,
+    isLoading: revisionsLoading,
+    getRevisionDetail,
+    restoreRevision,
+    isMutating: isRestoring,
+  } = useCmsPageRevisions(page.id);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  // A restore rewrites fields this component initialized local state from at
+  // mount — reload rather than try to reconcile every piece of local state
+  // (base fields, translation fields, author, sort order) with the server.
+  async function handleRestoreRevision(revisionId: string) {
+    await restoreRevision(revisionId);
+    window.location.reload();
+  }
 
   const [blocks, setBlocks] = useState<BuilderBlock[]>(() => createDefaultBlocks());
   const [past, setPast] = useState<BuilderBlock[][]>([]);
@@ -358,6 +383,11 @@ export function PageBuilder({
           </Button>
         </div>
 
+        <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
+          <History data-icon="inline-start" />
+          History
+        </Button>
+
         <Button variant="outline" size="sm" disabled title="Live preview isn't available yet — no public block-rendering pipeline exists.">
           <Eye data-icon="inline-start" />
           Preview
@@ -460,6 +490,24 @@ export function PageBuilder({
           featuredImageError={featuredImageError}
         />
       </div>
+
+      <VersionHistoryPanel
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        entityLabel="page"
+        revisions={revisions}
+        isLoading={revisionsLoading}
+        getRevisionDetail={getRevisionDetail}
+        restoreRevision={handleRestoreRevision}
+        isRestoring={isRestoring}
+        currentFields={{
+          title: baseFields.title,
+          excerpt: baseFields.excerpt,
+          meta_title: baseFields.metaTitle,
+          meta_description: baseFields.metaDescription,
+        }}
+        fields={REVISION_FIELDS}
+      />
     </div>
   );
 }

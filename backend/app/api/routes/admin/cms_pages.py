@@ -25,6 +25,7 @@ from sqlalchemy.orm import aliased
 from app.api.deps import require_admin
 from app.db.session import get_db
 from app.models.cms import CmsPage, CmsPageTranslation
+from app.models.user import User
 from app.schemas.cms import (
     CmsPageCreate,
     CmsPageOut,
@@ -32,6 +33,8 @@ from app.schemas.cms import (
     CmsPageTranslationValue,
     CmsPageUpdate,
 )
+from app.schemas.revisions import RevisionOut, RevisionSummaryOut
+from app.services import revisions as revision_service
 
 router = APIRouter(dependencies=[Depends(require_admin)])
 
@@ -144,6 +147,27 @@ async def _replace_translations(
         )
 
 
+def _snapshot_of(page: CmsPage) -> dict:
+    return {
+        "title": page.title,
+        "slug": page.slug,
+        "excerpt": page.excerpt,
+        "content": page.content,
+        "meta_title": page.meta_title,
+        "meta_description": page.meta_description,
+        "translations": {
+            t.language_code: {
+                "title": t.title,
+                "excerpt": t.excerpt,
+                "content": t.content,
+                "meta_title": t.meta_title,
+                "meta_description": t.meta_description,
+            }
+            for t in page.translations
+        },
+    }
+
+
 async def _check_route_path_unique(
     db: AsyncSession, route_path: str, exclude_id: UUID | None = None
 ) -> None:
@@ -216,9 +240,14 @@ async def get_cms_page(page_id: str, db: AsyncSession = Depends(get_db)) -> CmsP
 
 @router.patch("/{page_id}", response_model=CmsPageOut)
 async def update_cms_page(
-    page_id: str, payload: CmsPageUpdate, db: AsyncSession = Depends(get_db)
+    page_id: str,
+    payload: CmsPageUpdate,
+    create_revision: bool = Query(default=True),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ) -> CmsPageOut:
     page = await _get_page(db, page_id)
+    pre_update_snapshot = _snapshot_of(page)
 
     if payload.slug is not None and payload.slug != page.slug:
         existing = await db.execute(
@@ -266,6 +295,11 @@ async def update_cms_page(
     if payload.is_homepage:
         await _unset_other_homepages(db, page.id)
 
+    if create_revision:
+        await revision_service.create_revision(
+            db, "cms_page", page.id, pre_update_snapshot, current_user.display_name or current_user.email
+        )
+
     await db.commit()
     return await _get_page_row(db, page_id)
 
@@ -307,5 +341,67 @@ async def upload_cms_page_featured_image(
 
     page = await _get_page(db, page_id)
     page.featured_image_url = f"/static/uploads/{filename}"
+    await db.commit()
+    return await _get_page_row(db, page_id)
+
+
+@router.get("/{page_id}/revisions", response_model=list[RevisionSummaryOut])
+async def list_cms_page_revisions(
+    page_id: str, db: AsyncSession = Depends(get_db)
+) -> list[RevisionSummaryOut]:
+    page = await _get_page(db, page_id)
+    return await revision_service.list_revisions(db, "cms_page", page.id)
+
+
+@router.get("/{page_id}/revisions/{revision_id}", response_model=RevisionOut)
+async def get_cms_page_revision(
+    page_id: str, revision_id: str, db: AsyncSession = Depends(get_db)
+) -> RevisionOut:
+    page = await _get_page(db, page_id)
+    try:
+        rid = UUID(revision_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
+    revision = await revision_service.get_revision(db, "cms_page", page.id, rid)
+    if revision is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
+    return revision_service.to_revision_out(revision)
+
+
+@router.post("/{page_id}/revisions/{revision_id}/restore", response_model=CmsPageOut)
+async def restore_cms_page_revision(
+    page_id: str,
+    revision_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> CmsPageOut:
+    page = await _get_page(db, page_id)
+    try:
+        rid = UUID(revision_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
+    revision = await revision_service.get_revision(db, "cms_page", page.id, rid)
+    if revision is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
+
+    display_name = current_user.display_name or current_user.email
+    await revision_service.create_revision(
+        db, "cms_page", page.id, _snapshot_of(page), f"{display_name} (pre-restore)"
+    )
+
+    snapshot = revision.snapshot
+    page.title = snapshot["title"]
+    page.slug = snapshot["slug"]
+    page.excerpt = snapshot["excerpt"]
+    page.content = snapshot["content"]
+    page.meta_title = snapshot["meta_title"]
+    page.meta_description = snapshot["meta_description"]
+
+    translation_values = {
+        code: CmsPageTranslationValue(**value) for code, value in snapshot["translations"].items()
+    }
+    await _replace_translations(db, page.id, translation_values)
+    db.expire(page, ["translations"])
+
     await db.commit()
     return await _get_page_row(db, page_id)

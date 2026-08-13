@@ -2,6 +2,7 @@ from app.models.base import Base
 from app.models.blog import BlogCategory, BlogComment, BlogPost, BlogPostTranslation
 from app.models.cms import (
     CmsBlock,
+    CmsContentRevision,
     CmsMediaAsset,
     CmsMediaAssetTranslation,
     CmsMediaFolder,
@@ -34,6 +35,7 @@ __all__ = [
     "BlogPost",
     "BlogPostTranslation",
     "CmsBlock",
+    "CmsContentRevision",
     "CmsMediaAsset",
     "CmsMediaAssetTranslation",
     "CmsMediaFolder",

@@ -39,6 +39,12 @@ import type {
   LanguageUpdate,
   LoginRequest,
   LogoutRequest,
+  MediaAssetOut,
+  MediaAssetSummaryOut,
+  MediaAssetUpdate,
+  MediaFolderCreate,
+  MediaFolderOut,
+  MediaFolderUpdate,
   MessageResponse,
   PartnerListParams,
   PartnerProfileOut,
@@ -61,6 +67,8 @@ import type {
   PropertyUpdate,
   RefreshTokenRequest,
   RegisterRequest,
+  RevisionOut,
+  RevisionSummaryOut,
   RoleCreate,
   RoleOut,
   RolePermissionsUpdate,
@@ -285,8 +293,10 @@ export class RoyalVacationApi extends ApiClient {
           this.get<BlogPostSummaryOut[]>("/api/v1/admin/blog/posts", { query: params }),
         get: (id: string) => this.get<BlogPostOut>(`/api/v1/admin/blog/posts/${id}`),
         create: (body: BlogPostCreate) => this.post<BlogPostOut>("/api/v1/admin/blog/posts", body),
-        update: (id: string, body: BlogPostUpdate) =>
-          this.patch<BlogPostOut>(`/api/v1/admin/blog/posts/${id}`, body),
+        update: (id: string, body: BlogPostUpdate, options?: { createRevision?: boolean }) =>
+          this.patch<BlogPostOut>(`/api/v1/admin/blog/posts/${id}`, body, {
+            query: { create_revision: options?.createRevision },
+          }),
         remove: (id: string) => this.delete<void>(`/api/v1/admin/blog/posts/${id}`),
         uploadCoverImage: (id: string, file: File) => {
           const formData = new FormData();
@@ -295,6 +305,14 @@ export class RoyalVacationApi extends ApiClient {
             `/api/v1/admin/blog/posts/${id}/cover-image`,
             formData
           );
+        },
+        revisions: {
+          list: (id: string) =>
+            this.get<RevisionSummaryOut[]>(`/api/v1/admin/blog/posts/${id}/revisions`),
+          get: (id: string, revisionId: string) =>
+            this.get<RevisionOut>(`/api/v1/admin/blog/posts/${id}/revisions/${revisionId}`),
+          restore: (id: string, revisionId: string) =>
+            this.post<BlogPostOut>(`/api/v1/admin/blog/posts/${id}/revisions/${revisionId}/restore`),
         },
       },
       comments: {
@@ -313,8 +331,10 @@ export class RoyalVacationApi extends ApiClient {
           this.get<CmsPageSummaryOut[]>("/api/v1/admin/cms/pages", { query: params }),
         get: (id: string) => this.get<CmsPageOut>(`/api/v1/admin/cms/pages/${id}`),
         create: (body: CmsPageCreate) => this.post<CmsPageOut>("/api/v1/admin/cms/pages", body),
-        update: (id: string, body: CmsPageUpdate) =>
-          this.patch<CmsPageOut>(`/api/v1/admin/cms/pages/${id}`, body),
+        update: (id: string, body: CmsPageUpdate, options?: { createRevision?: boolean }) =>
+          this.patch<CmsPageOut>(`/api/v1/admin/cms/pages/${id}`, body, {
+            query: { create_revision: options?.createRevision },
+          }),
         remove: (id: string) => this.delete<void>(`/api/v1/admin/cms/pages/${id}`),
         uploadFeaturedImage: (id: string, file: File) => {
           const formData = new FormData();
@@ -323,6 +343,14 @@ export class RoyalVacationApi extends ApiClient {
             `/api/v1/admin/cms/pages/${id}/featured-image`,
             formData
           );
+        },
+        revisions: {
+          list: (id: string) =>
+            this.get<RevisionSummaryOut[]>(`/api/v1/admin/cms/pages/${id}/revisions`),
+          get: (id: string, revisionId: string) =>
+            this.get<RevisionOut>(`/api/v1/admin/cms/pages/${id}/revisions/${revisionId}`),
+          restore: (id: string, revisionId: string) =>
+            this.post<CmsPageOut>(`/api/v1/admin/cms/pages/${id}/revisions/${revisionId}/restore`),
         },
       },
       blocks: {
@@ -347,6 +375,30 @@ export class RoyalVacationApi extends ApiClient {
           this.patch<CmsMenuOut>(`/api/v1/admin/cms/menus/${menuId}/items/${itemId}`, body),
         removeItem: (menuId: string, itemId: string) =>
           this.delete<CmsMenuOut>(`/api/v1/admin/cms/menus/${menuId}/items/${itemId}`),
+      },
+      media: {
+        folders: {
+          list: () => this.get<MediaFolderOut[]>("/api/v1/admin/cms/media/folders"),
+          create: (body: MediaFolderCreate) =>
+            this.post<MediaFolderOut>("/api/v1/admin/cms/media/folders", body),
+          update: (id: string, body: MediaFolderUpdate) =>
+            this.patch<MediaFolderOut>(`/api/v1/admin/cms/media/folders/${id}`, body),
+          remove: (id: string) => this.delete<void>(`/api/v1/admin/cms/media/folders/${id}`),
+        },
+        assets: {
+          list: (params?: { folder_id?: string; asset_type?: string; q?: string }) =>
+            this.get<MediaAssetSummaryOut[]>("/api/v1/admin/cms/media/assets", { query: params }),
+          get: (id: string) => this.get<MediaAssetOut>(`/api/v1/admin/cms/media/assets/${id}`),
+          upload: (file: File, folderId?: string | null) => {
+            const formData = new FormData();
+            formData.append("file", file);
+            if (folderId) formData.append("folder_id", folderId);
+            return this.postForm<MediaAssetOut>("/api/v1/admin/cms/media/assets", formData);
+          },
+          update: (id: string, body: MediaAssetUpdate) =>
+            this.patch<MediaAssetOut>(`/api/v1/admin/cms/media/assets/${id}`, body),
+          remove: (id: string) => this.delete<void>(`/api/v1/admin/cms/media/assets/${id}`),
+        },
       },
     },
   };

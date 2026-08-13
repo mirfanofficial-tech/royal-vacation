@@ -15,6 +15,7 @@ import { api, callApi } from "@/lib/api";
 const BLOG_CATEGORIES_KEY = ["admin", "blog", "categories"] as const;
 const BLOG_POSTS_KEY = ["admin", "blog", "posts"] as const;
 const BLOG_COMMENTS_KEY = ["admin", "blog", "comments"] as const;
+const BLOG_POST_REVISIONS_KEY = ["admin", "blog", "posts", "revisions"] as const;
 
 // ---- Categories -------------------------------------------------------
 
@@ -87,8 +88,15 @@ export function useBlogPosts(filters: BlogPostFilters = {}) {
     onSuccess: invalidate,
   });
   const updatePost = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: BlogPostUpdate }) =>
-      callApi(() => api.admin.blog.posts.update(id, body)),
+    mutationFn: ({
+      id,
+      body,
+      createRevision,
+    }: {
+      id: string;
+      body: BlogPostUpdate;
+      createRevision?: boolean;
+    }) => callApi(() => api.admin.blog.posts.update(id, body, { createRevision })),
     onSuccess: invalidate,
   });
   const deletePost = useMutation({
@@ -107,7 +115,8 @@ export function useBlogPosts(filters: BlogPostFilters = {}) {
     error: query.error,
     refetch: query.refetch,
     createPost: createPost.mutateAsync,
-    updatePost: (id: string, body: BlogPostUpdate) => updatePost.mutateAsync({ id, body }),
+    updatePost: (id: string, body: BlogPostUpdate, createRevision?: boolean) =>
+      updatePost.mutateAsync({ id, body, createRevision }),
     deletePost: deletePost.mutateAsync,
     uploadCoverImage: (id: string, file: File) => uploadCoverImage.mutateAsync({ id, file }),
     isMutating:
@@ -126,6 +135,33 @@ export function useBlogPostQuery(id: string | undefined) {
     queryFn: () => callApi(() => api.admin.blog.posts.get(id as string)),
     enabled: Boolean(id),
   });
+}
+
+export function useBlogPostRevisions(postId: string | undefined) {
+  const query = useQuery({
+    queryKey: [...BLOG_POST_REVISIONS_KEY, postId],
+    queryFn: () => callApi(() => api.admin.blog.posts.revisions.list(postId as string)),
+    enabled: Boolean(postId),
+  });
+  const qc = useQueryClient();
+
+  const restoreRevision = useMutation({
+    mutationFn: (revisionId: string) =>
+      callApi(() => api.admin.blog.posts.revisions.restore(postId as string, revisionId)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...BLOG_POST_REVISIONS_KEY, postId] });
+      qc.invalidateQueries({ queryKey: [...BLOG_POSTS_KEY, "detail", postId] });
+    },
+  });
+
+  return {
+    revisions: query.data ?? [],
+    isLoading: query.isLoading,
+    getRevisionDetail: (revisionId: string) =>
+      callApi(() => api.admin.blog.posts.revisions.get(postId as string, revisionId)),
+    restoreRevision: restoreRevision.mutateAsync,
+    isMutating: restoreRevision.isPending,
+  };
 }
 
 // ---- Comments -------------------------------------------------------------

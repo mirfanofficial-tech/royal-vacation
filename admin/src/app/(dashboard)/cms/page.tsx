@@ -18,7 +18,6 @@ import {
 
 import {
   contentHubDemoTypeCounts,
-  contentHubMediaAssets,
   contentHubNeedsReviewMock,
   contentHubRecentlyUpdated,
   type ContentHubItemType,
@@ -26,6 +25,7 @@ import {
 } from "@/lib/mock-data";
 import { useCmsPagesQuery } from "@/lib/cms";
 import { useBlogPostsQuery, useBlogCommentsQuery } from "@/lib/blog";
+import { useMediaAssetsQuery } from "@/lib/media";
 import { useLanguages } from "@/lib/reference";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,10 +79,17 @@ function initials(name: string) {
     .toUpperCase();
 }
 
+function formatMediaSize(sizeBytes: number) {
+  const sizeKb = sizeBytes / 1024;
+  if (sizeKb >= 1024) return `${(sizeKb / 1024).toFixed(1)} MB`;
+  return `${sizeKb.toFixed(sizeKb < 10 ? 1 : 0)} KB`;
+}
+
 function ContentHub() {
   const { data: cmsPages } = useCmsPagesQuery();
   const { data: blogPosts } = useBlogPostsQuery();
   const { data: pendingComments } = useBlogCommentsQuery({ status: "pending" });
+  const { data: mediaAssets } = useMediaAssetsQuery();
   const { languages } = useLanguages();
 
   const contentPages = useMemo(
@@ -96,6 +103,8 @@ function ContentHub() {
   const draftPostCount = posts.filter((p) => p.status === "draft").length;
 
   const pendingCommentCount = pendingComments?.length ?? 0;
+  const mediaAssetCount = mediaAssets?.length ?? 0;
+  const mediaTotalSizeBytes = (mediaAssets ?? []).reduce((sum, a) => sum + a.size_bytes, 0);
 
   const needsReviewItems = useMemo(() => {
     const items = [...contentHubNeedsReviewMock];
@@ -113,12 +122,12 @@ function ContentHub() {
   const byType = useMemo(
     () =>
       [
-        { id: "media", label: "Media assets", count: contentHubMediaAssets.count },
+        { id: "media", label: "Media assets", count: mediaAssetCount },
         { id: "page", label: "Pages", count: contentPages.length },
         { id: "post", label: "Blog posts", count: posts.length },
-        ...contentHubDemoTypeCounts.filter((t) => t.id !== "media"),
+        ...contentHubDemoTypeCounts,
       ].sort((a, b) => b.count - a.count),
-    [contentPages.length, posts.length]
+    [contentPages.length, posts.length, mediaAssetCount]
   );
   const totalRecords = byType.reduce((sum, t) => sum + t.count, 0);
   const maxTypeCount = Math.max(...byType.map((t) => t.count), 1);
@@ -148,8 +157,8 @@ function ContentHub() {
       <div className="flex items-center gap-2 rounded-lg border border-border bg-white px-4 py-2.5 text-xs text-muted-foreground">
         <CircleCheck className="size-4 shrink-0 text-rating" />
         <span>
-          <span className="font-medium text-foreground">Demo data</span> — Pages, Blog posts and
-          pending comments below are real. Media assets, Destinations, Banners and FAQs have no
+          <span className="font-medium text-foreground">Demo data</span> — Pages, Blog posts, Media
+          assets and pending comments below are real. Destinations, Banners and FAQs have no
           backend yet, so those figures are mock.
         </span>
       </div>
@@ -199,17 +208,13 @@ function ContentHub() {
               <span className="flex size-9 items-center justify-center rounded-lg bg-rating/10 text-rating">
                 <ImageIcon className="size-4" />
               </span>
-              <Badge variant="secondary">37%</Badge>
             </div>
             <div>
               <p className="text-2xl font-semibold text-foreground">
-                {contentHubMediaAssets.count.toLocaleString()}
+                {mediaAssetCount.toLocaleString()}
               </p>
               <p className="text-sm text-muted-foreground">Media assets</p>
-              <p className="text-xs text-muted-foreground">
-                {contentHubMediaAssets.storageUsedGb} GB of {contentHubMediaAssets.storageTotalGb}{" "}
-                GB used
-              </p>
+              <p className="text-xs text-muted-foreground">{formatMediaSize(mediaTotalSizeBytes)} total</p>
             </div>
           </CardContent>
         </Card>

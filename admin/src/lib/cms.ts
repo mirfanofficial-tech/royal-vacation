@@ -17,6 +17,7 @@ import { api, callApi } from "@/lib/api";
 const CMS_PAGES_KEY = ["admin", "cms", "pages"] as const;
 const CMS_BLOCKS_KEY = ["admin", "cms", "blocks"] as const;
 const CMS_MENUS_KEY = ["admin", "cms", "menus"] as const;
+const CMS_PAGE_REVISIONS_KEY = ["admin", "cms", "pages", "revisions"] as const;
 
 // ---- Pages ----------------------------------------------------------------
 
@@ -42,8 +43,15 @@ export function useCmsPages(filters: CmsPageFilters = {}) {
     onSuccess: invalidate,
   });
   const updatePage = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: CmsPageUpdate }) =>
-      callApi(() => api.admin.cms.pages.update(id, body)),
+    mutationFn: ({
+      id,
+      body,
+      createRevision,
+    }: {
+      id: string;
+      body: CmsPageUpdate;
+      createRevision?: boolean;
+    }) => callApi(() => api.admin.cms.pages.update(id, body, { createRevision })),
     onSuccess: invalidate,
   });
   const deletePage = useMutation({
@@ -62,7 +70,8 @@ export function useCmsPages(filters: CmsPageFilters = {}) {
     error: query.error,
     refetch: query.refetch,
     createPage: createPage.mutateAsync,
-    updatePage: (id: string, body: CmsPageUpdate) => updatePage.mutateAsync({ id, body }),
+    updatePage: (id: string, body: CmsPageUpdate, createRevision?: boolean) =>
+      updatePage.mutateAsync({ id, body, createRevision }),
     deletePage: deletePage.mutateAsync,
     uploadFeaturedImage: (id: string, file: File) => uploadFeaturedImage.mutateAsync({ id, file }),
     isMutating:
@@ -81,6 +90,33 @@ export function useCmsPageQuery(id: string | undefined) {
     queryFn: () => callApi(() => api.admin.cms.pages.get(id as string)),
     enabled: Boolean(id),
   });
+}
+
+export function useCmsPageRevisions(pageId: string | undefined) {
+  const query = useQuery({
+    queryKey: [...CMS_PAGE_REVISIONS_KEY, pageId],
+    queryFn: () => callApi(() => api.admin.cms.pages.revisions.list(pageId as string)),
+    enabled: Boolean(pageId),
+  });
+  const qc = useQueryClient();
+
+  const restoreRevision = useMutation({
+    mutationFn: (revisionId: string) =>
+      callApi(() => api.admin.cms.pages.revisions.restore(pageId as string, revisionId)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...CMS_PAGE_REVISIONS_KEY, pageId] });
+      qc.invalidateQueries({ queryKey: [...CMS_PAGES_KEY, "detail", pageId] });
+    },
+  });
+
+  return {
+    revisions: query.data ?? [],
+    isLoading: query.isLoading,
+    getRevisionDetail: (revisionId: string) =>
+      callApi(() => api.admin.cms.pages.revisions.get(pageId as string, revisionId)),
+    restoreRevision: restoreRevision.mutateAsync,
+    isMutating: restoreRevision.isPending,
+  };
 }
 
 // ---- Blocks -----------------------------------------------------------------

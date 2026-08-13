@@ -1022,3 +1022,77 @@ export interface CmsMenuUpdate {
   location?: string;
   is_active?: boolean;
 }
+
+// ---- CMS Media ------------------------------------------------------------
+
+export type MediaAssetType = "image" | "document" | "video" | "vector";
+
+export interface MediaFolderOut {
+  id: string;
+  name: string;
+  sort_order: number;
+  asset_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MediaFolderCreate {
+  name: string;
+  sort_order?: number;
+}
+
+export interface MediaFolderUpdate {
+  name?: string;
+  sort_order?: number;
+}
+
+export interface MediaAssetTranslationValue {
+  alt_text?: string;
+}
+
+export interface MediaAssetSummaryOut {
+  id: string;
+  filename: string;
+  file_url: string;
+  asset_type: MediaAssetType;
+  folder_id?: string | null;
+  width?: number | null;
+  height?: number | null;
+  size_bytes: number;
+  format: string;
+  alt_text: string;
+  tags: string[];
+  uploaded_by: string;
+  used_in_count: number;
+  translation_language_codes: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MediaAssetOut extends MediaAssetSummaryOut {
+  translations: Record<string, MediaAssetTranslationValue>;
+}
+
+export interface MediaAssetUpdate {
+  folder_id?: string | null;
+  alt_text?: string;
+  tags?: string[];
+  translations?: Record<string, MediaAssetTranslationValue>;
+}
+
+// ---- Content Revisions ------------------------------------------------
+
+export type RevisionEntityType = "cms_page" | "blog_post";
+
+export interface RevisionSummaryOut {
+  id: string;
+  entity_type: RevisionEntityType;
+  entity_id: string;
+  title: string;
+  created_by: string;
+  created_at: string;
+}
+
+export interface RevisionOut extends RevisionSummaryOut {
+  snapshot: Record<string, unknown>;
+}

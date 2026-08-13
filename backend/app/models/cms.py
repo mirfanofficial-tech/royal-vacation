@@ -1,7 +1,8 @@
 from datetime import datetime
+from uuid import UUID
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, Text, text
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, Text, Uuid, text
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, CreatedAtMixin, UpdatedAtMixin, UUIDPrimaryKeyMixin
@@ -160,3 +161,14 @@ class CmsMediaAssetTranslation(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMix
     alt_text: Mapped[str] = mapped_column(Text, server_default=text("''"), nullable=False)
 
     media_asset: Mapped[CmsMediaAsset] = relationship(back_populates="translations")
+
+
+class CmsContentRevision(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
+    __tablename__ = "cms_content_revisions"
+
+    entity_type: Mapped[str] = mapped_column(Text, nullable=False)
+    entity_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    snapshot: Mapped[object] = mapped_column(JSONB, nullable=False)
+    created_by: Mapped[str] = mapped_column(
+        Text, server_default=text("'Royal Vacation Admin'"), nullable=False
+    )

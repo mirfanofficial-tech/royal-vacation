@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  CircleCheck,
   Copy,
   File,
   FileText,
@@ -19,21 +18,15 @@ import {
   X,
 } from "lucide-react";
 
-import {
-  contentHubMediaAssets,
-  mediaAssetsSeed,
-  mediaFolders,
-  type MediaAsset,
-  type MediaAssetType,
-  type MediaFolder,
-} from "@/lib/mock-data";
+import type { MediaAssetSummaryOut, MediaAssetType } from "@royal-vacation/api-client";
+import { resolveAssetUrl } from "@/lib/api";
+import { useMedia, useMediaAssetQuery } from "@/lib/media";
 import { useLanguages } from "@/lib/reference";
 import { PermissionGuard } from "@/components/permission-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import {
   Sheet,
   SheetContent,
@@ -47,11 +40,6 @@ import { cn } from "@/lib/utils";
 const selectClass =
   "h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
-interface LibraryAsset extends MediaAsset {
-  altText: Record<string, string>;
-  objectUrl?: string;
-}
-
 const typeMeta: Record<MediaAssetType, { label: string; icon: typeof ImageIcon; className: string }> = {
   image: { label: "Image", icon: ImageIcon, className: "bg-sky-100 text-sky-600" },
   document: { label: "Document", icon: FileText, className: "bg-slate-100 text-slate-600" },
@@ -59,32 +47,26 @@ const typeMeta: Record<MediaAssetType, { label: string; icon: typeof ImageIcon; 
   vector: { label: "Vector", icon: Palette, className: "bg-gold/15 text-gold" },
 };
 
-function formatSize(sizeKb: number) {
+function formatSize(sizeBytes: number) {
+  const sizeKb = sizeBytes / 1024;
   if (sizeKb >= 1024) return `${(sizeKb / 1024).toFixed(1)} MB`;
-  return `${sizeKb} KB`;
+  return `${sizeKb.toFixed(sizeKb < 10 ? 1 : 0)} KB`;
 }
 
-function assetSubtitle(asset: LibraryAsset) {
-  if (asset.type === "image" && asset.width && asset.height) {
-    return `${asset.width}×${asset.height} · ${formatSize(asset.sizeKb)}`;
+function assetSubtitle(asset: MediaAssetSummaryOut) {
+  if (asset.asset_type === "image" && asset.width && asset.height) {
+    return `${asset.width}×${asset.height} · ${formatSize(asset.size_bytes)}`;
   }
-  if (asset.type === "document") return asset.format;
-  if (asset.type === "video") return asset.format;
-  return `${asset.format} · ${formatSize(asset.sizeKb)}`;
+  return `${asset.format} · ${formatSize(asset.size_bytes)}`;
 }
-
-function toLibraryAsset(asset: MediaAsset): LibraryAsset {
-  return { ...asset, altText: { en: asset.altTextEn } };
-}
-
-let uploadCounter = 0;
 
 function MediaLibrary() {
   const { languages } = useLanguages();
   const activeLanguages = useMemo(() => languages.filter((l) => l.is_active), [languages]);
 
-  const [assets, setAssets] = useState<LibraryAsset[]>(() => mediaAssetsSeed.map(toLibraryAsset));
-  const [folders, setFolders] = useState<MediaFolder[]>(mediaFolders);
+  const { folders, assets, isLoading, createFolder, deleteFolder, uploadAsset, updateAsset, deleteAsset } =
+    useMedia();
+
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -92,124 +74,126 @@ function MediaLibrary() {
   const [dateFilter, setDateFilter] = useState<"any" | "7d" | "30d">("any");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [altLanguage, setAltLanguage] = useState("en");
+  const [altDraft, setAltDraft] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [folderSheetOpen, setFolderSheetOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [copyConfirm, setCopyConfirm] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const selectedAsset = assets.find((a) => a.id === selectedAssetId) ?? null;
+  const selectedSummary = assets.find((a) => a.id === selectedAssetId) ?? null;
+  const { data: selectedAsset } = useMediaAssetQuery(selectedAssetId ?? undefined);
+
+  useEffect(() => {
+    if (!selectedAsset) return;
+    const value = altLanguage === "en" ? selectedAsset.alt_text : selectedAsset.translations[altLanguage]?.alt_text ?? "";
+    setAltDraft(value);
+  }, [selectedAsset, altLanguage]);
 
   const filtered = useMemo(() => {
     const now = Date.now();
     return assets.filter((a) => {
-      const matchesFolder = !selectedFolderId || a.folderId === selectedFolderId;
-      const matchesType = typeFilter === "all" || a.type === typeFilter;
+      const matchesFolder = !selectedFolderId || a.folder_id === selectedFolderId;
+      const matchesType = typeFilter === "all" || a.asset_type === typeFilter;
       const q = query.toLowerCase();
       const matchesQuery =
         !q ||
         a.filename.toLowerCase().includes(q) ||
         a.tags.some((t) => t.toLowerCase().includes(q)) ||
-        a.altText.en?.toLowerCase().includes(q);
-      const ageDays = (now - new Date(a.uploadedAt).getTime()) / 86_400_000;
+        a.alt_text.toLowerCase().includes(q);
+      const ageDays = (now - new Date(a.created_at).getTime()) / 86_400_000;
       const matchesDate =
         dateFilter === "any" || (dateFilter === "7d" ? ageDays <= 7 : ageDays <= 30);
       return matchesFolder && matchesType && matchesQuery && matchesDate;
     });
   }, [assets, selectedFolderId, typeFilter, query, dateFilter]);
 
-  function selectAsset(asset: LibraryAsset) {
+  function selectAsset(asset: MediaAssetSummaryOut) {
     setSelectedAssetId(asset.id);
     setAltLanguage("en");
   }
 
-  function handleUpload(files: FileList | null) {
+  async function handleUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
-    const created: LibraryAsset[] = Array.from(files).map((file) => {
-      uploadCounter += 1;
-      const isImage = file.type.startsWith("image/");
-      return {
-        id: `upload_${uploadCounter}`,
-        filename: file.name,
-        type: isImage ? "image" : file.type.startsWith("video/") ? "video" : "document",
-        folderId: "unsorted",
-        sizeKb: Math.round(file.size / 1024),
-        format: file.type || "Unknown",
-        uploadedAt: new Date().toISOString(),
-        uploadedBy: "You",
-        usedInCount: 0,
-        tags: [],
-        altTextEn: "",
-        altText: { en: "" },
-        objectUrl: isImage ? URL.createObjectURL(file) : undefined,
-      };
-    });
-    setAssets((prev) => [...created, ...prev]);
-    selectAsset(created[0]);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    setUploading(true);
+    try {
+      const uploaded = [];
+      for (const file of Array.from(files)) {
+        uploaded.push(await uploadAsset(file, selectedFolderId));
+      }
+      if (uploaded[0]) selectAsset(uploaded[0]);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
-  function handleDeleteAsset(id: string) {
+  async function handleDeleteAsset(id: string) {
     if (!window.confirm("Delete this asset? This can't be undone.")) return;
-    setAssets((prev) => prev.filter((a) => a.id !== id));
+    await deleteAsset(id);
     if (selectedAssetId === id) setSelectedAssetId(null);
   }
 
-  function handleAltTextChange(value: string) {
+  async function handleSaveAltText() {
     if (!selectedAsset) return;
-    setAssets((prev) =>
-      prev.map((a) =>
-        a.id === selectedAsset.id
-          ? { ...a, altText: { ...a.altText, [altLanguage]: value } }
-          : a
-      )
-    );
+    if (altLanguage === "en") {
+      if (altDraft === selectedAsset.alt_text) return;
+      await updateAsset(selectedAsset.id, { alt_text: altDraft });
+      return;
+    }
+    if (altDraft === (selectedAsset.translations[altLanguage]?.alt_text ?? "")) return;
+    await updateAsset(selectedAsset.id, {
+      translations: {
+        ...Object.fromEntries(
+          Object.entries(selectedAsset.translations).map(([code, value]) => [code, { alt_text: value.alt_text }])
+        ),
+        [altLanguage]: { alt_text: altDraft },
+      },
+    });
   }
 
-  function handleAddTag() {
+  async function handleAddTag() {
     if (!selectedAsset || !tagInput.trim()) return;
     const tag = tagInput.trim().toLowerCase();
     if (selectedAsset.tags.includes(tag)) {
       setTagInput("");
       return;
     }
-    setAssets((prev) =>
-      prev.map((a) => (a.id === selectedAsset.id ? { ...a, tags: [...a.tags, tag] } : a))
-    );
+    await updateAsset(selectedAsset.id, { tags: [...selectedAsset.tags, tag] });
     setTagInput("");
   }
 
-  function handleRemoveTag(tag: string) {
+  async function handleRemoveTag(tag: string) {
     if (!selectedAsset) return;
-    setAssets((prev) =>
-      prev.map((a) => (a.id === selectedAsset.id ? { ...a, tags: a.tags.filter((t) => t !== tag) } : a))
-    );
+    await updateAsset(selectedAsset.id, { tags: selectedAsset.tags.filter((t) => t !== tag) });
   }
 
   function handleCopyUrl() {
     if (!selectedAsset) return;
-    const url = `https://cdn.royalvacation.com/media/${selectedAsset.filename}`;
+    const url = resolveAssetUrl(selectedAsset.file_url);
     navigator.clipboard?.writeText(url).then(() => {
       setCopyConfirm(true);
       window.setTimeout(() => setCopyConfirm(false), 1500);
     });
   }
 
-  function handleCreateFolder() {
+  async function handleCreateFolder() {
     if (!newFolderName.trim()) return;
-    setFolders((prev) => [
-      ...prev,
-      { id: `folder_${Date.now()}`, name: newFolderName.trim(), count: 0 },
-    ]);
+    await createFolder({ name: newFolderName.trim() });
     setNewFolderName("");
     setFolderSheetOpen(false);
   }
 
+  async function handleDeleteFolder(id: string) {
+    if (!window.confirm("Delete this folder? Assets inside move to Unsorted.")) return;
+    await deleteFolder(id);
+    if (selectedFolderId === id) setSelectedFolderId(null);
+  }
+
   const totalCount = assets.length;
-  const storagePercent = Math.round(
-    (contentHubMediaAssets.storageUsedGb / contentHubMediaAssets.storageTotalGb) * 100
-  );
+  const totalSizeBytes = assets.reduce((sum, a) => sum + a.size_bytes, 0);
 
   return (
     <div className="space-y-6 p-6 lg:p-8">
@@ -217,8 +201,7 @@ function MediaLibrary() {
         <div>
           <h1 className="text-2xl font-semibold text-navy">Media Library</h1>
           <p className="text-sm text-muted-foreground">
-            {contentHubMediaAssets.count.toLocaleString()} assets · {contentHubMediaAssets.storageUsedGb} GB
-            of {contentHubMediaAssets.storageTotalGb} GB used
+            {totalCount.toLocaleString()} asset{totalCount === 1 ? "" : "s"} · {formatSize(totalSizeBytes)} total
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -230,28 +213,19 @@ function MediaLibrary() {
             <Plus data-icon="inline-start" />
             Bulk optimise
           </Button>
-          <Button size="sm" onClick={() => fileInputRef.current?.click()}>
+          <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
             <Upload data-icon="inline-start" />
-            Upload
+            {uploading ? "Uploading…" : "Upload"}
           </Button>
           <input
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/*,video/*,application/pdf"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml,application/pdf,video/mp4,video/webm"
             className="hidden"
             onChange={(e) => handleUpload(e.target.files)}
           />
         </div>
-      </div>
-
-      <div className="flex items-center gap-2 rounded-lg border border-border bg-white px-4 py-2.5 text-xs text-muted-foreground">
-        <CircleCheck className="size-4 shrink-0 text-rating" />
-        <span>
-          <span className="font-medium text-foreground">Demo data</span> — no upload backend exists
-          yet. Uploading here previews the file locally and won&apos;t persist after a refresh; the
-          seed assets, folder counts and storage figures are illustrative.
-        </span>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[200px_1fr_320px]">
@@ -279,12 +253,16 @@ function MediaLibrary() {
               </span>
             </button>
             {folders.map((folder) => (
-              <button
+              <div
                 key={folder.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedFolderId(folder.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") setSelectedFolderId(folder.id);
+                }}
                 className={cn(
-                  "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                  "group flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
                   selectedFolderId === folder.id
                     ? "bg-navy text-white"
                     : "text-foreground hover:bg-muted"
@@ -294,26 +272,32 @@ function MediaLibrary() {
                   <Folder className="size-3.5 shrink-0" />
                   <span className="truncate">{folder.name}</span>
                 </span>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-1.5 py-0.5 text-xs",
-                    selectedFolderId === folder.id ? "bg-white/15" : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {folder.count.toLocaleString()}
+                <span className="flex shrink-0 items-center gap-1">
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 py-0.5 text-xs",
+                      selectedFolderId === folder.id ? "bg-white/15" : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {folder.asset_count.toLocaleString()}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${folder.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteFolder(folder.id);
+                    }}
+                    className={cn(
+                      "hidden size-5 items-center justify-center rounded-md group-hover:flex",
+                      selectedFolderId === folder.id ? "hover:bg-white/15" : "hover:bg-border"
+                    )}
+                  >
+                    <X className="size-3" />
+                  </button>
                 </span>
-              </button>
+              </div>
             ))}
-          </div>
-          <div className="mt-3 border-t border-border px-3 pt-3">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Storage</span>
-              <span className="font-medium text-foreground">{storagePercent}%</span>
-            </div>
-            <Progress value={storagePercent} className="mt-1.5" />
-            <p className="mt-1 text-xs text-muted-foreground">
-              {contentHubMediaAssets.storageUsedGb} GB of {contentHubMediaAssets.storageTotalGb} GB
-            </p>
           </div>
         </Card>
 
@@ -376,10 +360,12 @@ function MediaLibrary() {
             </div>
           </div>
 
-          {viewMode === "grid" ? (
+          {isLoading ? (
+            <p className="py-12 text-center text-sm text-muted-foreground">Loading media…</p>
+          ) : viewMode === "grid" ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
               {filtered.map((asset) => {
-                const meta = typeMeta[asset.type];
+                const meta = typeMeta[asset.asset_type];
                 const Icon = meta.icon;
                 return (
                   <button
@@ -392,9 +378,13 @@ function MediaLibrary() {
                     )}
                   >
                     <div className={cn("flex h-24 items-center justify-center", meta.className)}>
-                      {asset.objectUrl ? (
+                      {asset.asset_type === "image" ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={asset.objectUrl} alt="" className="size-full object-cover" />
+                        <img
+                          src={resolveAssetUrl(asset.file_url)}
+                          alt=""
+                          className="size-full object-cover"
+                        />
                       ) : (
                         <Icon className="size-6" />
                       )}
@@ -415,7 +405,7 @@ function MediaLibrary() {
           ) : (
             <div className="overflow-hidden rounded-xl border border-border bg-white">
               {filtered.map((asset) => {
-                const meta = typeMeta[asset.type];
+                const meta = typeMeta[asset.asset_type];
                 const Icon = meta.icon;
                 return (
                   <button
@@ -450,7 +440,7 @@ function MediaLibrary() {
         </div>
 
         <div>
-          {selectedAsset ? (
+          {selectedSummary && selectedAsset ? (
             <Card>
               <CardContent className="space-y-4 pt-4">
                 <div className="flex items-center justify-between">
@@ -468,15 +458,19 @@ function MediaLibrary() {
                 <div
                   className={cn(
                     "flex h-40 items-center justify-center overflow-hidden rounded-lg",
-                    typeMeta[selectedAsset.type].className
+                    typeMeta[selectedAsset.asset_type].className
                   )}
                 >
-                  {selectedAsset.objectUrl ? (
+                  {selectedAsset.asset_type === "image" ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={selectedAsset.objectUrl} alt="" className="size-full object-cover" />
+                    <img
+                      src={resolveAssetUrl(selectedAsset.file_url)}
+                      alt=""
+                      className="size-full object-cover"
+                    />
                   ) : (
                     (() => {
-                      const Icon = typeMeta[selectedAsset.type].icon;
+                      const Icon = typeMeta[selectedAsset.asset_type].icon;
                       return <Icon className="size-10" />;
                     })()
                   )}
@@ -495,7 +489,7 @@ function MediaLibrary() {
                   )}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">File size</span>
-                    <span className="text-foreground">{formatSize(selectedAsset.sizeKb)}</span>
+                    <span className="text-foreground">{formatSize(selectedAsset.size_bytes)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Format</span>
@@ -504,7 +498,7 @@ function MediaLibrary() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Uploaded</span>
                     <span className="text-foreground">
-                      {new Date(selectedAsset.uploadedAt).toLocaleDateString(undefined, {
+                      {new Date(selectedAsset.created_at).toLocaleDateString(undefined, {
                         day: "2-digit",
                         month: "short",
                         year: "numeric",
@@ -513,11 +507,11 @@ function MediaLibrary() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Uploaded by</span>
-                    <span className="text-foreground">{selectedAsset.uploadedBy}</span>
+                    <span className="text-foreground">{selectedAsset.uploaded_by}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Used in</span>
-                    <span className="text-foreground">{selectedAsset.usedInCount} pages</span>
+                    <span className="text-foreground">{selectedAsset.used_in_count} pages</span>
                   </div>
                 </div>
 
@@ -537,7 +531,9 @@ function MediaLibrary() {
                         <span
                           className={cn(
                             "size-1.5 rounded-full",
-                            selectedAsset.altText[lang.code] ? "bg-rating" : "bg-border"
+                            (lang.code === "en" ? selectedAsset.alt_text : selectedAsset.translations[lang.code]?.alt_text)
+                              ? "bg-rating"
+                              : "bg-border"
                           )}
                         />
                         {lang.code.toUpperCase()}
@@ -545,8 +541,9 @@ function MediaLibrary() {
                     ))}
                   </div>
                   <textarea
-                    value={selectedAsset.altText[altLanguage] ?? ""}
-                    onChange={(e) => handleAltTextChange(e.target.value)}
+                    value={altDraft}
+                    onChange={(e) => setAltDraft(e.target.value)}
+                    onBlur={handleSaveAltText}
                     rows={3}
                     placeholder="Describe this asset…"
                     className="w-full resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"

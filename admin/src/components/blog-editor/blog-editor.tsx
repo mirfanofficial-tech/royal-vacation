@@ -9,6 +9,7 @@ import {
   BadgeCheck,
   CheckCircle2,
   Eye,
+  History,
   ImagePlus,
   Loader2,
   RotateCcw,
@@ -19,7 +20,7 @@ import {
 
 import type { BlogPostOut, BlogPostStatus, BlogPostUpdate } from "@royal-vacation/api-client";
 import { ApiError, resolveAssetUrl } from "@/lib/api";
-import { useBlogCategories, useBlogPosts } from "@/lib/blog";
+import { useBlogCategories, useBlogPosts, useBlogPostRevisions } from "@/lib/blog";
 import { useLanguages } from "@/lib/reference";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,11 +34,22 @@ import {
 } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { cn } from "@/lib/utils";
+import { VersionHistoryPanel, type VersionHistoryField } from "@/components/version-history-panel";
 import { SeoPanel } from "./seo-panel";
 
 const fieldLabel = "mb-1.5 block text-xs font-medium text-muted-foreground";
 const UNCATEGORIZED = "__uncategorized__";
 const AUTOSAVE_DELAY_MS = 4000;
+
+const REVISION_FIELDS: VersionHistoryField[] = [
+  { key: "title", label: "Title" },
+  { key: "excerpt", label: "Excerpt" },
+  { key: "content", label: "Content" },
+  { key: "meta_title", label: "Meta title" },
+  { key: "meta_description", label: "Meta description" },
+  { key: "focus_keyword", label: "Focus keyword" },
+  { key: "tags", label: "Tags" },
+];
 
 const statusLabels: Record<BlogPostStatus, string> = {
   draft: "Draft",
@@ -86,6 +98,14 @@ export function BlogEditor({ post }: { post: BlogPostOut }) {
   const { updatePost, uploadCoverImage } = useBlogPosts();
   const { languages } = useLanguages();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const {
+    revisions,
+    isLoading: revisionsLoading,
+    getRevisionDetail,
+    restoreRevision,
+    isMutating: isRestoring,
+  } = useBlogPostRevisions(post.id);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const activeLanguages = useMemo(() => languages.filter((l) => l.is_active), [languages]);
   const translationLanguages = useMemo(
@@ -187,7 +207,7 @@ export function BlogEditor({ post }: { post: BlogPostOut }) {
         translations,
       };
 
-      await updatePost(post.id, body);
+      await updatePost(post.id, body, !silent);
       setStatus(finalStatus);
 
       if (coverImageFile) {
@@ -238,6 +258,13 @@ export function BlogEditor({ post }: { post: BlogPostOut }) {
     authorName,
   ]);
 
+  // A restore rewrites fields this component initialized local state from at
+  // mount — reload rather than try to reconcile every piece of local state.
+  async function handleRestoreRevision(revisionId: string) {
+    await restoreRevision(revisionId);
+    window.location.reload();
+  }
+
   const { words, minutes } = useMemo(() => wordStats(content), [content]);
   const isEditingBase = activeLanguage === "en";
   const currentTranslation = translations[activeLanguage] ?? { title: "", content: "" };
@@ -276,6 +303,11 @@ export function BlogEditor({ post }: { post: BlogPostOut }) {
         <Button variant="outline" size="sm" disabled title="Live preview isn't wired up yet.">
           <Eye data-icon="inline-start" />
           Preview
+        </Button>
+
+        <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
+          <History data-icon="inline-start" />
+          History
         </Button>
 
         {status === "in_review" && (
@@ -639,6 +671,30 @@ export function BlogEditor({ post }: { post: BlogPostOut }) {
           </Card>
         </div>
       </div>
+
+      <VersionHistoryPanel
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        entityLabel="post"
+        revisions={revisions}
+        isLoading={revisionsLoading}
+        getRevisionDetail={getRevisionDetail}
+        restoreRevision={handleRestoreRevision}
+        isRestoring={isRestoring}
+        currentFields={{
+          title,
+          excerpt,
+          content,
+          meta_title: metaTitle,
+          meta_description: metaDescription,
+          focus_keyword: focusKeyword,
+          tags: tags
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean),
+        }}
+        fields={REVISION_FIELDS}
+      />
     </div>
   );
 }

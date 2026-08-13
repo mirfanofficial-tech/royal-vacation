@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_admin
 from app.db.session import get_db
 from app.models.blog import BlogCategory, BlogComment, BlogPost, BlogPostTranslation
+from app.models.user import User
 from app.schemas.blog import (
     BlogPostCreate,
     BlogPostOut,
@@ -29,6 +30,8 @@ from app.schemas.blog import (
     BlogPostTranslationValue,
     BlogPostUpdate,
 )
+from app.schemas.revisions import RevisionOut, RevisionSummaryOut
+from app.services import revisions as revision_service
 
 router = APIRouter(dependencies=[Depends(require_admin)])
 
@@ -139,6 +142,22 @@ async def _replace_translations(
         )
 
 
+def _snapshot_of(post: BlogPost) -> dict:
+    return {
+        "title": post.title,
+        "slug": post.slug,
+        "excerpt": post.excerpt,
+        "content": post.content,
+        "meta_title": post.meta_title,
+        "meta_description": post.meta_description,
+        "focus_keyword": post.focus_keyword,
+        "tags": post.tags,
+        "translations": {
+            t.language_code: {"title": t.title, "content": t.content} for t in post.translations
+        },
+    }
+
+
 @router.get("", response_model=list[BlogPostSummaryOut])
 async def list_blog_posts(
     category_id: UUID | None = Query(default=None),
@@ -195,9 +214,14 @@ async def get_blog_post(post_id: str, db: AsyncSession = Depends(get_db)) -> Blo
 
 @router.patch("/{post_id}", response_model=BlogPostOut)
 async def update_blog_post(
-    post_id: str, payload: BlogPostUpdate, db: AsyncSession = Depends(get_db)
+    post_id: str,
+    payload: BlogPostUpdate,
+    create_revision: bool = Query(default=True),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ) -> BlogPostOut:
     post = await _get_post(db, post_id)
+    pre_update_snapshot = _snapshot_of(post)
 
     if payload.slug is not None and payload.slug != post.slug:
         existing = await db.execute(
@@ -217,6 +241,11 @@ async def update_blog_post(
         # ORM identity map, so without this the stale in-session collection
         # would be returned below instead of the rows we just wrote.
         db.expire(post, ["translations"])
+
+    if create_revision:
+        await revision_service.create_revision(
+            db, "blog_post", post.id, pre_update_snapshot, current_user.display_name or current_user.email
+        )
 
     await db.commit()
     return await _get_post_row(db, post_id)
@@ -255,5 +284,69 @@ async def upload_blog_post_cover_image(
 
     post = await _get_post(db, post_id)
     post.cover_image_url = f"/static/uploads/{filename}"
+    await db.commit()
+    return await _get_post_row(db, post_id)
+
+
+@router.get("/{post_id}/revisions", response_model=list[RevisionSummaryOut])
+async def list_blog_post_revisions(
+    post_id: str, db: AsyncSession = Depends(get_db)
+) -> list[RevisionSummaryOut]:
+    post = await _get_post(db, post_id)
+    return await revision_service.list_revisions(db, "blog_post", post.id)
+
+
+@router.get("/{post_id}/revisions/{revision_id}", response_model=RevisionOut)
+async def get_blog_post_revision(
+    post_id: str, revision_id: str, db: AsyncSession = Depends(get_db)
+) -> RevisionOut:
+    post = await _get_post(db, post_id)
+    try:
+        rid = UUID(revision_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
+    revision = await revision_service.get_revision(db, "blog_post", post.id, rid)
+    if revision is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
+    return revision_service.to_revision_out(revision)
+
+
+@router.post("/{post_id}/revisions/{revision_id}/restore", response_model=BlogPostOut)
+async def restore_blog_post_revision(
+    post_id: str,
+    revision_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> BlogPostOut:
+    post = await _get_post(db, post_id)
+    try:
+        rid = UUID(revision_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
+    revision = await revision_service.get_revision(db, "blog_post", post.id, rid)
+    if revision is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Revision not found")
+
+    display_name = current_user.display_name or current_user.email
+    await revision_service.create_revision(
+        db, "blog_post", post.id, _snapshot_of(post), f"{display_name} (pre-restore)"
+    )
+
+    snapshot = revision.snapshot
+    post.title = snapshot["title"]
+    post.slug = snapshot["slug"]
+    post.excerpt = snapshot["excerpt"]
+    post.content = snapshot["content"]
+    post.meta_title = snapshot["meta_title"]
+    post.meta_description = snapshot["meta_description"]
+    post.focus_keyword = snapshot["focus_keyword"]
+    post.tags = snapshot["tags"]
+
+    translation_values = {
+        code: BlogPostTranslationValue(**value) for code, value in snapshot["translations"].items()
+    }
+    await _replace_translations(db, post.id, translation_values)
+    db.expire(post, ["translations"])
+
     await db.commit()
     return await _get_post_row(db, post_id)
