@@ -14,6 +14,7 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
+  Code,
   Image as ImageIcon,
   Italic,
   Link as LinkIcon,
@@ -191,6 +192,13 @@ export function RichTextEditor({
           aria-label="Strikethrough"
         >
           <Strikethrough className="size-3.5" />
+        </ToolbarButton>
+        <ToolbarButton
+          active={editor.isActive("code")}
+          onClick={() => editor.chain().focus().toggleCode().run()}
+          aria-label="Inline code"
+        >
+          <Code className="size-3.5" />
         </ToolbarButton>
 
         <span className="mx-1 h-5 w-px bg-border" />

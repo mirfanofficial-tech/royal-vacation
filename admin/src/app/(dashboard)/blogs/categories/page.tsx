@@ -1,36 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
   ArrowLeft,
-  FileText,
-  Folder,
+  Download,
+  GripVertical,
   Loader2,
   MoreHorizontal,
   Pencil,
   Plus,
+  Search,
   Tag,
   Trash2,
-  TrendingUp,
 } from "lucide-react";
 
 import type { BlogCategoryOut } from "@royal-vacation/api-client";
 import { blogCategoryColors, type BlogCategoryColorId } from "@/lib/mock-data";
 import { ApiError } from "@/lib/api";
-import { useBlogCategories } from "@/lib/blog";
+import { useBlogCategories, useBlogPosts } from "@/lib/blog";
 import { usePermissions } from "@/lib/roles";
 import { PermissionGuard } from "@/components/permission-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -69,9 +63,46 @@ function colorBadge(id: string) {
   return blogCategoryColors.find((color) => color.id === id) ?? blogCategoryColors[0];
 }
 
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors outline-none disabled:opacity-50",
+        checked ? "bg-navy" : "bg-muted"
+      )}
+    >
+      <span
+        className={cn(
+          "inline-block size-4 transform rounded-full bg-white shadow-sm transition-transform",
+          checked ? "translate-x-4" : "translate-x-0.5"
+        )}
+      />
+    </button>
+  );
+}
+
+function downloadCsv(filename: string, rows: string[][]) {
+  const csv = rows
+    .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function BlogCategoriesCatalog() {
   const { categories, isLoading, createCategory, updateCategory, deleteCategory, isMutating } =
     useBlogCategories();
+  const { posts } = useBlogPosts();
   const { can } = usePermissions();
 
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -81,17 +112,28 @@ function BlogCategoriesCatalog() {
   const [slugTouched, setSlugTouched] = useState(false);
   const [description, setDescription] = useState("");
   const [color, setColor] = useState<BlogCategoryColorId>("navy");
+  const [visible, setVisible] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [tagQuery, setTagQuery] = useState("");
 
-  const totalPosts = categories.reduce((sum, category) => sum + category.post_count, 0);
-  const topCategory = [...categories].sort((a, b) => b.post_count - a.post_count)[0];
+  const tagUsage = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const post of posts) {
+      for (const tag of post.tags) {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      }
+    }
+    return Array.from(counts.entries())
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [posts]);
 
-  const stats = [
-    { label: "Total categories", value: categories.length, icon: Folder },
-    { label: "Posts in categories", value: totalPosts, icon: FileText },
-    { label: "Most used", value: topCategory ? topCategory.name : "—", icon: TrendingUp },
-  ];
+  const filteredTags = tagUsage.filter((t) =>
+    t.tag.toLowerCase().includes(tagQuery.toLowerCase())
+  );
+  const maxTagCount = Math.max(...tagUsage.map((t) => t.count), 1);
 
   function openCreate() {
     setEditingId(null);
@@ -100,6 +142,7 @@ function BlogCategoriesCatalog() {
     setSlugTouched(false);
     setDescription("");
     setColor("navy");
+    setVisible(true);
     setError("");
     setSheetOpen(true);
   }
@@ -115,6 +158,7 @@ function BlogCategoriesCatalog() {
     setSlugTouched(true);
     setDescription(category.description ?? "");
     setColor((category.color as BlogCategoryColorId) ?? "navy");
+    setVisible(category.is_visible);
     setError("");
     setSheetOpen(true);
   }
@@ -130,6 +174,7 @@ function BlogCategoriesCatalog() {
       slug: slug.trim() || slugify(name),
       description: description.trim(),
       color,
+      is_visible: visible,
     };
     setSaving(true);
     setError("");
@@ -137,7 +182,7 @@ function BlogCategoriesCatalog() {
       if (editingId) {
         await updateCategory(editingId, patch);
       } else {
-        await createCategory(patch);
+        await createCategory({ ...patch, sort_order: categories.length });
       }
       setSheetOpen(false);
     } catch (err) {
@@ -156,19 +201,67 @@ function BlogCategoriesCatalog() {
     }
   }
 
+  async function handleToggleVisible(category: BlogCategoryOut) {
+    try {
+      await updateCategory(category.id, { is_visible: !category.is_visible });
+    } catch (err) {
+      setError(errorMessage(err, "Couldn't update visibility."));
+    }
+  }
+
+  async function handleDrop(targetIndex: number) {
+    if (dragIndex === null || dragIndex === targetIndex) return;
+    const ids = categories.map((c) => c.id);
+    const [moved] = ids.splice(dragIndex, 1);
+    const adjusted = dragIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    ids.splice(adjusted, 0, moved);
+    setDragIndex(null);
+    try {
+      await Promise.all(
+        ids.map((id, index) => {
+          const category = categories.find((c) => c.id === id);
+          if (category && category.sort_order !== index) {
+            return updateCategory(id, { sort_order: index });
+          }
+          return Promise.resolve();
+        })
+      );
+    } catch (err) {
+      setError(errorMessage(err, "Couldn't reorder categories."));
+    }
+  }
+
+  function handleExport() {
+    const rows = [
+      ["Category", "Slug", "Posts", "Visible"],
+      ...categories.map((c) => [c.name, c.slug, String(c.post_count), c.is_visible ? "Yes" : "No"]),
+      [],
+      ["Tag", "Uses"],
+      ...tagUsage.map((t) => [t.tag, String(t.count)]),
+    ];
+    downloadCsv("blog-taxonomy.csv", rows);
+  }
+
   return (
     <div className="space-y-6 p-6 lg:p-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-navy">Categories</h1>
+          <h1 className="text-2xl font-semibold text-navy">Categories &amp; Tags</h1>
           <p className="text-sm text-muted-foreground">
-            Organize blog posts into manageable groups.
+            {categories.length} categories · {tagUsage.length} tags · shared taxonomy across posts
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" render={<Link href="/blogs" />}>
             <ArrowLeft data-icon="inline-start" />
             Posts
+          </Button>
+          <Button variant="outline" disabled title="Coming soon">
+            Merge duplicates
+          </Button>
+          <Button variant="outline" onClick={handleExport}>
+            <Download data-icon="inline-start" />
+            Export
           </Button>
           {can("blog", "create") && (
             <Button onClick={openCreate}>
@@ -186,91 +279,150 @@ function BlogCategoriesCatalog() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {stats.map(({ label, value, icon: Icon }) => (
-          <Card key={label}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
-              <Icon className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <p className="truncate text-2xl font-semibold">{value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {isLoading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {categories.map((category) => {
-            const badge = colorBadge(category.color);
-            return (
-              <Card key={category.id}>
-                <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={cn(
-                        "flex size-10 shrink-0 items-center justify-center rounded-lg",
-                        badge.badge
-                      )}
-                    >
-                      <Tag className="size-5" />
-                    </span>
-                    <div className="min-w-0">
-                      <CardTitle className="truncate">{category.name}</CardTitle>
-                      <CardDescription className="truncate">/blog/{category.slug}</CardDescription>
-                    </div>
-                  </div>
-                  {(can("blog", "edit") || can("blog", "delete")) && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        aria-label="Category actions"
-                        className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                    <th className="px-6 py-3 font-medium">Category</th>
+                    <th className="px-6 py-3 font-medium">Slug</th>
+                    <th className="px-6 py-3 font-medium">Posts</th>
+                    <th className="px-6 py-3 font-medium">Visible</th>
+                    <th className="px-6 py-3 font-medium text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {categories.map((category, index) => {
+                    const badge = colorBadge(category.color);
+                    return (
+                      <tr
+                        key={category.id}
+                        draggable
+                        onDragStart={() => setDragIndex(index)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => handleDrop(index)}
+                        className="hover:bg-muted/40"
                       >
-                        <MoreHorizontal className="size-4" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" alignOffset={-8}>
-                        {can("blog", "edit") && (
-                          <DropdownMenuItem onClick={() => openEdit(category)}>
-                            <Pencil />
-                            Edit
-                          </DropdownMenuItem>
-                        )}
-                        {can("blog", "edit") && can("blog", "delete") && <DropdownMenuSeparator />}
-                        {can("blog", "delete") && (
-                          <DropdownMenuItem variant="destructive" onClick={() => handleDelete(category)}>
-                            <Trash2 />
-                            Delete
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                        <td className="px-6 py-3">
+                          <div className="flex items-center gap-3">
+                            <GripVertical className="size-3.5 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing" />
+                            <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", badge.badge)}>
+                              <Tag className="size-3.5" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-foreground">{category.name}</p>
+                              {category.description && (
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {category.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-3 font-mono text-xs text-muted-foreground">
+                          /blog/{category.slug}
+                        </td>
+                        <td className="px-6 py-3">
+                          <Badge variant="secondary">{category.post_count}</Badge>
+                        </td>
+                        <td className="px-6 py-3">
+                          <Toggle
+                            checked={category.is_visible}
+                            onChange={() => handleToggleVisible(category)}
+                            disabled={isMutating}
+                          />
+                        </td>
+                        <td className="px-6 py-3 text-right">
+                          {(can("blog", "edit") || can("blog", "delete")) && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                aria-label="Category actions"
+                                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                              >
+                                <MoreHorizontal className="size-4" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" alignOffset={-8}>
+                                {can("blog", "edit") && (
+                                  <DropdownMenuItem onClick={() => openEdit(category)}>
+                                    <Pencil />
+                                    Edit
+                                  </DropdownMenuItem>
+                                )}
+                                {can("blog", "edit") && can("blog", "delete") && <DropdownMenuSeparator />}
+                                {can("blog", "delete") && (
+                                  <DropdownMenuItem variant="destructive" onClick={() => handleDelete(category)}>
+                                    <Trash2 />
+                                    Delete
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {categories.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-sm text-muted-foreground">
+                        No categories yet — create one to start organizing posts.
+                      </td>
+                    </tr>
                   )}
-                </CardHeader>
-                <CardContent>
-                  <p className="line-clamp-2 text-sm text-muted-foreground">
-                    {category.description || "No description yet."}
-                  </p>
-                  <div className="mt-4">
-                    <Badge variant="secondary">
-                      {category.post_count} {category.post_count === 1 ? "post" : "posts"}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-          {categories.length === 0 && (
-            <p className="col-span-full py-10 text-center text-sm text-muted-foreground">
-              No categories yet — create one to start organizing posts.
-            </p>
+                </tbody>
+              </table>
+            </div>
           )}
-        </div>
-      )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-3 pt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Tags</p>
+              <p className="text-xs text-muted-foreground">
+                {tagUsage.length} total · sized by usage across real posts
+              </p>
+            </div>
+            <div className="relative w-56">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={tagQuery}
+                onChange={(e) => setTagQuery(e.target.value)}
+                placeholder="Filter tags…"
+                className="pl-8"
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {filteredTags.map(({ tag, count }) => {
+              const scale = 0.75 + (count / maxTagCount) * 0.55;
+              return (
+                <span
+                  key={tag}
+                  style={{ fontSize: `${scale}rem` }}
+                  className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-foreground"
+                >
+                  {tag}
+                  <span className="text-xs text-muted-foreground">{count}</span>
+                </span>
+              );
+            })}
+            {filteredTags.length === 0 && (
+              <p className="py-4 text-sm text-muted-foreground">
+                {tagUsage.length === 0 ? "No tags used yet." : "No tags match your search."}
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent>
@@ -362,6 +514,11 @@ function BlogCategoriesCatalog() {
                   />
                 ))}
               </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-foreground">Visible on the site</span>
+              <Toggle checked={visible} onChange={setVisible} />
             </div>
           </div>
 

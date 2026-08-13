@@ -14,6 +14,8 @@ class BlogCategory(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     slug: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     color: Mapped[str] = mapped_column(Text, server_default=text("'navy'"), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, server_default=text("0"), nullable=False)
+    is_visible: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
 
 
 class BlogPost(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
@@ -36,6 +38,7 @@ class BlogPost(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     )
     meta_title: Mapped[str | None] = mapped_column(Text)
     meta_description: Mapped[str | None] = mapped_column(Text)
+    focus_keyword: Mapped[str | None] = mapped_column(Text)
     views: Mapped[int] = mapped_column(Integer, server_default=text("0"), nullable=False)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

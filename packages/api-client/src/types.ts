@@ -732,7 +732,7 @@ export interface PropertyTypeUpdate {
 
 // ---- Blog -------------------------------------------------------------
 
-export type BlogPostStatus = "draft" | "published" | "scheduled";
+export type BlogPostStatus = "draft" | "in_review" | "published" | "scheduled";
 export type BlogCommentStatus = "pending" | "approved" | "rejected";
 
 export interface BlogCategoryOut {
@@ -741,6 +741,8 @@ export interface BlogCategoryOut {
   slug: string;
   description?: string | null;
   color: string;
+  sort_order: number;
+  is_visible: boolean;
   post_count: number;
   created_at: string;
   updated_at: string;
@@ -751,6 +753,8 @@ export interface BlogCategoryCreate {
   slug: string;
   description?: string;
   color?: string;
+  sort_order?: number;
+  is_visible?: boolean;
 }
 
 export interface BlogCategoryUpdate {
@@ -758,6 +762,8 @@ export interface BlogCategoryUpdate {
   slug?: string;
   description?: string;
   color?: string;
+  sort_order?: number;
+  is_visible?: boolean;
 }
 
 export interface BlogPostTranslationValue {
@@ -780,6 +786,7 @@ export interface BlogPostSummaryOut {
   views: number;
   comment_count: number;
   published_at?: string | null;
+  translation_language_codes: string[];
   created_at: string;
   updated_at: string;
 }
@@ -788,6 +795,7 @@ export interface BlogPostOut extends BlogPostSummaryOut {
   content: string;
   meta_title?: string | null;
   meta_description?: string | null;
+  focus_keyword?: string | null;
   translations: Record<string, BlogPostTranslationValue>;
 }
 
@@ -802,6 +810,7 @@ export interface BlogPostCreate {
   author_name?: string;
   meta_title?: string;
   meta_description?: string;
+  focus_keyword?: string;
   published_at?: string | null;
   translations?: Record<string, BlogPostTranslationValue>;
 }
@@ -817,6 +826,7 @@ export interface BlogPostUpdate {
   author_name?: string;
   meta_title?: string;
   meta_description?: string;
+  focus_keyword?: string;
   published_at?: string | null;
   translations?: Record<string, BlogPostTranslationValue>;
 }
@@ -852,4 +862,163 @@ export interface BlogCommentModerate {
 
 export interface BlogCommentReplyCreate {
   body: string;
+}
+
+// ---- CMS ----------------------------------------------------------------
+
+export type CmsPageStatus = "draft" | "published" | "archived";
+export type CmsPageType = "content" | "system";
+
+export interface CmsPageTranslationValue {
+  title?: string;
+  excerpt?: string;
+  content?: string;
+  meta_title?: string;
+  meta_description?: string;
+}
+
+export interface CmsPageSummaryOut {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt?: string | null;
+  featured_image_url?: string | null;
+  parent_id?: string | null;
+  parent_title?: string | null;
+  sort_order: number;
+  status: CmsPageStatus;
+  is_homepage: boolean;
+  author_name: string;
+  view_count: number;
+  published_at?: string | null;
+  page_type: CmsPageType;
+  route_path?: string | null;
+  translation_language_codes: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CmsPageOut extends CmsPageSummaryOut {
+  content: string;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  translations: Record<string, CmsPageTranslationValue>;
+}
+
+export interface CmsPageCreate {
+  title: string;
+  slug: string;
+  excerpt?: string;
+  content?: string;
+  parent_id?: string | null;
+  sort_order?: number;
+  status?: CmsPageStatus;
+  is_homepage?: boolean;
+  meta_title?: string;
+  meta_description?: string;
+  author_name?: string;
+  published_at?: string | null;
+  page_type?: CmsPageType;
+  route_path?: string | null;
+  translations?: Record<string, CmsPageTranslationValue>;
+}
+
+export interface CmsPageUpdate {
+  title?: string;
+  slug?: string;
+  excerpt?: string;
+  content?: string;
+  parent_id?: string | null;
+  sort_order?: number;
+  status?: CmsPageStatus;
+  is_homepage?: boolean;
+  meta_title?: string;
+  meta_description?: string;
+  author_name?: string;
+  published_at?: string | null;
+  page_type?: CmsPageType;
+  route_path?: string | null;
+  translations?: Record<string, CmsPageTranslationValue>;
+}
+
+export interface CmsBlockOut {
+  id: string;
+  name: string;
+  slug: string;
+  content: string;
+  block_type: string;
+  location?: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CmsBlockCreate {
+  name: string;
+  slug: string;
+  content?: string;
+  block_type?: string;
+  location?: string;
+  is_active?: boolean;
+}
+
+export interface CmsBlockUpdate {
+  name?: string;
+  slug?: string;
+  content?: string;
+  block_type?: string;
+  location?: string;
+  is_active?: boolean;
+}
+
+export interface CmsMenuItemOut {
+  id: string;
+  menu_id: string;
+  page_id?: string | null;
+  page_slug?: string | null;
+  label: string;
+  url?: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface CmsMenuItemCreate {
+  label: string;
+  page_id?: string | null;
+  url?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface CmsMenuItemUpdate {
+  label?: string;
+  page_id?: string | null;
+  url?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface CmsMenuOut {
+  id: string;
+  name: string;
+  slug: string;
+  location?: string | null;
+  is_active: boolean;
+  items: CmsMenuItemOut[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CmsMenuCreate {
+  name: string;
+  slug: string;
+  location?: string;
+  is_active?: boolean;
+}
+
+export interface CmsMenuUpdate {
+  name?: string;
+  slug?: string;
+  location?: string;
+  is_active?: boolean;
 }

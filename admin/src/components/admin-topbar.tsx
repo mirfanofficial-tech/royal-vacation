@@ -9,7 +9,9 @@ import {
   CheckCheck,
   ChevronRight,
   Coins,
+  FileText,
   HelpCircle,
+  Layers,
   LogOut,
   Newspaper,
   PanelLeftClose,
@@ -74,6 +76,13 @@ const quickCreateGroups: QuickCreateGroup[] = [
     items: [
       { href: "/blogs/new", label: "Blog post", icon: Newspaper, module: "blog" },
       { href: "/blogs/categories?new=1", label: "Blog category", icon: Tag, module: "blog" },
+    ],
+  },
+  {
+    label: "CMS",
+    items: [
+      { href: "/cms/pages/new", label: "Page", icon: FileText, module: "cms" },
+      { href: "/cms/blocks/new", label: "Block", icon: Layers, module: "cms" },
     ],
   },
   {

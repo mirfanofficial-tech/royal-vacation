@@ -63,6 +63,7 @@ def _to_summary_out(
         views=post.views,
         comment_count=comment_count,
         published_at=post.published_at,
+        translation_language_codes=sorted(t.language_code for t in post.translations),
         created_at=post.created_at,
         updated_at=post.updated_at,
     )
@@ -77,6 +78,7 @@ def _to_out(
         content=post.content,
         meta_title=post.meta_title,
         meta_description=post.meta_description,
+        focus_keyword=post.focus_keyword,
         translations={
             t.language_code: BlogPostTranslationValue(title=t.title, content=t.content)
             for t in post.translations

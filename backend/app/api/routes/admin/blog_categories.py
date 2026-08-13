@@ -25,6 +25,8 @@ def _to_out(category: BlogCategory, post_count: int) -> BlogCategoryOut:
         slug=category.slug,
         description=category.description,
         color=category.color,
+        sort_order=category.sort_order,
+        is_visible=category.is_visible,
         post_count=post_count,
         created_at=category.created_at,
         updated_at=category.updated_at,
@@ -60,7 +62,7 @@ async def list_blog_categories(db: AsyncSession = Depends(get_db)) -> list[BlogC
     result = await db.execute(
         select(BlogCategory, func.coalesce(count_subq.c.post_count, 0))
         .outerjoin(count_subq, count_subq.c.category_id == BlogCategory.id)
-        .order_by(BlogCategory.name)
+        .order_by(BlogCategory.sort_order, BlogCategory.name)
     )
     return [_to_out(category, count) for category, count in result.all()]
 

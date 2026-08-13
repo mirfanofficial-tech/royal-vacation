@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.routes import (
     auth,
     blog,
+    cms,
     health,
     partner,
     profile,
@@ -51,6 +52,7 @@ def create_app() -> FastAPI:
         property_types.router, prefix=f"{prefix}/property-types", tags=["property-types"]
     )
     app.include_router(blog.router, prefix=f"{prefix}/blog", tags=["blog"])
+    app.include_router(cms.router, prefix=f"{prefix}/cms", tags=["cms"])
 
     app.mount("/static", StaticFiles(directory="static"), name="static")
 

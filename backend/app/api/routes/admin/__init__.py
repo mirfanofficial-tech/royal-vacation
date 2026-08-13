@@ -11,6 +11,10 @@ from app.api.routes.admin import (
     blog_categories,
     blog_comments,
     blog_posts,
+    cms_blocks,
+    cms_media,
+    cms_menus,
+    cms_pages,
     modules,
     partners,
     payment_gateways,
@@ -49,5 +53,9 @@ router.include_router(
 router.include_router(blog_categories.router, prefix="/blog/categories", tags=["admin:blog"])
 router.include_router(blog_posts.router, prefix="/blog/posts", tags=["admin:blog"])
 router.include_router(blog_comments.router, prefix="/blog/comments", tags=["admin:blog"])
+router.include_router(cms_pages.router, prefix="/cms/pages", tags=["admin:cms"])
+router.include_router(cms_blocks.router, prefix="/cms/blocks", tags=["admin:cms"])
+router.include_router(cms_menus.router, prefix="/cms/menus", tags=["admin:cms"])
+router.include_router(cms_media.router, prefix="/cms/media", tags=["admin:cms"])
 
 __all__ = ["router"]

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Hero } from "@/components/home/hero";
@@ -9,6 +10,18 @@ import { Destinations } from "@/components/home/destinations";
 import { Blogs } from "@/components/home/blogs";
 import { TrustBadgesRow } from "@/components/login/trust-badges-row";
 import { featuredProperties, homesGuestsLove } from "@/lib/mock-data";
+import { getRouteSeo, mergeRouteSeoMetadata } from "@/lib/cms-seo";
+
+const DEFAULT_METADATA: Metadata = {
+  title: "Royal Vacation | Find Your Perfect Stay",
+  description:
+    "Search hotels, apartments, resorts, villas and more with Royal Vacation. No booking fees, best price guarantee.",
+};
+
+export async function generateMetadata(): Promise<Metadata> {
+  const routeSeo = await getRouteSeo("/");
+  return mergeRouteSeoMetadata(routeSeo, DEFAULT_METADATA);
+}
 
 export default function Home() {
   return (

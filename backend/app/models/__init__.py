@@ -1,5 +1,15 @@
 from app.models.base import Base
 from app.models.blog import BlogCategory, BlogComment, BlogPost, BlogPostTranslation
+from app.models.cms import (
+    CmsBlock,
+    CmsMediaAsset,
+    CmsMediaAssetTranslation,
+    CmsMediaFolder,
+    CmsMenu,
+    CmsMenuItem,
+    CmsPage,
+    CmsPageTranslation,
+)
 from app.models.module import ThirdPartyModule
 from app.models.payment import PaymentGateway
 from app.models.property_type import PropertyType
@@ -23,6 +33,14 @@ __all__ = [
     "BlogComment",
     "BlogPost",
     "BlogPostTranslation",
+    "CmsBlock",
+    "CmsMediaAsset",
+    "CmsMediaAssetTranslation",
+    "CmsMediaFolder",
+    "CmsMenu",
+    "CmsMenuItem",
+    "CmsPage",
+    "CmsPageTranslation",
     "Country",
     "Currency",
     "Language",

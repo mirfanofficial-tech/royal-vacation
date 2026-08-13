@@ -7,6 +7,7 @@ import { Breadcrumb } from "@/components/shared/breadcrumb";
 import { SearchResultsView } from "@/components/search/search-results-view";
 import { NewsletterBanner } from "@/components/search/newsletter-banner";
 import { searchProperties } from "@/lib/search-mock-data";
+import { getRouteSeo, mergeRouteSeoMetadata } from "@/lib/cms-seo";
 
 const DEFAULT_DESTINATION_FULL = "Dubai, United Arab Emirates";
 
@@ -16,7 +17,17 @@ export async function generateMetadata({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<Metadata> {
   const params = await searchParams;
-  const destinationFull = firstParam(params.destination) ?? DEFAULT_DESTINATION_FULL;
+  const destinationParam = firstParam(params.destination);
+
+  if (!destinationParam) {
+    const routeSeo = await getRouteSeo("/search");
+    return mergeRouteSeoMetadata(routeSeo, {
+      title: "Search Stays | Royal Vacation",
+      description: `${searchProperties.length} properties found in ${DEFAULT_DESTINATION_FULL}.`,
+    });
+  }
+
+  const destinationFull = destinationParam;
   const destination = destinationFull.split(",")[0].trim();
   return {
     title: `${destination} Hotels | Royal Vacation`,

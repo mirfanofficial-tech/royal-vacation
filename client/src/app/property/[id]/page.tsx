@@ -16,6 +16,7 @@ import { MiniMapCard } from "@/components/property/mini-map-card";
 import { TopHighlightsCard } from "@/components/property/top-highlights-card";
 import { propertyDetails, getPropertyDetail } from "@/lib/property-detail-mock-data";
 import { featuredProperties, homesGuestsLove } from "@/lib/mock-data";
+import { getRouteSeo, mergeRouteSeoMetadata } from "@/lib/cms-seo";
 
 const fallbackProperties = [...featuredProperties, ...homesGuestsLove];
 
@@ -31,7 +32,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const property = getPropertyDetail(id, fallbackProperties);
-  if (!property) return {};
+  if (!property) {
+    const routeSeo = await getRouteSeo("/property");
+    return mergeRouteSeoMetadata(routeSeo, {});
+  }
   return {
     title: `${property.name} | Royal Vacation`,
     description: property.aboutShort,

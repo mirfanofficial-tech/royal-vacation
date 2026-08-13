@@ -92,7 +92,8 @@ async def list_public_blog_categories(db: AsyncSession = Depends(get_db)) -> lis
     result = await db.execute(
         select(BlogCategory, func.coalesce(count_subq.c.post_count, 0))
         .outerjoin(count_subq, count_subq.c.category_id == BlogCategory.id)
-        .order_by(BlogCategory.name)
+        .where(BlogCategory.is_visible.is_(True))
+        .order_by(BlogCategory.sort_order, BlogCategory.name)
     )
     return [
         BlogCategoryOut(
@@ -101,6 +102,8 @@ async def list_public_blog_categories(db: AsyncSession = Depends(get_db)) -> lis
             slug=category.slug,
             description=category.description,
             color=category.color,
+            sort_order=category.sort_order,
+            is_visible=category.is_visible,
             post_count=count,
             created_at=category.created_at,
             updated_at=category.updated_at,

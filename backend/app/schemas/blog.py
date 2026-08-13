@@ -13,6 +13,8 @@ class BlogCategoryOut(BaseModel):
     slug: str
     description: str | None = None
     color: str
+    sort_order: int = 0
+    is_visible: bool = True
     post_count: int = 0
     created_at: datetime
     updated_at: datetime
@@ -23,6 +25,8 @@ class BlogCategoryCreate(BaseModel):
     slug: str = Field(min_length=1, max_length=150)
     description: str | None = None
     color: str = "navy"
+    sort_order: int = 0
+    is_visible: bool = True
 
 
 class BlogCategoryUpdate(BaseModel):
@@ -30,6 +34,8 @@ class BlogCategoryUpdate(BaseModel):
     slug: str | None = Field(default=None, min_length=1, max_length=150)
     description: str | None = None
     color: str | None = None
+    sort_order: int | None = None
+    is_visible: bool | None = None
 
 
 class BlogPostTranslationValue(BaseModel):
@@ -54,6 +60,7 @@ class BlogPostSummaryOut(BaseModel):
     views: int
     comment_count: int = 0
     published_at: datetime | None = None
+    translation_language_codes: list[str] = []
     created_at: datetime
     updated_at: datetime
 
@@ -62,6 +69,7 @@ class BlogPostOut(BlogPostSummaryOut):
     content: str
     meta_title: str | None = None
     meta_description: str | None = None
+    focus_keyword: str | None = None
     translations: dict[str, BlogPostTranslationValue] = {}
 
 
@@ -76,6 +84,7 @@ class BlogPostCreate(BaseModel):
     author_name: str = "Royal Vacation Admin"
     meta_title: str | None = None
     meta_description: str | None = None
+    focus_keyword: str | None = None
     published_at: datetime | None = None
     translations: dict[str, BlogPostTranslationValue] = {}
 
@@ -91,6 +100,7 @@ class BlogPostUpdate(BaseModel):
     author_name: str | None = None
     meta_title: str | None = None
     meta_description: str | None = None
+    focus_keyword: str | None = None
     published_at: datetime | None = None
     translations: dict[str, BlogPostTranslationValue] | None = None
 

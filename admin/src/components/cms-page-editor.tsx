@@ -10,19 +10,20 @@ import {
   ImagePlus,
   Languages as LanguagesIcon,
   Loader2,
+  Lock,
   Save,
   Search,
 } from "lucide-react";
 
 import type {
-  BlogPostCreate,
-  BlogPostOut,
-  BlogPostStatus,
-  BlogPostTranslationValue,
-  BlogPostUpdate,
+  CmsPageCreate,
+  CmsPageOut,
+  CmsPageStatus,
+  CmsPageTranslationValue,
+  CmsPageUpdate,
 } from "@royal-vacation/api-client";
 import { ApiError, resolveAssetUrl } from "@/lib/api";
-import { useBlogCategories, useBlogPosts } from "@/lib/blog";
+import { useCmsPages } from "@/lib/cms";
 import { useLanguages } from "@/lib/reference";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,13 +42,13 @@ import { cn } from "@/lib/utils";
 const fieldLabel = "mb-1.5 block text-xs font-medium text-muted-foreground";
 const fieldHint = "mt-1 text-xs text-muted-foreground";
 
-const statusLabels: Record<BlogPostStatus, string> = {
+const statusLabels: Record<CmsPageStatus, string> = {
   draft: "Draft",
   published: "Published",
-  scheduled: "Scheduled",
+  archived: "Archived",
 };
 
-const UNCATEGORIZED = "__uncategorized__";
+const NO_PARENT = "__no_parent__";
 
 function slugify(value: string) {
   return value
@@ -62,16 +63,16 @@ function errorMessage(err: unknown, fallback: string) {
   return err instanceof ApiError ? err.message : fallback;
 }
 
-interface BlogPostEditorProps {
-  initial?: BlogPostOut;
+interface CmsPageEditorProps {
+  initial?: CmsPageOut;
 }
 
-export function BlogPostEditor({ initial }: BlogPostEditorProps) {
+export function CmsPageEditor({ initial }: CmsPageEditorProps) {
   const router = useRouter();
   const isEdit = Boolean(initial);
-  const { categories } = useBlogCategories();
+  const isSystemPage = initial?.page_type === "system";
+  const { pages, createPage, updatePage, uploadFeaturedImage } = useCmsPages();
   const { languages } = useLanguages();
-  const { createPost, updatePost, uploadCoverImage } = useBlogPosts();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -79,23 +80,21 @@ export function BlogPostEditor({ initial }: BlogPostEditorProps) {
   const [slugTouched, setSlugTouched] = useState(Boolean(initial?.slug));
   const [excerpt, setExcerpt] = useState(initial?.excerpt ?? "");
   const [content, setContent] = useState(initial?.content ?? "");
-  const [categoryId, setCategoryId] = useState(initial?.category_id ?? UNCATEGORIZED);
-  const [status, setStatus] = useState<BlogPostStatus>(initial?.status ?? "draft");
-  const [publishDate, setPublishDate] = useState(
-    initial?.published_at ? initial.published_at.slice(0, 10) : ""
-  );
-  const [tags, setTags] = useState(initial?.tags.join(", ") ?? "");
+  const [parentId, setParentId] = useState(initial?.parent_id ?? NO_PARENT);
+  const [sortOrder, setSortOrder] = useState(String(initial?.sort_order ?? 0));
+  const [status, setStatus] = useState<CmsPageStatus>(initial?.status ?? "draft");
+  const [isHomepage, setIsHomepage] = useState(initial?.is_homepage ?? false);
   const [authorName, setAuthorName] = useState(initial?.author_name ?? "Royal Vacation Admin");
   const [metaTitle, setMetaTitle] = useState(initial?.meta_title ?? "");
   const [metaDescription, setMetaDescription] = useState(initial?.meta_description ?? "");
 
-  const [translations, setTranslations] = useState<Record<string, BlogPostTranslationValue>>(
+  const [translations, setTranslations] = useState<Record<string, CmsPageTranslationValue>>(
     initial?.translations ?? {}
   );
 
-  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
-  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
-  const [coverImageError, setCoverImageError] = useState("");
+  const [featuredImageFile, setFeaturedImageFile] = useState<File | null>(null);
+  const [featuredImagePreview, setFeaturedImagePreview] = useState<string | null>(null);
+  const [featuredImageError, setFeaturedImageError] = useState("");
 
   const [activeTab, setActiveTab] = useState("general");
   const [activeLanguage, setActiveLanguage] = useState("");
@@ -104,37 +103,47 @@ export function BlogPostEditor({ initial }: BlogPostEditorProps) {
   const [saveError, setSaveError] = useState("");
   const [saved, setSaved] = useState(false);
 
+  const parentOptions = pages.filter((p) => p.id !== initial?.id);
+
   const translationLanguages = useMemo(
     () => languages.filter((l) => l.is_active && l.code !== "en"),
     [languages]
   );
   const currentLanguage = activeLanguage || translationLanguages[0]?.code || "";
 
-  const displayCoverImage =
-    coverImagePreview ?? (initial?.cover_image_url ? resolveAssetUrl(initial.cover_image_url) : null);
+  function setTranslationField(
+    languageCode: string,
+    field: keyof CmsPageTranslationValue,
+    value: string
+  ) {
+    setTranslations((prev) => ({
+      ...prev,
+      [languageCode]: {
+        title: prev[languageCode]?.title ?? "",
+        excerpt: prev[languageCode]?.excerpt ?? "",
+        content: prev[languageCode]?.content ?? "",
+        meta_title: prev[languageCode]?.meta_title ?? "",
+        meta_description: prev[languageCode]?.meta_description ?? "",
+        [field]: value,
+      },
+    }));
+  }
+
+  const displayFeaturedImage =
+    featuredImagePreview ??
+    (initial?.featured_image_url ? resolveAssetUrl(initial.featured_image_url) : null);
 
   function handleTitleChange(value: string) {
     setTitle(value);
     if (!slugTouched) setSlug(slugify(value));
   }
 
-  function handleCoverImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFeaturedImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCoverImageError("");
-    setCoverImageFile(file);
-    setCoverImagePreview(URL.createObjectURL(file));
-  }
-
-  function setTranslationField(languageCode: string, field: "title" | "content", value: string) {
-    setTranslations((prev) => ({
-      ...prev,
-      [languageCode]: {
-        title: prev[languageCode]?.title ?? "",
-        content: prev[languageCode]?.content ?? "",
-        [field]: value,
-      },
-    }));
+    setFeaturedImageError("");
+    setFeaturedImageFile(file);
+    setFeaturedImagePreview(URL.createObjectURL(file));
   }
 
   async function handleSave() {
@@ -144,45 +153,44 @@ export function BlogPostEditor({ initial }: BlogPostEditorProps) {
       const body = {
         title: title.trim(),
         slug: slug.trim() || slugify(title),
-        category_id: categoryId === UNCATEGORIZED ? null : categoryId,
         excerpt: excerpt.trim(),
         content,
-        tags: tags
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean),
+        parent_id: isSystemPage ? null : parentId === NO_PARENT ? null : parentId,
+        sort_order: Number(sortOrder) || 0,
         status,
-        author_name: authorName.trim() || "Royal Vacation Admin",
+        is_homepage: isSystemPage ? false : isHomepage,
         meta_title: metaTitle.trim(),
         meta_description: metaDescription.trim(),
-        published_at: publishDate ? new Date(publishDate).toISOString() : null,
+        author_name: authorName.trim() || "Royal Vacation Admin",
         translations,
       };
 
-      let postId = initial?.id;
-      if (isEdit && postId) {
-        await updatePost(postId, body as BlogPostUpdate);
+      let pageId = initial?.id;
+      if (isEdit && pageId) {
+        await updatePage(pageId, body as CmsPageUpdate);
       } else {
-        const created = await createPost(body as BlogPostCreate);
-        postId = created.id;
+        const created = await createPage(body as CmsPageCreate);
+        pageId = created.id;
       }
 
-      if (coverImageFile && postId) {
+      if (featuredImageFile && pageId) {
         try {
-          await uploadCoverImage(postId, coverImageFile);
+          await uploadFeaturedImage(pageId, featuredImageFile);
         } catch (err) {
-          setCoverImageError(errorMessage(err, "Post saved, but the cover image failed to upload."));
+          setFeaturedImageError(
+            errorMessage(err, "Page saved, but the featured image failed to upload.")
+          );
         }
       }
 
-      if (!isEdit && postId) {
-        router.push(`/blogs/${postId}`);
+      if (!isEdit && pageId) {
+        router.push(`/cms/pages/${pageId}/builder`);
       } else {
         setSaved(true);
         window.setTimeout(() => setSaved(false), 2000);
       }
     } catch (err) {
-      setSaveError(errorMessage(err, "Failed to save post."));
+      setSaveError(errorMessage(err, "Failed to save page."));
     } finally {
       setSaving(false);
     }
@@ -212,59 +220,73 @@ export function BlogPostEditor({ initial }: BlogPostEditorProps) {
             </TabsList>
 
             <TabsPanel value="general" className="space-y-5 p-4">
+              {isSystemPage && (
+                <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
+                  <Lock className="mt-0.5 size-3.5 shrink-0" />
+                  <span>
+                    Custom-design page — controls SEO for{" "}
+                    <span className="font-mono text-foreground">{initial?.route_path}</span>. The
+                    layout is a bespoke page in the client app, not rendered from CMS content.
+                  </span>
+                </div>
+              )}
               <div>
-                <label className={fieldLabel} htmlFor="post-title">
+                <label className={fieldLabel} htmlFor="page-title">
                   Title
                 </label>
                 <Input
-                  id="post-title"
+                  id="page-title"
                   value={title}
                   onChange={(e) => handleTitleChange(e.target.value)}
-                  placeholder="e.g. Best Neighborhoods to Stay in Dubai in 2026"
+                  placeholder="e.g. About Us"
                   className="h-10 text-base"
                 />
               </div>
 
               <div>
-                <label className={fieldLabel} htmlFor="post-slug">
+                <label className={fieldLabel} htmlFor="page-slug">
                   URL slug
                 </label>
                 <Input
-                  id="post-slug"
+                  id="page-slug"
                   value={slug}
                   onChange={(e) => {
                     setSlugTouched(true);
                     setSlug(e.target.value);
                   }}
-                  placeholder="best-neighborhoods-to-stay-in-dubai"
+                  placeholder="about-us"
                   className="font-mono text-sm"
                 />
                 <p className={fieldHint}>
-                  {slug ? `royalvacation.com/blog/${slug}` : "Auto-generated from the title."}
+                  {slug ? `royalvacation.com/pages/${slug}` : "Auto-generated from the title."}
                 </p>
               </div>
 
               <div>
-                <label className={fieldLabel} htmlFor="post-excerpt">
+                <label className={fieldLabel} htmlFor="page-excerpt">
                   Excerpt
                 </label>
                 <textarea
-                  id="post-excerpt"
+                  id="page-excerpt"
                   value={excerpt}
                   onChange={(e) => setExcerpt(e.target.value)}
                   rows={2}
-                  placeholder="Short summary shown on the blog listing page…"
+                  placeholder="Optional short summary…"
                   className="w-full resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 />
               </div>
 
               <div>
-                <span className={fieldLabel}>Cover image</span>
+                <span className={fieldLabel}>Featured image</span>
                 <div className="flex flex-wrap items-center gap-4">
                   <span className="flex h-24 w-40 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/40">
-                    {displayCoverImage ? (
+                    {displayFeaturedImage ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={displayCoverImage} alt="Cover" className="size-full object-cover" />
+                      <img
+                        src={displayFeaturedImage}
+                        alt="Featured"
+                        className="size-full object-cover"
+                      />
                     ) : (
                       <ImagePlus className="size-6 text-muted-foreground" />
                     )}
@@ -277,20 +299,20 @@ export function BlogPostEditor({ initial }: BlogPostEditorProps) {
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <ImagePlus data-icon="inline-start" />
-                      {displayCoverImage ? "Replace image" : "Upload image"}
+                      {displayFeaturedImage ? "Replace image" : "Upload image"}
                     </Button>
                     <input
                       ref={fileInputRef}
                       type="file"
                       accept="image/png,image/jpeg,image/webp,image/svg+xml"
                       className="hidden"
-                      onChange={handleCoverImageChange}
+                      onChange={handleFeaturedImageChange}
                     />
                     <p className="text-xs text-muted-foreground">
                       PNG, JPEG, WEBP or SVG, up to 2 MB.
                     </p>
-                    {coverImageError && (
-                      <p className="text-xs text-destructive">{coverImageError}</p>
+                    {featuredImageError && (
+                      <p className="text-xs text-destructive">{featuredImageError}</p>
                     )}
                   </div>
                 </div>
@@ -304,25 +326,25 @@ export function BlogPostEditor({ initial }: BlogPostEditorProps) {
 
             <TabsPanel value="seo" className="space-y-5 p-4">
               <p className="text-sm text-muted-foreground">
-                Controls how this post appears in search results.
+                Controls how this page appears in search results.
               </p>
               <div>
-                <label className={fieldLabel} htmlFor="post-meta-title">
+                <label className={fieldLabel} htmlFor="page-meta-title">
                   Meta title
                 </label>
                 <Input
-                  id="post-meta-title"
+                  id="page-meta-title"
                   value={metaTitle}
                   onChange={(e) => setMetaTitle(e.target.value)}
                   placeholder="Title shown in search results"
                 />
               </div>
               <div>
-                <label className={fieldLabel} htmlFor="post-meta-description">
+                <label className={fieldLabel} htmlFor="page-meta-description">
                   Meta description
                 </label>
                 <textarea
-                  id="post-meta-description"
+                  id="page-meta-description"
                   value={metaDescription}
                   onChange={(e) => setMetaDescription(e.target.value)}
                   rows={3}
@@ -379,12 +401,59 @@ export function BlogPostEditor({ initial }: BlogPostEditorProps) {
                         />
                       </div>
                       <div>
-                        <label className={fieldLabel}>Description</label>
+                        <label className={fieldLabel} htmlFor="translation-excerpt">
+                          Excerpt
+                        </label>
+                        <textarea
+                          id="translation-excerpt"
+                          value={translations[currentLanguage]?.excerpt ?? ""}
+                          onChange={(e) =>
+                            setTranslationField(currentLanguage, "excerpt", e.target.value)
+                          }
+                          rows={2}
+                          placeholder="Optional short summary…"
+                          className="w-full resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                        />
+                      </div>
+                      <div>
+                        <label className={fieldLabel}>Content</label>
                         <RichTextEditor
                           key={currentLanguage}
                           value={translations[currentLanguage]?.content ?? ""}
                           onChange={(html) => setTranslationField(currentLanguage, "content", html)}
                           placeholder="Type the content here!"
+                        />
+                      </div>
+                      <div>
+                        <label className={fieldLabel} htmlFor="translation-meta-title">
+                          Meta title
+                        </label>
+                        <Input
+                          id="translation-meta-title"
+                          value={translations[currentLanguage]?.meta_title ?? ""}
+                          onChange={(e) =>
+                            setTranslationField(currentLanguage, "meta_title", e.target.value)
+                          }
+                          placeholder="Title shown in search results"
+                        />
+                      </div>
+                      <div>
+                        <label className={fieldLabel} htmlFor="translation-meta-description">
+                          Meta description
+                        </label>
+                        <textarea
+                          id="translation-meta-description"
+                          value={translations[currentLanguage]?.meta_description ?? ""}
+                          onChange={(e) =>
+                            setTranslationField(
+                              currentLanguage,
+                              "meta_description",
+                              e.target.value
+                            )
+                          }
+                          rows={3}
+                          placeholder="Short description shown under the title in search results"
+                          className="w-full resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                         />
                       </div>
                     </div>
@@ -403,14 +472,14 @@ export function BlogPostEditor({ initial }: BlogPostEditorProps) {
           </CardHeader>
           <CardContent className="space-y-5">
             <div>
-              <label className={fieldLabel} htmlFor="post-status">
+              <label className={fieldLabel} htmlFor="page-status">
                 Status
               </label>
               <Select
                 value={status}
-                onValueChange={(value) => setStatus((value as BlogPostStatus) ?? "draft")}
+                onValueChange={(value) => setStatus((value as CmsPageStatus) ?? "draft")}
               >
-                <SelectTrigger id="post-status" className="w-full">
+                <SelectTrigger id="page-status" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -423,64 +492,76 @@ export function BlogPostEditor({ initial }: BlogPostEditorProps) {
               </Select>
             </div>
 
+            {!isSystemPage && (
+              <div>
+                <label className={fieldLabel} htmlFor="page-parent">
+                  Parent page
+                </label>
+                <Select value={parentId} onValueChange={(value) => setParentId(value ?? NO_PARENT)}>
+                  <SelectTrigger id="page-parent" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_PARENT}>No parent (top-level)</SelectItem>
+                    {parentOptions.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div>
-              <label className={fieldLabel} htmlFor="post-date">
-                Publish date
+              <label className={fieldLabel} htmlFor="page-sort-order">
+                Sort order
               </label>
               <Input
-                id="post-date"
-                type="date"
-                value={publishDate}
-                onChange={(e) => setPublishDate(e.target.value)}
+                id="page-sort-order"
+                type="number"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
               />
-              <p className={fieldHint}>Leave empty to publish immediately.</p>
+              <p className={fieldHint}>Lower numbers appear first among siblings.</p>
             </div>
 
             <div>
-              <label className={fieldLabel} htmlFor="post-category">
-                Category
-              </label>
-              <Select value={categoryId} onValueChange={(value) => setCategoryId(value ?? UNCATEGORIZED)}>
-                <SelectTrigger id="post-category" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={UNCATEGORIZED}>Uncategorized</SelectItem>
-                  {categories.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {item.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className={fieldLabel} htmlFor="post-tags">
-                Tags
-              </label>
-              <Input
-                id="post-tags"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="dubai, guides, tips"
-              />
-              <p className={fieldHint}>Separate tags with commas.</p>
-            </div>
-
-            <div>
-              <label className={fieldLabel} htmlFor="post-author">
+              <label className={fieldLabel} htmlFor="page-author">
                 Author
               </label>
-              <Input id="post-author" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
+              <Input
+                id="page-author"
+                value={authorName}
+                onChange={(e) => setAuthorName(e.target.value)}
+              />
             </div>
+
+            {!isSystemPage && (
+              <>
+                <label className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={isHomepage}
+                    onChange={(e) => setIsHomepage(e.target.checked)}
+                    className="size-4 rounded border-input"
+                  />
+                  Use as homepage
+                </label>
+                <p className="-mt-3 text-xs text-muted-foreground">
+                  Marks this as the site&apos;s homepage flag. Setting it here unsets any other
+                  page flagged as homepage; the live homepage route isn&apos;t swapped
+                  automatically.
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="flex flex-col items-end gap-2 pt-4">
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <Button variant="outline" render={<Link href="/blogs" />}>
+              <Button variant="outline" render={<Link href="/cms/pages" />}>
                 Cancel
               </Button>
               <Button onClick={handleSave} disabled={!title.trim() || saving}>
@@ -489,7 +570,7 @@ export function BlogPostEditor({ initial }: BlogPostEditorProps) {
                 ) : (
                   <Save data-icon="inline-start" />
                 )}
-                {isEdit ? "Update" : "Publish"}
+                {isEdit ? "Update" : "Create page"}
                 {saved && <BadgeCheck className="ml-1 size-4 text-gold" />}
               </Button>
             </div>

@@ -14,6 +14,18 @@ import type {
   BlogPostSummaryOut,
   BlogPostUpdate,
   ChangePasswordRequest,
+  CmsBlockCreate,
+  CmsBlockOut,
+  CmsBlockUpdate,
+  CmsMenuCreate,
+  CmsMenuItemCreate,
+  CmsMenuItemUpdate,
+  CmsMenuOut,
+  CmsMenuUpdate,
+  CmsPageCreate,
+  CmsPageOut,
+  CmsPageSummaryOut,
+  CmsPageUpdate,
   ConfirmResetRequest,
   CountryCreate,
   CountryOut,
@@ -295,6 +307,48 @@ export class RoyalVacationApi extends ApiClient {
           this.post<BlogCommentAdminOut>(`/api/v1/admin/blog/comments/${id}/reply`, body),
       },
     },
+    cms: {
+      pages: {
+        list: (params?: { status?: string; q?: string }) =>
+          this.get<CmsPageSummaryOut[]>("/api/v1/admin/cms/pages", { query: params }),
+        get: (id: string) => this.get<CmsPageOut>(`/api/v1/admin/cms/pages/${id}`),
+        create: (body: CmsPageCreate) => this.post<CmsPageOut>("/api/v1/admin/cms/pages", body),
+        update: (id: string, body: CmsPageUpdate) =>
+          this.patch<CmsPageOut>(`/api/v1/admin/cms/pages/${id}`, body),
+        remove: (id: string) => this.delete<void>(`/api/v1/admin/cms/pages/${id}`),
+        uploadFeaturedImage: (id: string, file: File) => {
+          const formData = new FormData();
+          formData.append("file", file);
+          return this.postForm<CmsPageOut>(
+            `/api/v1/admin/cms/pages/${id}/featured-image`,
+            formData
+          );
+        },
+      },
+      blocks: {
+        list: (params?: { location?: string }) =>
+          this.get<CmsBlockOut[]>("/api/v1/admin/cms/blocks", { query: params }),
+        get: (id: string) => this.get<CmsBlockOut>(`/api/v1/admin/cms/blocks/${id}`),
+        create: (body: CmsBlockCreate) => this.post<CmsBlockOut>("/api/v1/admin/cms/blocks", body),
+        update: (id: string, body: CmsBlockUpdate) =>
+          this.patch<CmsBlockOut>(`/api/v1/admin/cms/blocks/${id}`, body),
+        remove: (id: string) => this.delete<void>(`/api/v1/admin/cms/blocks/${id}`),
+      },
+      menus: {
+        list: () => this.get<CmsMenuOut[]>("/api/v1/admin/cms/menus"),
+        get: (id: string) => this.get<CmsMenuOut>(`/api/v1/admin/cms/menus/${id}`),
+        create: (body: CmsMenuCreate) => this.post<CmsMenuOut>("/api/v1/admin/cms/menus", body),
+        update: (id: string, body: CmsMenuUpdate) =>
+          this.patch<CmsMenuOut>(`/api/v1/admin/cms/menus/${id}`, body),
+        remove: (id: string) => this.delete<void>(`/api/v1/admin/cms/menus/${id}`),
+        addItem: (menuId: string, body: CmsMenuItemCreate) =>
+          this.post<CmsMenuOut>(`/api/v1/admin/cms/menus/${menuId}/items`, body),
+        updateItem: (menuId: string, itemId: string, body: CmsMenuItemUpdate) =>
+          this.patch<CmsMenuOut>(`/api/v1/admin/cms/menus/${menuId}/items/${itemId}`, body),
+        removeItem: (menuId: string, itemId: string) =>
+          this.delete<CmsMenuOut>(`/api/v1/admin/cms/menus/${menuId}/items/${itemId}`),
+      },
+    },
   };
 
   // ---- Partner management — self-service for the calling partner --------
@@ -359,6 +413,24 @@ export class RoyalVacationApi extends ApiClient {
       list: (slug: string) => this.get<BlogCommentPublicOut[]>(`/api/v1/blog/posts/${slug}/comments`),
       create: (slug: string, body: BlogCommentCreate) =>
         this.post<BlogCommentPublicOut>(`/api/v1/blog/posts/${slug}/comments`, body),
+    },
+  };
+
+  // ---- Public CMS -----------------------------------------------------------
+
+  cms = {
+    pages: {
+      list: () => this.get<CmsPageSummaryOut[]>("/api/v1/cms/pages"),
+      get: (slug: string) => this.get<CmsPageOut>(`/api/v1/cms/pages/${slug}`),
+      getByRoute: (path: string) =>
+        this.get<CmsPageOut>("/api/v1/cms/pages/by-route", { query: { path } }),
+    },
+    blocks: {
+      list: (location?: string) =>
+        this.get<CmsBlockOut[]>("/api/v1/cms/blocks", { query: { location } }),
+    },
+    menus: {
+      get: (location: string) => this.get<CmsMenuOut>(`/api/v1/cms/menus/${location}`),
     },
   };
 
