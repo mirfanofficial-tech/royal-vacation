@@ -1,5 +1,24 @@
-import Image from "next/image";
 import { Tag, ShieldCheck, Heart } from "lucide-react";
+import { PromoImageSlider } from "@/components/shared/promo-image-slider";
+
+const slides = [
+  {
+    src: "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&w=900&q=80",
+    alt: "Overwater bungalows over turquoise lagoon water",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1602002418082-a4443e081dd1?auto=format&fit=crop&w=900&q=80",
+    alt: "View of the ocean deck from an overwater villa",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80",
+    alt: "Resort pool deck lined with loungers",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=900&q=80",
+    alt: "Beach loungers overlooking the ocean at sunset",
+  },
+];
 
 const features = [
   {
@@ -26,13 +45,7 @@ export function RegisterPromoPanel() {
   return (
     <div className="relative hidden overflow-hidden rounded-2xl lg:block">
       <div className="relative h-full min-h-[640px] w-full">
-        <Image
-          src="https://picsum.photos/seed/register-overwater-villa/900/1000"
-          alt="Overwater villas at sunset"
-          fill
-          className="object-cover"
-          sizes="480px"
-        />
+        <PromoImageSlider slides={slides} />
         <div className="absolute inset-0 bg-gradient-to-t from-navy-dark/90 via-navy-dark/50 to-navy-dark/20" />
       </div>
 
@@ -59,12 +72,6 @@ export function RegisterPromoPanel() {
             </li>
           ))}
         </ul>
-
-        <div className="flex items-center gap-1.5">
-          <span className="h-1.5 w-6 rounded-full bg-white" />
-          <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
-          <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
-        </div>
       </div>
     </div>
   );

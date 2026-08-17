@@ -37,7 +37,7 @@ export default async function CmsPageDetail({
     <>
       <Header />
       <main className="flex-1 bg-muted/40">
-        <div className="mx-auto max-w-3xl px-6 py-6 lg:px-10">
+        <div className="mx-auto max-w-3xl px-10 py-6 lg:px-24">
           <Breadcrumb
             items={[
               { label: "Home", href: "/" },

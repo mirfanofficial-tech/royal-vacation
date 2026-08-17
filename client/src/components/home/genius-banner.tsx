@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -27,9 +28,11 @@ export function GeniusBanner() {
           <p className="max-w-md text-sm text-white/85">
             Sign in to enjoy exclusive deals and discounts at thousands of properties.
           </p>
-          <Button className="mt-1 rounded-full bg-gold text-navy-dark hover:bg-gold-light">
-            Sign in / Register
-          </Button>
+          <Link href="/genius">
+            <Button className="mt-1 rounded-full bg-gold text-navy-dark hover:bg-gold-light">
+              Sign in / Register
+            </Button>
+          </Link>
         </div>
 
         <div className="absolute right-8 top-1/2 hidden h-28 w-28 -translate-y-1/2 items-center justify-center rounded-full border-4 border-gold-light bg-navy-dark text-center sm:flex">

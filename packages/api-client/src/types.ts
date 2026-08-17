@@ -785,10 +785,15 @@ export interface BlogPostSummaryOut {
   author_name: string;
   views: number;
   comment_count: number;
+  reading_minutes: number;
   published_at?: string | null;
   translation_language_codes: string[];
   created_at: string;
   updated_at: string;
+}
+
+export interface BlogPostCountOut {
+  total: number;
 }
 
 export interface BlogPostOut extends BlogPostSummaryOut {
@@ -862,6 +867,41 @@ export interface BlogCommentModerate {
 
 export interface BlogCommentReplyCreate {
   body: string;
+}
+
+// ---- Contact --------------------------------------------------------------
+
+export type ContactTopic =
+  | "booking"
+  | "refund"
+  | "invoice"
+  | "stay_issue"
+  | "group"
+  | "press"
+  | "other";
+export type ContactChannel = "email" | "phone" | "whatsapp";
+
+export interface ContactMessageCreate {
+  full_name: string;
+  email: string;
+  phone?: string;
+  booking_reference?: string;
+  topic: ContactTopic;
+  preferred_channel?: ContactChannel;
+  message: string;
+}
+
+export interface ContactMessageOut {
+  id: string;
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  booking_reference?: string | null;
+  topic: string;
+  preferred_channel: string;
+  message: string;
+  status: string;
+  created_at: string;
 }
 
 // ---- CMS ----------------------------------------------------------------

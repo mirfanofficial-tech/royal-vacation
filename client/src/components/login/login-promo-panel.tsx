@@ -1,5 +1,24 @@
-import Image from "next/image";
 import { Tag, Calendar, Heart } from "lucide-react";
+import { PromoImageSlider } from "@/components/shared/promo-image-slider";
+
+const slides = [
+  {
+    src: "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=900&q=80",
+    alt: "Whitewashed staircase overlooking the Santorini caldera",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=900&q=80",
+    alt: "Clifftop infinity pool overlooking the ocean",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=900&q=80",
+    alt: "Resort infinity pool at dusk",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1512100356356-de1b84283e18?auto=format&fit=crop&w=900&q=80",
+    alt: "Seaplane arriving at a tropical island resort",
+  },
+];
 
 const features = [
   {
@@ -26,13 +45,7 @@ export function LoginPromoPanel() {
   return (
     <div className="relative hidden overflow-hidden lg:block">
       <div className="relative h-full min-h-[680px] w-full">
-        <Image
-          src="https://picsum.photos/seed/login-santorini-cliff/900/1000"
-          alt="Cliffside villa terrace at dusk"
-          fill
-          className="object-cover"
-          sizes="480px"
-        />
+        <PromoImageSlider slides={slides} />
         <div className="absolute inset-0 bg-gradient-to-t from-navy-dark/95 via-navy-dark/55 to-navy-dark/30" />
       </div>
 

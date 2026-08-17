@@ -1,25 +1,72 @@
 import Image from "next/image";
 import Link from "next/link";
-import { MessageSquare } from "lucide-react";
+import { ArrowUpRight, MessageSquare } from "lucide-react";
 
 import type { BlogPostSummaryOut } from "@royal-vacation/api-client";
 import { resolveAssetUrl } from "@/lib/api";
-
-function formatDate(iso: string, style: "short" | "long" = "short") {
-  return new Date(iso).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: style,
-    day: "numeric",
-  });
-}
+import { formatBlogDate as formatDate, getAvatarColorClass, getInitials } from "@/lib/blog-format";
 
 export function BlogPostCard({
   post,
   variant = "grid",
 }: {
   post: BlogPostSummaryOut;
-  variant?: "grid" | "minimal" | "compact";
+  variant?: "grid" | "minimal" | "compact" | "journal";
 }) {
+  if (variant === "journal") {
+    return (
+      <Link
+        href={`/blog/${post.slug}`}
+        className="group flex flex-col overflow-hidden rounded-xl border border-border bg-white transition-shadow hover:shadow-md"
+      >
+        <div className="relative aspect-[16/10] w-full overflow-hidden bg-muted">
+          {post.cover_image_url && (
+            <Image
+              src={resolveAssetUrl(post.cover_image_url)}
+              alt={post.title}
+              fill
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+            />
+          )}
+          {post.category_name && (
+            <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-navy shadow-sm">
+              {post.category_name}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-1 flex-col gap-2 p-4">
+          <p className="text-xs text-muted-foreground">
+            {post.published_at && formatDate(post.published_at)}
+            {post.published_at && " · "}
+            {post.reading_minutes} min read
+          </p>
+          <h3 className="line-clamp-2 font-heading text-base font-semibold text-navy group-hover:underline">
+            {post.title}
+          </h3>
+          {post.excerpt && (
+            <p className="line-clamp-2 text-sm text-muted-foreground">{post.excerpt}</p>
+          )}
+          <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${getAvatarColorClass(post.author_name)}`}
+              >
+                {getInitials(post.author_name)}
+              </span>
+              <span className="truncate text-xs font-medium text-foreground">
+                {post.author_name}
+              </span>
+            </div>
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors group-hover:border-navy group-hover:text-navy">
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </span>
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
   if (variant === "compact") {
     return (
       <Link href={`/blog/${post.slug}`} className="group flex items-center gap-3">

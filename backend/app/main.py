@@ -6,6 +6,7 @@ from app.api.routes import (
     auth,
     blog,
     cms,
+    contact,
     health,
     partner,
     profile,
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(blog.router, prefix=f"{prefix}/blog", tags=["blog"])
     app.include_router(cms.router, prefix=f"{prefix}/cms", tags=["cms"])
+    app.include_router(contact.router, prefix=f"{prefix}/contact", tags=["contact"])
 
     app.mount("/static", StaticFiles(directory="static"), name="static")
 

@@ -9,6 +9,8 @@ codebase — cosmetic status only). Comments are only ever shown here once
 `app/api/routes/admin/blog_posts.py`/`blog_categories.py`/`blog_comments.py`.
 """
 
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,12 +21,22 @@ from app.schemas.blog import (
     BlogCategoryOut,
     BlogCommentCreate,
     BlogCommentPublicOut,
+    BlogPostCountOut,
     BlogPostOut,
     BlogPostSummaryOut,
     BlogPostTranslationValue,
 )
 
 router = APIRouter()
+
+_TAG_RE = re.compile(r"<[^>]+>")
+_WORDS_PER_MINUTE = 200
+
+
+def _reading_minutes(content: str) -> int:
+    text = _TAG_RE.sub(" ", content or "")
+    word_count = len(text.split())
+    return max(1, -(-word_count // _WORDS_PER_MINUTE))  # ceil division
 
 
 def _published_filters(query):
@@ -59,6 +71,7 @@ def _to_summary_out(
         author_name=post.author_name,
         views=post.views,
         comment_count=comment_count,
+        reading_minutes=_reading_minutes(post.content),
         published_at=post.published_at,
         created_at=post.created_at,
         updated_at=post.updated_at,
@@ -116,6 +129,7 @@ async def list_public_blog_categories(db: AsyncSession = Depends(get_db)) -> lis
 async def list_public_blog_posts(
     category: str | None = Query(default=None),
     q: str | None = Query(default=None),
+    sort: str = Query(default="latest", pattern="^(latest|views)$"),
     limit: int = Query(default=12, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -136,15 +150,33 @@ async def list_public_blog_posts(
         query = query.where(BlogCategory.slug == category)
     if q:
         query = query.where(BlogPost.title.ilike(f"%{q}%"))
-    query = (
-        query.order_by(BlogPost.published_at.desc().nullslast(), BlogPost.created_at.desc())
-        .limit(limit + 1)
-        .offset(offset)
-    )
+    if sort == "views":
+        query = query.order_by(BlogPost.views.desc(), BlogPost.published_at.desc().nullslast())
+    else:
+        query = query.order_by(BlogPost.published_at.desc().nullslast(), BlogPost.created_at.desc())
+    query = query.limit(limit + 1).offset(offset)
     result = await db.execute(query)
     return [
         _to_summary_out(post, name, slug, count) for post, name, slug, count in result.all()
     ]
+
+
+@router.get("/posts/count", response_model=BlogPostCountOut)
+async def count_public_blog_posts(
+    category: str | None = Query(default=None),
+    q: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> BlogPostCountOut:
+    query = select(func.count(BlogPost.id)).select_from(BlogPost)
+    if category:
+        query = query.outerjoin(BlogCategory, BlogCategory.id == BlogPost.category_id).where(
+            BlogCategory.slug == category
+        )
+    if q:
+        query = query.where(BlogPost.title.ilike(f"%{q}%"))
+    query = _published_filters(query)
+    total = (await db.execute(query)).scalar_one()
+    return BlogPostCountOut(total=total)
 
 
 @router.get("/posts/{slug}", response_model=BlogPostOut)

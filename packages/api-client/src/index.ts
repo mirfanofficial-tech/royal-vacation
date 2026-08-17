@@ -9,10 +9,13 @@ import type {
   BlogCommentModerate,
   BlogCommentPublicOut,
   BlogCommentReplyCreate,
+  BlogPostCountOut,
   BlogPostCreate,
   BlogPostOut,
   BlogPostSummaryOut,
   BlogPostUpdate,
+  ContactMessageCreate,
+  ContactMessageOut,
   ChangePasswordRequest,
   CmsBlockCreate,
   CmsBlockOut,
@@ -469,8 +472,15 @@ export class RoyalVacationApi extends ApiClient {
       list: () => this.get<BlogCategoryOut[]>("/api/v1/blog/categories"),
     },
     posts: {
-      list: (params?: { category?: string; q?: string; limit?: number; offset?: number }) =>
-        this.get<BlogPostSummaryOut[]>("/api/v1/blog/posts", { query: params }),
+      list: (params?: {
+        category?: string;
+        q?: string;
+        sort?: "latest" | "views";
+        limit?: number;
+        offset?: number;
+      }) => this.get<BlogPostSummaryOut[]>("/api/v1/blog/posts", { query: params }),
+      count: (params?: { category?: string; q?: string }) =>
+        this.get<BlogPostCountOut>("/api/v1/blog/posts/count", { query: params }),
       get: (slug: string) => this.get<BlogPostOut>(`/api/v1/blog/posts/${slug}`),
     },
     comments: {
@@ -478,6 +488,13 @@ export class RoyalVacationApi extends ApiClient {
       create: (slug: string, body: BlogCommentCreate) =>
         this.post<BlogCommentPublicOut>(`/api/v1/blog/posts/${slug}/comments`, body),
     },
+  };
+
+  // ---- Public contact --------------------------------------------------------
+
+  contact = {
+    send: (body: ContactMessageCreate) =>
+      this.post<ContactMessageOut>("/api/v1/contact", body),
   };
 
   // ---- Public CMS -----------------------------------------------------------

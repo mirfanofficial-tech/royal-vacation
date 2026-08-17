@@ -12,7 +12,11 @@ read it top to bottom before resuming.
 |---|---|---|
 | 1 | Media Library backend | ✅ Done |
 | 2 | Version History (revisions + restore) | ✅ Done |
-| 3 | Translation workflow (tasks + memory) | ⬜ Not started — next up |
+| 3 | Translation workflow (tasks + memory) | ✅ Done |
+| 4 | Client-side CMS rendering | ⬜ Not started — next up |
+
+*(Phase 3's row was stale — the body below has always documented it as done and
+curl-verified on 2026-08-13; only this table hadn't been updated.)*
 
 Sequencing choice (confirmed by the user): **one phase at a time, review each
 before starting the next** — not a combined big-bang build.
@@ -135,6 +139,64 @@ dockerized Postgres and all four routes were exercised against real data
   lazy-load it after commit. Fixed by re-`select()`ing the task after commit
   (`cms_translations.py` update handler), matching the `cms_pages.py` pattern.
   The roadmap's "always re-select after commit" rule bit again, for real.
+
+## Phase 4 — Client-side CMS rendering (not started)
+
+Phases 1-3 made the CMS module real **on the admin/backend side**. This phase
+is the other half: making the **client app** (`client/`) actually fetch and
+render what admins now author, instead of hardcoded copy. Researched
+2026-08-17 — the picture is more lopsided than expected: only one CMS feature
+has a genuinely live client path today.
+
+**Findings — what's actually wired vs. admin-only, as of 2026-08-17**
+
+| Feature | Backend model | Client consumer today | Gap |
+|---|---|---|---|
+| Pages | `CmsPage`/`CmsPageTranslation` | **Yes** — `client/src/app/pages/[slug]/page.tsx` (`api.cms.pages.get(slug)`, sanitized HTML render, SEO meta) | None — this path is done |
+| SEO Manager | `CmsPage.meta_title`/`meta_description` per `route_path` | **Partial** — `client/src/lib/cms-seo.ts` used by home (`/`) and as a fallback branch in search/property pages | Blog index (`app/blog/page.tsx`) and blog detail (`app/blog/[slug]/page.tsx`) don't call it at all |
+| Menus | `CmsMenu`/`CmsMenuItem` (real, FK'd to pages, `sort_order`) | **No** | Header (`navLinks` from `lib/mock-data.ts`) and Footer (`footerColumns` hardcoded strings) are 100% static, every link `href="#"` except one |
+| Blocks | `CmsBlock` (real: `name`/`slug`/`content`/`block_type`/`location`/`is_active`) | **No** | No client reference anywhere. Pure admin content-authoring primitive today |
+| Banners & Sliders | **No real model** — admin screen (`admin/src/app/(dashboard)/cms/banners/page.tsx`) reads `bannerGroupsSeed`/`slidesSeed` from `admin/src/lib/mock-data.ts` | **No** | This one isn't a client gap yet — it's still mock on the *admin* side too. Needs backend work before it can be a client-rendering task |
+| FAQs | **No backend model found at all** | **No** | Footer has a dead `href="#"` "FAQs" link. Same as Banners — backend doesn't exist yet |
+| Translations | `CmsTranslationTask` + per-entity translation tables (Phase 3) | **No** | `locale-provider.tsx` only stores a currency/language *display* preference in `localStorage` — it never fetches or switches rendered content by language. Real content i18n isn't wired at all |
+| Site Theme | `SiteTheme` (`logo_url`, presumably colors) | **No** (admin sidebar reads it for its own branding, but client doesn't) | Client logo/colors are hardcoded (`components/icons/logo.tsx`, static Tailwind tokens) |
+
+**Proposed sub-phases, ordered by value ÷ effort** (same "one phase at a time,
+review before starting" sequencing as 1-3 — this isn't a mandate to do all of
+4a-4e together):
+
+- **4a — Menus.** Highest visible win for lowest backend effort: the model is
+  already real and complete. Fetch `CmsMenu`/`CmsMenuItem` in `Header`/`Footer`
+  (server components, so a plain `api.cms.menus.get(...)`-style call at render
+  time) and replace the hardcoded `navLinks`/`footerColumns` arrays. Falls back
+  to the existing hardcoded arrays if no menu is configured for that slot, so
+  it's non-breaking.
+- **4b — SEO Manager, full coverage.** Cheapest item on this list: wire the
+  blog index and blog detail pages through the same `cms-seo.ts` helper the
+  home page already uses. No new backend work at all.
+- **4c — Site Theme.** Fetch `SiteTheme` once (layout-level) and drive logo +
+  a small set of CSS custom properties (the `--navy`/`--gold` tokens in
+  `globals.css`) from it, falling back to today's hardcoded values. Bigger
+  than 4a/4b because it touches the global stylesheet, not just one component.
+- **4d — Blocks (as a generic content-slot primitive).** Once there's a real
+  client-side pattern for "fetch a named block by slug, render its HTML" (a
+  small reusable component), this unlocks admin-editable content pockets on
+  otherwise-static pages without new backend work — `CmsBlock` already has
+  everything needed.
+- **4e — Banners & Sliders, FAQs.** These need backend work *first* — neither
+  has a real model yet, only admin-side mock data. Two options worth deciding
+  between rather than assuming: (a) give each its own table+model (more
+  correct, more work), or (b) reuse `CmsBlock` with `block_type='banner'` /
+  `block_type='faq'` (less new schema, matches how the roadmap has generally
+  preferred reusing existing primitives over adding tables — see the "already
+  decided" section above). Only after that exists does a client renderer make
+  sense.
+- **Real content i18n** (client actually switching rendered CMS/blog content
+  by `locale-provider`'s selected language, not just currency/language
+  *display*) is explicitly **not** in this list — it's a materially bigger
+  effort (every content-rendering component needs a translation-aware fetch
+  path) and wasn't asked for. Flagging it here so it isn't assumed to be part
+  of "implement CMS on the client" by default.
 
 ## Other things from the original schema that were explicitly dropped (not deferred)
 

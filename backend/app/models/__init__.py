@@ -1,5 +1,6 @@
 from app.models.base import Base
 from app.models.blog import BlogCategory, BlogComment, BlogPost, BlogPostTranslation
+from app.models.contact import ContactMessage
 from app.models.cms import (
     CmsBlock,
     CmsContentRevision,
@@ -45,6 +46,7 @@ __all__ = [
     "CmsPage",
     "CmsPageTranslation",
     "CmsTranslationTask",
+    "ContactMessage",
     "Country",
     "Currency",
     "Language",

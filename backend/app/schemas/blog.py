@@ -59,10 +59,15 @@ class BlogPostSummaryOut(BaseModel):
     author_name: str
     views: int
     comment_count: int = 0
+    reading_minutes: int = 1
     published_at: datetime | None = None
     translation_language_codes: list[str] = []
     created_at: datetime
     updated_at: datetime
+
+
+class BlogPostCountOut(BaseModel):
+    total: int
 
 
 class BlogPostOut(BlogPostSummaryOut):

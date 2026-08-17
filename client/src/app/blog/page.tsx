@@ -1,14 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Breadcrumb } from "@/components/shared/breadcrumb";
+import { TrustBadgesRow } from "@/components/login/trust-badges-row";
+import { NewsletterBanner } from "@/components/search/newsletter-banner";
 import { BlogPostCard } from "@/components/blog/blog-post-card";
+import { JournalHero } from "@/components/blog/journal-hero";
+import { EditorsPick } from "@/components/blog/editors-pick";
+import { TrendingSection } from "@/components/blog/trending-section";
+import { JournalPagination } from "@/components/blog/journal-pagination";
+import { SortSelect } from "@/components/blog/sort-select";
 import { api } from "@/lib/api";
 
 const PAGE_SIZE = 12;
+const LATEST_COUNT = 8;
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -35,28 +42,36 @@ export default async function BlogIndexPage({
   const params = await searchParams;
   const category = firstParam(params.category) ?? "";
   const q = firstParam(params.q) ?? "";
+  const sort = firstParam(params.sort) === "views" ? "views" : "latest";
   const page = Math.max(1, Number(firstParam(params.page) ?? "1") || 1);
   const offset = (page - 1) * PAGE_SIZE;
+  const showEditorial = !category && !q && page === 1;
 
-  const [categories, posts] = await Promise.all([
+  const [categories, total, posts, highlights] = await Promise.all([
     api.blog.categories.list().catch(() => []),
+    api.blog.posts.count({ category: category || undefined, q: q || undefined }).catch(() => ({ total: 0 })),
     api.blog.posts
-      .list({
-        category: category || undefined,
-        q: q || undefined,
-        limit: PAGE_SIZE,
-        offset,
-      })
+      .list({ category: category || undefined, q: q || undefined, sort, limit: PAGE_SIZE, offset })
       .catch(() => []),
+    showEditorial
+      ? api.blog.posts.list({ sort: "views", limit: 4 }).catch(() => [])
+      : Promise.resolve([]),
   ]);
 
-  const hasNextPage = posts.length > PAGE_SIZE;
   const visiblePosts = posts.slice(0, PAGE_SIZE);
+  const latestPosts = visiblePosts.slice(0, LATEST_COUNT);
+  const morePosts = visiblePosts.slice(LATEST_COUNT, PAGE_SIZE);
+
+  const editorsPick = highlights[0];
+  const trending = editorsPick
+    ? highlights.filter((post) => post.id !== editorsPick.id).slice(0, 3)
+    : [];
 
   function pageHref(nextPage: number) {
     const sp = new URLSearchParams();
     if (category) sp.set("category", category);
     if (q) sp.set("q", q);
+    if (sort !== "latest") sp.set("sort", sort);
     if (nextPage > 1) sp.set("page", String(nextPage));
     const qs = sp.toString();
     return qs ? `/blog?${qs}` : "/blog";
@@ -66,6 +81,7 @@ export default async function BlogIndexPage({
     const sp = new URLSearchParams();
     if (slug) sp.set("category", slug);
     if (q) sp.set("q", q);
+    if (sort !== "latest") sp.set("sort", sort);
     const qs = sp.toString();
     return qs ? `/blog?${qs}` : "/blog";
   }
@@ -77,14 +93,25 @@ export default async function BlogIndexPage({
         <div className="mx-auto max-w-[1400px] px-6 py-6 lg:px-10">
           <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Blog" }]} />
 
-          <div className="mt-4 mb-6">
-            <h1 className="font-heading text-3xl font-bold text-navy">Royal Vacation Blog</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Travel guides, tips and stories from our team.
-            </p>
+          <div className="mt-4">
+            <JournalHero
+              articleCount={total.total}
+              categoryCount={categories.length}
+              category={category}
+              q={q}
+            />
           </div>
 
-          <div className="mb-6 flex flex-wrap items-center gap-3">
+          {showEditorial && editorsPick && (
+            <div className="mt-8">
+              <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                Editor&apos;s pick
+              </p>
+              <EditorsPick post={editorsPick} />
+            </div>
+          )}
+
+          <div className="mt-8 mb-6 flex flex-wrap items-center gap-3">
             <div className="flex flex-wrap gap-2">
               <Link
                 href={categoryHref("")}
@@ -94,7 +121,7 @@ export default async function BlogIndexPage({
                     : "border-border bg-white text-muted-foreground hover:text-navy"
                 }`}
               >
-                All
+                All stories
               </Link>
               {categories.map((cat) => (
                 <Link
@@ -111,66 +138,81 @@ export default async function BlogIndexPage({
               ))}
             </div>
 
-            <form action="/blog" method="get" className="ml-auto flex w-full max-w-xs items-center">
-              {category && <input type="hidden" name="category" value={category} />}
-              <div className="relative w-full">
-                <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="text"
-                  name="q"
-                  defaultValue={q}
-                  placeholder="Search articles…"
-                  className="w-full rounded-full border border-border bg-white py-2 pr-3 pl-9 text-sm outline-none focus:border-navy"
-                />
-              </div>
-            </form>
+            <div className="ml-auto">
+              <SortSelect category={category || undefined} q={q || undefined} value={sort} />
+            </div>
           </div>
 
-          {visiblePosts.length === 0 ? (
-            <div className="rounded-xl border border-border bg-white px-6 py-16 text-center text-sm text-muted-foreground">
+          <div className="mb-2 flex items-baseline justify-between">
+            <h2 className="font-heading text-xl font-bold text-navy">Latest stories</h2>
+            <p className="text-sm text-muted-foreground">
+              Fresh from the road, updated every week
+            </p>
+          </div>
+
+          {latestPosts.length === 0 ? (
+            <div className="mt-4 rounded-xl border border-border bg-white px-6 py-16 text-center text-sm text-muted-foreground">
               No articles found.
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {visiblePosts.map((post) => (
-                <BlogPostCard key={post.id} post={post} variant="grid" />
+            <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {latestPosts.map((post) => (
+                <BlogPostCard key={post.id} post={post} variant="journal" />
               ))}
             </div>
           )}
 
-          {(page > 1 || hasNextPage) && (
-            <div className="mt-8 flex items-center justify-center gap-3">
-              {page > 1 ? (
-                <Link
-                  href={pageHref(page - 1)}
-                  className="flex items-center gap-1 rounded-full border border-border bg-white px-4 py-2 text-sm font-medium text-navy hover:bg-muted"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Link>
-              ) : (
-                <span className="flex items-center gap-1 rounded-full border border-border bg-muted px-4 py-2 text-sm font-medium text-muted-foreground opacity-50">
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </span>
-              )}
-              <span className="text-sm text-muted-foreground">Page {page}</span>
-              {hasNextPage ? (
-                <Link
-                  href={pageHref(page + 1)}
-                  className="flex items-center gap-1 rounded-full border border-border bg-white px-4 py-2 text-sm font-medium text-navy hover:bg-muted"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Link>
-              ) : (
-                <span className="flex items-center gap-1 rounded-full border border-border bg-muted px-4 py-2 text-sm font-medium text-muted-foreground opacity-50">
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </span>
-              )}
+          {trending.length > 0 && (
+            <div className="mt-10">
+              <TrendingSection posts={trending} />
             </div>
           )}
+
+          {morePosts.length > 0 && (
+            <div className="mt-10">
+              <div className="mb-4 flex items-baseline justify-between">
+                <div>
+                  <h2 className="font-heading text-xl font-bold text-navy">
+                    More from the journal
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Guides, reviews and slow reads worth saving
+                  </p>
+                </div>
+                <Link
+                  href="/blog"
+                  className="text-sm font-medium text-navy hover:underline"
+                >
+                  See archive →
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {morePosts.map((post) => (
+                  <BlogPostCard key={post.id} post={post} variant="journal" />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {visiblePosts.length > 0 && (
+            <div className="mt-10">
+              <JournalPagination
+                currentPage={page}
+                pageSize={PAGE_SIZE}
+                totalItems={total.total}
+                visibleCount={visiblePosts.length}
+                buildHref={pageHref}
+              />
+            </div>
+          )}
+
+          <div className="mt-10">
+            <NewsletterBanner />
+          </div>
+
+          <div className="mt-10">
+            <TrustBadgesRow variant="plain" />
+          </div>
         </div>
       </main>
       <Footer />

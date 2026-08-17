@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  Crown,
   Bed,
   Plane,
   Car,
@@ -10,6 +9,7 @@ import {
   Menu,
   Heart,
 } from "lucide-react";
+import { Logo } from "@/components/icons/logo";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -22,45 +22,53 @@ import {
 import { navLinks } from "@/lib/mock-data";
 import { WishlistLink } from "@/components/layout/wishlist-link";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
+import { api } from "@/lib/api";
 
-const navIcons = {
-  bed: Bed,
-  plane: Plane,
-  car: Car,
-  ticket: FerrisWheel,
-  taxi: CarTaxiFront,
+// CMS menu items have no icon field, so icons are matched by label. Any
+// admin-added item whose label isn't recognized falls back to CircleHelp.
+const iconsByLabel: Record<string, typeof Bed> = {
+  stays: Bed,
+  flights: Plane,
+  cars: Car,
+  attractions: FerrisWheel,
+  "airport taxis": CarTaxiFront,
 };
 
-export function Header() {
+function iconFor(label: string) {
+  return iconsByLabel[label.toLowerCase()] ?? CircleHelp;
+}
+
+export async function Header() {
+  const menu = await api.cms.menus.get("header-main").catch(() => null);
+  const items = menu
+    ? menu.items.map((item) => ({
+        id: item.id,
+        label: item.label,
+        href: item.page_slug ? `/pages/${item.page_slug}` : (item.url ?? "#"),
+      }))
+    : navLinks.map((link) => ({ id: link.id, label: link.label, href: "#" }));
+
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background">
       <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-10 py-3 sm:px-10 lg:gap-6 lg:px-24">
         <Link href="/" className="flex items-center gap-2 shrink-0">
-          <Crown className="h-7 w-7 text-gold sm:h-8 sm:w-8" strokeWidth={1.75} />
-          <span className="flex flex-col leading-none">
-            <span className="font-heading text-lg font-bold tracking-wide text-navy sm:text-xl">
-              ROYAL
-            </span>
-            <span className="text-[9px] font-semibold tracking-[0.3em] text-gold sm:text-[10px]">
-              VACATION
-            </span>
-          </span>
+          <Logo className="h-8 w-auto sm:h-10" />
         </Link>
 
         <nav className="hidden items-center gap-6 lg:flex xl:gap-8">
-          {navLinks.map((link, index) => {
-            const Icon = navIcons[link.icon];
+          {items.map((item, index) => {
+            const Icon = iconFor(item.label);
             const active = index === 0;
             return (
               <Link
-                key={link.id}
-                href="#"
+                key={item.id}
+                href={item.href}
                 className={`flex flex-col items-center gap-1 text-xs font-medium transition-colors ${
                   active ? "text-navy" : "text-muted-foreground hover:text-navy"
                 }`}
               >
                 <Icon className="h-5 w-5" strokeWidth={1.75} />
-                {link.label}
+                {item.label}
                 <span
                   className={`h-1 w-1 rounded-full ${active ? "bg-navy" : "bg-transparent"}`}
                 />
@@ -104,29 +112,21 @@ export function Header() {
             <SheetContent side="right" className="w-full sm:max-w-xs">
               <SheetHeader className="border-b border-border">
                 <SheetTitle className="flex items-center gap-2">
-                  <Crown className="h-6 w-6 text-gold" strokeWidth={1.75} />
-                  <span className="flex flex-col leading-none">
-                    <span className="font-heading text-base font-bold text-navy">
-                      ROYAL
-                    </span>
-                    <span className="text-[8px] font-semibold tracking-[0.3em] text-gold">
-                      VACATION
-                    </span>
-                  </span>
+                  <Logo className="h-6 w-auto" />
                 </SheetTitle>
               </SheetHeader>
 
               <nav className="flex flex-col gap-1 px-4">
-                {navLinks.map((link, index) => {
-                  const Icon = navIcons[link.icon];
+                {items.map((item, index) => {
+                  const Icon = iconFor(item.label);
                   const active = index === 0;
                   return (
                     <SheetClose
-                      key={link.id}
+                      key={item.id}
                       nativeButton={false}
                       render={
                         <Link
-                          href="#"
+                          href={item.href}
                           className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                             active
                               ? "bg-navy/10 text-navy"
@@ -136,7 +136,7 @@ export function Header() {
                       }
                     >
                       <Icon className="h-4.5 w-4.5" strokeWidth={1.75} />
-                      {link.label}
+                      {item.label}
                     </SheetClose>
                   );
                 })}
