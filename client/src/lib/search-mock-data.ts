@@ -1,5 +1,7 @@
 export type SearchProperty = {
   id: string;
+  lat: number;
+  lng: number;
   badge?: { label: string; tone: "bestseller" | "discount" };
   image: string;
   thumbnails: string[];
@@ -27,6 +29,8 @@ export type SearchProperty = {
 export const searchProperties: SearchProperty[] = [
   {
     id: "burj-al-arab",
+    lat: 25.1412,
+    lng: 55.1853,
     badge: { label: "Best Seller", tone: "bestseller" },
     image: "https://picsum.photos/seed/dubai-burj-al-arab/560/380",
     thumbnails: [
@@ -56,6 +60,8 @@ export const searchProperties: SearchProperty[] = [
   },
   {
     id: "atlantis-the-palm",
+    lat: 25.1304,
+    lng: 55.1171,
     image: "https://picsum.photos/seed/dubai-atlantis-palm/560/380",
     thumbnails: [
       "https://picsum.photos/seed/dubai-atlantis-1/140/100",
@@ -84,6 +90,8 @@ export const searchProperties: SearchProperty[] = [
   },
   {
     id: "address-downtown",
+    lat: 25.1932,
+    lng: 55.2794,
     image: "https://picsum.photos/seed/dubai-address-downtown/560/380",
     thumbnails: [
       "https://picsum.photos/seed/dubai-address-1/140/100",
@@ -110,6 +118,8 @@ export const searchProperties: SearchProperty[] = [
   },
   {
     id: "rove-downtown",
+    lat: 25.1916,
+    lng: 55.2799,
     image: "https://picsum.photos/seed/dubai-rove-downtown/560/380",
     thumbnails: [
       "https://picsum.photos/seed/dubai-rove-1/140/100",
@@ -193,27 +203,20 @@ export const cancellationFilters: CountFilter[] = [
 ];
 
 export const mapPins = [
-  { id: "pin-1", price: "PKR 71,920", top: "28%", left: "38%", highlight: true },
-  { id: "pin-2", price: "PKR 52,700", top: "18%", left: "68%" },
-  { id: "pin-3", price: "PKR 43,200", top: "52%", left: "22%" },
-  { id: "pin-4", price: "PKR 26,010", top: "62%", left: "58%" },
-  { id: "pin-5", price: "PKR 34,900", top: "72%", left: "78%" },
+  { id: "burj-al-arab", price: "PKR 71,920", lat: 25.1412, lng: 55.1853 },
+  { id: "atlantis-the-palm", price: "PKR 52,700", lat: 25.1304, lng: 55.1171 },
+  { id: "address-downtown", price: "PKR 43,200", lat: 25.1932, lng: 55.2794 },
+  { id: "rove-downtown", price: "PKR 26,010", lat: 25.1916, lng: 55.2799 },
+  { id: "pin-5", price: "PKR 34,900", lat: 25.2124, lng: 55.2841 },
 ];
 
-export const propertyMapPositions: Record<string, { top: string; left: string }> = {
-  "burj-al-arab": { top: "34%", left: "44%" },
-  "atlantis-the-palm": { top: "20%", left: "22%" },
-  "address-downtown": { top: "56%", left: "62%" },
-  "rove-downtown": { top: "62%", left: "58%" },
-};
-
 export const decorativeMapPins = [
-  { id: "amb-1", price: "PKR 33,400", top: "16%", left: "76%" },
-  { id: "amb-2", price: "PKR 43,500", top: "40%", left: "80%" },
-  { id: "amb-3", price: "PKR 38,700", top: "50%", left: "72%" },
-  { id: "amb-4", price: "PKR 31,100", top: "36%", left: "92%" },
-  { id: "amb-5", price: "PKR 22,300", top: "70%", left: "76%" },
-  { id: "amb-6", price: "PKR 34,000", top: "80%", left: "18%" },
+  { id: "amb-1", price: "PKR 33,400", lat: 25.1598, lng: 55.2891 },
+  { id: "amb-2", price: "PKR 43,500", lat: 25.2088, lng: 55.2715 },
+  { id: "amb-3", price: "PKR 38,700", lat: 25.2261, lng: 55.3301 },
+  { id: "amb-4", price: "PKR 31,100", lat: 25.2561, lng: 55.3317 },
+  { id: "amb-5", price: "PKR 22,300", lat: 25.1231, lng: 55.2121 },
+  { id: "amb-6", price: "PKR 34,000", lat: 25.1181, lng: 55.2511 },
 ];
 
 export const whyBookFeatures = [

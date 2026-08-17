@@ -31,23 +31,24 @@ export function SearchResultsBar({
     defaultCheckOut ?? new Date(2026, 0, 23)
   );
   const [adults, setAdults] = useState(defaultAdults);
+  const [children, setChildren] = useState(0);
   const [rooms, setRooms] = useState(defaultRooms);
 
   return (
     <div className="bg-navy">
-      <div className="mx-auto max-w-[1400px] px-6 py-4 lg:px-10">
-        <div className="grid w-full grid-cols-1 gap-3 rounded-2xl bg-white p-3 md:grid-cols-[1.3fr_1fr_1fr_auto] md:gap-0 md:divide-x md:divide-border md:rounded-full md:p-2">
+      <div className="mx-auto max-w-[1400px] px-10 py-4 lg:px-24">
+        <div className="grid w-full grid-cols-1 gap-3 rounded-2xl p-3 md:grid-cols-[1.3fr_1fr_1fr_auto] md:gap-0 md:rounded-full md:p-2">
           <div className="flex items-center gap-2 px-4 py-2">
             <div className="flex flex-1 flex-col gap-1">
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                <MapPin className="h-3.5 w-3.5 text-navy" />
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-white">
+                <MapPin className="h-3.5 w-3.5 text-gold-light" />
                 Destination
               </label>
               <input
                 value={destination}
                 onChange={(e) => setDestination(e.target.value)}
                 placeholder="Search for destination, property or city"
-                className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/50"
               />
             </div>
             {destination && (
@@ -55,7 +56,7 @@ export function SearchResultsBar({
                 type="button"
                 aria-label="Clear destination"
                 onClick={() => setDestination("")}
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white/70 hover:bg-white/10"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -68,18 +69,21 @@ export function SearchResultsBar({
             checkOut={checkOut}
             onCheckInChange={setCheckIn}
             onCheckOutChange={setCheckOut}
-            triggerClassName="px-4 py-2"
+            triggerClassName="border-l border-white/20 px-4 py-2"
+            labelClassName="text-white"
+            valueClassName="text-white/80"
             numberOfMonths={2}
           />
 
           <Popover>
-            <PopoverTrigger className="flex flex-col items-start gap-1 px-4 py-2 text-left">
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                <Users className="h-3.5 w-3.5 text-navy" />
+            <PopoverTrigger className="flex flex-col items-start gap-1 border-l border-white/20 px-4 py-2 text-left">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-white">
+                <Users className="h-3.5 w-3.5 text-gold-light" />
                 Guests &amp; Rooms
               </span>
-              <span className="text-sm text-muted-foreground">
-                {adults} adults &middot; {rooms} room{rooms > 1 ? "s" : ""}
+              <span className="text-sm text-white/80">
+                {adults} adult{adults > 1 ? "s" : ""} &middot; {children} child
+                {children === 1 ? "" : "ren"} &middot; {rooms} room{rooms > 1 ? "s" : ""}
               </span>
             </PopoverTrigger>
             <PopoverContent className="w-64 space-y-4" align="start">
@@ -97,6 +101,26 @@ export function SearchResultsBar({
                   <button
                     type="button"
                     onClick={() => setAdults((v) => v + 1)}
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-border hover:bg-muted"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Children</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setChildren((v) => Math.max(0, v - 1))}
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-border hover:bg-muted"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="w-4 text-center text-sm">{children}</span>
+                  <button
+                    type="button"
+                    onClick={() => setChildren((v) => v + 1)}
                     className="flex h-7 w-7 items-center justify-center rounded-full border border-border hover:bg-muted"
                   >
                     <Plus className="h-3.5 w-3.5" />
@@ -127,7 +151,7 @@ export function SearchResultsBar({
           </Popover>
 
           <div className="flex items-center px-1 py-1 md:py-0">
-            <Button className="h-12 w-full gap-2 rounded-full bg-gold px-6 text-navy-dark hover:bg-gold-light md:w-auto">
+            <Button className="h-10 w-full gap-2 rounded-[10px] bg-white px-6 text-navy hover:bg-white/90 md:h-10 md:w-auto">
               <Search className="h-4 w-4" />
               Search
             </Button>

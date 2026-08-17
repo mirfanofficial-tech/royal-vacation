@@ -108,6 +108,7 @@ const navItems: NavItem[] = [
       { href: "/cms/media", label: "Media Library", icon: Images, module: "cms" },
       { href: "/cms/blocks", label: "Blocks", icon: Layers, module: "cms" },
       { href: "/cms/menus", label: "Menus", icon: List, module: "cms" },
+      { href: "/cms/translations", label: "Translations", icon: Languages, module: "cms" },
       { href: "/cms/banners", label: "Banners & Sliders", icon: GalleryHorizontal, module: "cms" },
       { href: "/cms/faqs", label: "FAQs", icon: HelpCircle, module: "cms" },
       { href: "/cms/seo", label: "SEO Manager", icon: Search, module: "cms" },

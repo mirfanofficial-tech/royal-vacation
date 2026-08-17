@@ -1,7 +1,18 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, Text, Uuid, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Text,
+    Uuid,
+    text,
+)
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -171,4 +182,50 @@ class CmsContentRevision(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
     snapshot: Mapped[object] = mapped_column(JSONB, nullable=False)
     created_by: Mapped[str] = mapped_column(
         Text, server_default=text("'Royal Vacation Admin'"), nullable=False
+    )
+
+
+class CmsTranslationTask(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
+    """Lightweight "translate entity X into language Y" flag (Phase 3).
+
+    No assignee/reviewer/quality-score columns — this is a flag-as-needed
+    tracker, not an assignment workflow. Polymorphic `entity_type` +
+    `entity_id` (no FK) mirrors `cms_content_revisions`, spanning cms_pages
+    and blog_posts. A partial unique index keeps at most one *active*
+    (requested) task per entity+language.
+    """
+
+    __tablename__ = "cms_translation_tasks"
+
+    entity_type: Mapped[str] = mapped_column(Text, nullable=False)
+    entity_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    target_language_code: Mapped[str] = mapped_column(
+        ForeignKey("languages.code", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(
+        Text, server_default=text("'requested'"), nullable=False
+    )
+    requested_by: Mapped[str] = mapped_column(
+        Text, server_default=text("'Royal Vacation Admin'"), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "entity_type IN ('cms_page','blog_post')",
+            name="cms_translation_tasks_entity_type_check",
+        ),
+        CheckConstraint(
+            "status IN ('requested','done','cancelled')",
+            name="cms_translation_tasks_status_check",
+        ),
+        Index(
+            "uq_cms_translation_tasks_active",
+            "entity_type",
+            "entity_id",
+            "target_language_code",
+            unique=True,
+            postgresql_where=text("status = 'requested'"),
+        ),
+        Index("idx_cms_translation_tasks_entity", "entity_type", "entity_id"),
+        Index("idx_cms_translation_tasks_status", "status"),
     )

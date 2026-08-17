@@ -7,9 +7,9 @@ export function GeniusInlineBanner() {
       <div className="flex items-start gap-3 sm:items-center">
         <Crown className="mt-0.5 h-5 w-5 shrink-0 text-gold sm:mt-0" />
         <p className="text-sm text-foreground">
-          <span className="font-semibold text-navy">Unlock exclusive discounts with Genius</span>{" "}
+          <span className="font-semibold text-navy">Unlock exclusive discounts with Loyality</span>{" "}
           <span className="ml-1 rounded bg-gold px-1.5 py-0.5 text-[10px] font-bold text-navy-dark">
-            Genius
+            Loyality
           </span>
           <br className="hidden sm:block" />
           Sign in and save up to 20% on selected properties in Dubai

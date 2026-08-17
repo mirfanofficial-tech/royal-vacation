@@ -11,6 +11,7 @@ import {
   Eye,
   History,
   ImagePlus,
+  Languages,
   Loader2,
   RotateCcw,
   Save,
@@ -22,6 +23,7 @@ import type { BlogPostOut, BlogPostStatus, BlogPostUpdate } from "@royal-vacatio
 import { ApiError, resolveAssetUrl } from "@/lib/api";
 import { useBlogCategories, useBlogPosts, useBlogPostRevisions } from "@/lib/blog";
 import { useLanguages } from "@/lib/reference";
+import { useEntityTranslationTasks } from "@/lib/translations";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -97,6 +99,12 @@ export function BlogEditor({ post }: { post: BlogPostOut }) {
   const { categories } = useBlogCategories();
   const { updatePost, uploadCoverImage } = useBlogPosts();
   const { languages } = useLanguages();
+  const {
+    tasks: translationTasks,
+    isLoading: translationTasksLoading,
+    requestTranslation,
+    isMutating: isRequestingTranslation,
+  } = useEntityTranslationTasks("blog_post", post.id);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const {
     revisions,
@@ -148,6 +156,7 @@ export function BlogEditor({ post }: { post: BlogPostOut }) {
   const [autosaving, setAutosaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [saveError, setSaveError] = useState("");
+  const [translationError, setTranslationError] = useState("");
   const [saved, setSaved] = useState(false);
 
   function markDirty() {
@@ -401,8 +410,41 @@ export function BlogEditor({ post }: { post: BlogPostOut }) {
           {1 + Object.values(translations).filter((t) => t.title.trim()).length} of{" "}
           {activeLanguages.length} languages have content
         </span>
-        <Button variant="outline" size="sm" disabled title="Coming soon">
-          Request translation
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={
+            activeLanguage === "en" ||
+            isRequestingTranslation ||
+            translationTasksLoading ||
+            translationTasks.some(
+              (t) => t.target_language_code === activeLanguage && t.status === "requested"
+            )
+          }
+          onClick={async () => {
+            setTranslationError("");
+            try {
+              await requestTranslation(activeLanguage);
+            } catch (err) {
+              setTranslationError(errorMessage(err, "Couldn't request a translation."));
+            }
+          }}
+          title={
+            activeLanguage === "en"
+              ? "Select a target language pill to flag it for translation."
+              : undefined
+          }
+        >
+          {isRequestingTranslation ? (
+            <Loader2 data-icon="inline-start" className="animate-spin" />
+          ) : (
+            <Languages data-icon="inline-start" />
+          )}
+          {translationTasks.some(
+            (t) => t.target_language_code === activeLanguage && t.status === "requested"
+          )
+            ? "Requested"
+            : "Request translation"}
         </Button>
       </div>
 
@@ -410,6 +452,12 @@ export function BlogEditor({ post }: { post: BlogPostOut }) {
         <div className="flex items-center gap-1.5 border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-xs text-destructive">
           <AlertTriangle className="size-3.5 shrink-0" />
           {saveError}
+        </div>
+      )}
+      {translationError && (
+        <div className="flex items-center gap-1.5 border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-xs text-destructive">
+          <AlertTriangle className="size-3.5 shrink-0" />
+          {translationError}
         </div>
       )}
 

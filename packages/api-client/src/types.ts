@@ -1096,3 +1096,30 @@ export interface RevisionSummaryOut {
 export interface RevisionOut extends RevisionSummaryOut {
   snapshot: Record<string, unknown>;
 }
+
+// ---- CMS Translation Tasks --------------------------------------------
+
+export type TranslationTaskEntityType = "cms_page" | "blog_post";
+export type TranslationTaskStatus = "requested" | "done" | "cancelled";
+
+export interface TranslationTaskCreate {
+  entity_type: TranslationTaskEntityType;
+  entity_id: string;
+  target_language_code: string;
+}
+
+export interface TranslationTaskUpdate {
+  status: TranslationTaskStatus;
+}
+
+export interface TranslationTaskOut {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  entity_title?: string | null;
+  target_language_code: string;
+  status: string;
+  requested_by: string;
+  created_at: string;
+  updated_at: string;
+}

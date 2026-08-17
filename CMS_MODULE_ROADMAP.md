@@ -68,52 +68,73 @@ a "History" button in both the Page Builder and Blog Editor toolbars. Plain
 side-by-side compare view, no diff-highlighting library (user's choice — no
 new dependency).
 
-## Phase 3 — Translation workflow (not started)
+## Phase 3 — Translation workflow (done)
 
-**This is the next phase.** It has not been planned yet — start a fresh Claude
-plan-mode session for it rather than assuming the shape below is final; this
-is just the context gathered so far so planning doesn't start from zero.
+Lightweight "flag as needed" tracker (per the user's scoping answers): a
+translation task is just `entity + target language + status`, no assignee /
+inbox / reviewer / quality-score workflow, and **`cms_translation_memory` was
+dropped** as premature infrastructure for a single-admin-team app.
 
-**Scope, from the user's original schema**: `cms_translation_tasks`
-(assignment/review workflow — source/target language, status, assignee,
-reviewer, quality score) + `cms_translation_memory` (reusable
-previously-translated strings, to reduce repeat translation work). No
-existing frontend concept for this anywhere in the app.
+**Backend** (`backend/sql/027_cms_translation_tasks.sql` +
+`backend/app/models/cms.py` `CmsTranslationTask` +
+`backend/app/schemas/cms_translation.py` +
+`backend/app/api/routes/admin/cms_translations.py`, registered under
+`prefix="/cms/translations"`):
+- Polymorphic `entity_type` CHECK `('cms_page','blog_post')` + `entity_id`
+  (same pattern as `cms_content_revisions`), `target_language_code` FK →
+  `languages(code)` ON DELETE CASCADE, `status` CHECK
+  `('requested','done','cancelled')`, `requested_by` (real identity via
+  `Depends(require_admin)`, `current_user.display_name or current_user.email`),
+  `created_at`/`updated_at` + `set_updated_at()` trigger.
+- Partial unique index `uq_cms_translation_tasks_active` — one active
+  `requested` task per (entity_type, entity_id, target_language_code). A
+  duplicate request returns 409; `en` and inactive languages return 400; a
+  missing entity returns 404.
+- `TranslationTaskOut.entity_title` is resolved at read time via two LEFT
+  JOINs to `CmsPage`/`BlogPost` (not denormalized).
+- Existing `cms` module permissions gate the routes; no new RBAC module.
 
-**Known context for planning:**
-- There's a **pre-built UI entry point**: the Blog Editor's Translations bar
-  has a disabled `"Request translation"` button
-  (`admin/src/components/blog-editor/blog-editor.tsx`, in the row with the
-  per-language pills, `title="Coming soon"`) — this is the natural hook-in
-  point rather than inventing a new UI slot from scratch. The CMS Page
-  Builder has no equivalent stub yet, so decide whether it needs one too.
-- No RBAC "translations" module exists yet
-  (`dashboard, properties, bookings, guests, modules, cms, blog, reports,
-  payments, settings, roles, stays` is the current full list, defined in
-  `backend/sql/003_role_permissions.sql` + `004_permissions.sql` + mirrored in
-  `packages/api-client/src/types.ts`'s `PermissionModule` union) — decide
-  whether translation tasks piggyback on `cms`/`blog`'s existing permission
-  checks or need a new module registered (new migration extending both CHECK
-  constraints + the TS union).
-- Next available migration number: **`027`** (last used: `026_cms_content_revisions.sql`).
-- No `AlertDialog`/`ConfirmDialog` component exists anywhere in this codebase
-  — every destructive action uses a plain `window.confirm()`. Keep using that
-  convention rather than introducing a modal component.
-- Real identity capture (`current_user.display_name or current_user.email`)
-  was threaded into `cms_pages.py`/`blog_posts.py`'s update handlers in Phase
-  2 for `created_by` on revisions — reuse the same `Depends(require_admin)`
-  pattern for "assigned_to"/"translated_by"/"reviewed_by" on translation
-  tasks so this feature doesn't fall back to free-text/static defaults like
-  most of the rest of the app does.
-- Questions worth asking the user before designing this phase: is this a
-  real assignment workflow (pick a translator, they get a queue, mark
-  done, someone reviews) or a lighter "flag this page/post as needing
-  translation into X" tracker? The former is a meaningfully bigger UI build
-  (a translation-tasks inbox screen, likely under a new nav item) than the
-  latter (a few buttons + a badge). Also worth confirming whether
-  `cms_translation_memory` (reusable string suggestions) is worth building at
-  all for a single-admin-team app of this size, versus dropping it as
-  premature infrastructure.
+**Frontend** (`packages/api-client` types + methods;
+`admin/src/lib/translations.ts`; `admin/src/lib/roles.ts`):
+- `useTranslationTasks()` — list + `requestTranslation`/`updateTask`/
+  `deleteTask` mutations (full-screen list used by the Translations admin
+  screen). `useEntityTranslationTasks()` — per-entity list + inline request,
+  used by both editors for the toolbar button state.
+- "Request translation" now works in **both** the Blog Editor and the Page
+  Builder toolbars (replaces the old disabled `title="Coming soon"` stub):
+  disabled for the source language `en`, when a request for that language is
+  already pending, or while a request is in flight; shows a `Languages` icon
+  and "Requested" when pending.
+
+**Translations admin screen** (`admin/src/app/(dashboard)/cms/translations/page.tsx`,
+nav item added to `admin-sidebar.tsx` next to the other CMS items):
+- Status tabs (All / Requested / Done / Cancelled) with counts, a table of
+  tasks with entity badge + title (links to the page/post editor), target
+  language (native name from `useLanguages`), status badge, requester,
+  relative time, and a per-row actions menu: mark done / cancel / re-open /
+  delete (delete uses the codebase's `window.confirm()` convention — no modal
+  component was introduced).
+
+**Scope notes**: target languages come from the existing `languages` table
+(sources are English-only), requests gate on `cms` edit/delete permissions,
+and the CMS dashboard hub is still mock data — it was not wired to real
+translation counts.
+
+**Applied & verified end-to-end (2026-08-13)** — `027` is live on the
+dockerized Postgres and all four routes were exercised against real data
+(login as `admin@royalvacation.com` / `admin12345`):
+- 201 create (page→ar, post→fr) with `entity_title` resolved and
+  `requested_by` = acting admin; 409 on duplicate active request; 400 for
+  `en`; 404 for missing entity.
+- PATCH `requested→done→requested→cancelled` (trigger bumps `updated_at`);
+  DELETE 204; GET list ordered by `created_at desc` with `status=` /
+  `entity_type=` filters.
+- **Bug found & fixed during verification**: PATCH returned 500
+  (`sqlalchemy.exc.MissingGreenlet`) because the `set_updated_at()` trigger
+  rewrites `updated_at` server-side and the in-session ORM object can't
+  lazy-load it after commit. Fixed by re-`select()`ing the task after commit
+  (`cms_translations.py` update handler), matching the `cms_pages.py` pattern.
+  The roadmap's "always re-select after commit" rule bit again, for real.
 
 ## Other things from the original schema that were explicitly dropped (not deferred)
 
@@ -132,11 +153,17 @@ resurrect them without the user explicitly asking again:
   tool (Git Bash) does **not** reliably kill the native `python.exe` uvicorn
   process — use PowerShell's `Stop-Process -Id <pid> -Force` instead (found
   via `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like
-  '*uvicorn*app.main*' }`), then restart with `nohup python -m uvicorn
-  app.main:app --port 8090 > /tmp/uvicorn.log 2>&1 &` from `backend/`.
-  Postgres runs in Docker (`royal_vacation_db2`, port 5433) — apply `.sql`
-  migrations with `docker exec -i royal_vacation_db2 psql -U postgres -d
-  royal_vacation < path/to/migration.sql`.
+  '*uvicorn*app.main*' }`), then restart with `python -m uvicorn app.main:app
+  --port 8090` from `backend/`. Postgres runs in Docker (`royal_vacation_db`,
+  port **5432** — the compose file was updated from the old `royal_vacation_db2`
+  / 5433; `docker compose up -d db` in `backend/`).
+- **Applying the `sql/` migrations on a fresh DB is NOT purely numeric order**:
+  `001_users.sql` has FKs to `currencies`/`languages` (created in `011`), while
+  `011`'s triggers need the `set_updated_at()` function (defined in `001`).
+  Correct order: pre-create `set_updated_at()`, then `011`, then `001`, then
+  `002..010`, then `012..027`. PowerShell can't use `<` redirection, so pipe
+  content in: `Get-Content -Raw file.sql | docker exec -i royal_vacation_db
+  psql -U postgres -d royal_vacation -v ON_ERROR_STOP=1`.
 - **Verification pattern used throughout**: apply migration → restart
   backend → curl-verify the real flow end-to-end (login as
   `admin@royalvacation.com` / `admin12345`, exercise every new endpoint

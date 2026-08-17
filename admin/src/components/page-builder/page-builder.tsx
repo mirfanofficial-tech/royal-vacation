@@ -9,6 +9,7 @@ import {
   Eye,
   History,
   Info,
+  Languages,
   Loader2,
   Monitor,
   Redo2,
@@ -28,6 +29,7 @@ import type {
 import { ApiError, resolveAssetUrl } from "@/lib/api";
 import { useCmsPages, useCmsPageRevisions } from "@/lib/cms";
 import { useLanguages } from "@/lib/reference";
+import { useEntityTranslationTasks } from "@/lib/translations";
 import {
   createDefaultBlocks,
   createBlock,
@@ -74,6 +76,12 @@ export function PageBuilder({
 }) {
   const { updatePage, uploadFeaturedImage } = useCmsPages();
   const { languages } = useLanguages();
+  const {
+    tasks: translationTasks,
+    isLoading: translationTasksLoading,
+    requestTranslation,
+    isMutating: isRequestingTranslation,
+  } = useEntityTranslationTasks("cms_page", page.id);
   const {
     revisions,
     isLoading: revisionsLoading,
@@ -134,6 +142,7 @@ export function PageBuilder({
 
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
   const [saveError, setSaveError] = useState("");
+  const [translationError, setTranslationError] = useState("");
   const [saved, setSaved] = useState(false);
 
   const activeLanguages = useMemo(() => languages.filter((l) => l.is_active), [languages]);
@@ -441,6 +450,42 @@ export function PageBuilder({
             );
           })}
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={
+            activeLanguage === "en" ||
+            isRequestingTranslation ||
+            translationTasksLoading ||
+            translationTasks.some(
+              (t) => t.target_language_code === activeLanguage && t.status === "requested"
+            )
+          }
+          onClick={async () => {
+            setTranslationError("");
+            try {
+              await requestTranslation(activeLanguage);
+            } catch (err) {
+              setTranslationError(errorMessage(err, "Couldn't request a translation."));
+            }
+          }}
+          title={
+            activeLanguage === "en"
+              ? "Select a target language pill to flag it for translation."
+              : undefined
+          }
+        >
+          {isRequestingTranslation ? (
+            <Loader2 data-icon="inline-start" className="animate-spin" />
+          ) : (
+            <Languages data-icon="inline-start" />
+          )}
+          {translationTasks.some(
+            (t) => t.target_language_code === activeLanguage && t.status === "requested"
+          )
+            ? "Requested"
+            : "Request translation"}
+        </Button>
         <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
           <Info className="size-3.5" />
           Block content isn&apos;t saved yet — only page details, SEO and translations are real.
@@ -451,6 +496,12 @@ export function PageBuilder({
         <div className="flex items-center gap-1.5 border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-xs text-destructive">
           <AlertTriangle className="size-3.5 shrink-0" />
           {saveError}
+        </div>
+      )}
+      {translationError && (
+        <div className="flex items-center gap-1.5 border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-xs text-destructive">
+          <AlertTriangle className="size-3.5 shrink-0" />
+          {translationError}
         </div>
       )}
 

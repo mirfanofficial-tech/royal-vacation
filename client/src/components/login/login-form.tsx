@@ -48,15 +48,15 @@ export function LoginForm() {
         <p className="mt-2 text-sm text-muted-foreground">Sign in to your account</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3">
         {socialButtons.map((social) => (
           <button
             key={social.id}
             type="button"
-            className="flex items-center justify-center gap-2 rounded-lg border border-border py-2.5 text-sm font-medium text-foreground hover:border-navy hover:bg-muted"
+            aria-label={social.label}
+            className="flex h-12 items-center justify-center rounded-lg border border-border py-2.5 text-foreground hover:border-navy hover:bg-muted"
           >
-            <social.icon className="h-4 w-4" />
-            {social.label}
+            <social.icon className="h-5 w-5" />
           </button>
         ))}
       </div>

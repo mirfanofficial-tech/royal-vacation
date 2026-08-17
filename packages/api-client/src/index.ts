@@ -81,6 +81,9 @@ import type {
   ThirdPartyModuleOut,
   ThirdPartyModuleUpdate,
   TokenPair,
+  TranslationTaskCreate,
+  TranslationTaskOut,
+  TranslationTaskUpdate,
   TravelerProfileOut,
   TravelerProfileUpdate,
   UserActivityLogOut,
@@ -399,6 +402,15 @@ export class RoyalVacationApi extends ApiClient {
             this.patch<MediaAssetOut>(`/api/v1/admin/cms/media/assets/${id}`, body),
           remove: (id: string) => this.delete<void>(`/api/v1/admin/cms/media/assets/${id}`),
         },
+      },
+      translations: {
+        list: (params?: { entity_type?: string; status?: string }) =>
+          this.get<TranslationTaskOut[]>("/api/v1/admin/cms/translations", { query: params }),
+        create: (body: TranslationTaskCreate) =>
+          this.post<TranslationTaskOut>("/api/v1/admin/cms/translations", body),
+        update: (id: string, body: TranslationTaskUpdate) =>
+          this.patch<TranslationTaskOut>(`/api/v1/admin/cms/translations/${id}`, body),
+        remove: (id: string) => this.delete<void>(`/api/v1/admin/cms/translations/${id}`),
       },
     },
   };

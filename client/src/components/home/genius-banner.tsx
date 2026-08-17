@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 export function GeniusBanner() {
   return (
-    <section className="mx-auto max-w-[1400px] px-6 py-6 lg:px-10">
+    <section className="mx-auto max-w-[1400px] px-10 py-6 lg:px-24">
       <div className="relative overflow-hidden rounded-2xl bg-navy">
         <div className="absolute inset-0">
           <Image
@@ -19,10 +19,10 @@ export function GeniusBanner() {
         <div className="relative flex flex-col items-start gap-4 px-8 py-10 sm:px-12 sm:py-12">
           <div className="flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-gold-light" />
-            <span className="font-heading text-2xl font-bold text-gold-light">Genius</span>
+            <span className="font-heading text-2xl font-bold text-gold-light">Loyality</span>
           </div>
           <h2 className="max-w-md font-heading text-2xl font-bold text-white sm:text-3xl">
-            Unlock exclusive discounts with Genius
+            Unlock exclusive discounts with Loyality
           </h2>
           <p className="max-w-md text-sm text-white/85">
             Sign in to enjoy exclusive deals and discounts at thousands of properties.

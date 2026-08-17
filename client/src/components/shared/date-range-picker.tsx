@@ -18,6 +18,7 @@ export function DateRangePicker({
   onCheckOutChange,
   triggerClassName,
   valueClassName,
+  labelClassName,
   formatter,
   numberOfMonths = 1,
 }: {
@@ -28,6 +29,7 @@ export function DateRangePicker({
   onCheckOutChange: (date?: Date) => void;
   triggerClassName?: string;
   valueClassName?: string;
+  labelClassName?: string;
   formatter?: (checkIn?: Date, checkOut?: Date) => string;
   numberOfMonths?: number;
 }) {
@@ -49,8 +51,15 @@ export function DateRangePicker({
           triggerClassName
         )}
       >
-        <span className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-          <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+        <span
+          className={cn(
+            "flex items-center gap-1.5 text-xs font-medium text-foreground",
+            labelClassName
+          )}
+        >
+          <CalendarIcon
+            className={cn("h-3.5 w-3.5 text-muted-foreground", labelClassName)}
+          />
           {label}
         </span>
         <span className={cn("text-sm text-muted-foreground", valueClassName)}>

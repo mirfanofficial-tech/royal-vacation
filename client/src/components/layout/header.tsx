@@ -34,7 +34,7 @@ const navIcons = {
 export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background">
-      <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:gap-6 lg:px-10">
+      <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-10 py-3 sm:px-10 lg:gap-6 lg:px-24">
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <Crown className="h-7 w-7 text-gold sm:h-8 sm:w-8" strokeWidth={1.75} />
           <span className="flex flex-col leading-none">

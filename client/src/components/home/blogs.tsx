@@ -12,7 +12,7 @@ export function Blogs() {
   if (!isLoading && posts.length === 0) return null;
 
   return (
-    <section className="mx-auto max-w-[1400px] px-6 py-10 lg:px-10">
+    <section className="mx-auto max-w-[1400px] px-10 py-10 lg:px-24">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="font-heading text-2xl font-bold text-navy">Featured Blogs</h2>
         <Link

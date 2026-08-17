@@ -27,7 +27,7 @@ export function SearchResultsView({
   properties: SearchProperty[];
   defaultTypeId?: string;
 }) {
-  const [view, setView] = useState<ResultsView>("grid");
+  const [view, setView] = useState<ResultsView>("list");
   const [mapDialogOpen, setMapDialogOpen] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
@@ -38,19 +38,20 @@ export function SearchResultsView({
 
   return (
     <>
+      <div className="mt-6">
+        <ResultsToolbar
+          destination={destination}
+          propertyCount={propertyCount}
+          nightsLabel={nightsLabel}
+          view={view}
+          onViewChange={setView}
+        />
+      </div>
+
       <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[240px_1fr_280px]">
         <FilterPanel defaultTypeId={defaultTypeId} />
 
         <section className="flex flex-col gap-4">
-          <div className="mt-4">
-            <ResultsToolbar
-              destination={destination}
-              propertyCount={propertyCount}
-              nightsLabel={nightsLabel}
-              view={view}
-              onViewChange={setView}
-            />
-          </div>
           <GeniusInlineBanner />
 
           {view === "list" ? (
@@ -64,7 +65,7 @@ export function SearchResultsView({
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3">
               {properties.map((property) => (
                 <SearchResultGridCard
                   key={property.id}

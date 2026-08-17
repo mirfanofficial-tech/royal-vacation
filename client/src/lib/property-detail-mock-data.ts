@@ -43,6 +43,8 @@ export type PropertyDetail = {
   ratingLabel: string;
   reviews: number;
   location: string;
+  lat: number;
+  lng: number;
   distance: string;
   country: string;
   city: string;
@@ -73,6 +75,8 @@ export const propertyDetails: Record<string, PropertyDetail> = {
     ratingLabel: "Exceptional",
     reviews: 1348,
     location: "Jumeirah Beach, Dubai, UAE",
+    lat: 25.1412,
+    lng: 55.1853,
     distance: "1.2 km from center",
     country: "United Arab Emirates",
     city: "Dubai",
@@ -206,6 +210,8 @@ export const propertyDetails: Record<string, PropertyDetail> = {
     ratingLabel: "Wonderful",
     reviews: 3214,
     location: "Palm Jumeirah, Dubai, UAE",
+    lat: 25.1304,
+    lng: 55.1171,
     distance: "17.5 km from center",
     country: "United Arab Emirates",
     city: "Dubai",
@@ -339,6 +345,8 @@ export const propertyDetails: Record<string, PropertyDetail> = {
     ratingLabel: "Wonderful",
     reviews: 1932,
     location: "Downtown Dubai, UAE",
+    lat: 25.1932,
+    lng: 55.2794,
     distance: "0.5 km from center",
     country: "United Arab Emirates",
     city: "Dubai",
@@ -472,6 +480,8 @@ export const propertyDetails: Record<string, PropertyDetail> = {
     ratingLabel: "Excellent",
     reviews: 2145,
     location: "Downtown Dubai, UAE",
+    lat: 25.1916,
+    lng: 55.2799,
     distance: "1.0 km from center",
     country: "United Arab Emirates",
     city: "Dubai",
@@ -598,6 +608,26 @@ export const propertyDetails: Record<string, PropertyDetail> = {
   },
 };
 
+const locationCoordinates: Record<string, { lat: number; lng: number }> = {
+  "Jumeirah, Dubai": { lat: 25.1976, lng: 55.2463 },
+  "Jumeirah Beach, Dubai": { lat: 25.1412, lng: 55.1853 },
+  "Palm Jumeirah, Dubai": { lat: 25.1304, lng: 55.1171 },
+  "Downtown Dubai, Dubai": { lat: 25.1932, lng: 55.2794 },
+  "Dubai Marina, Dubai": { lat: 25.0806, lng: 55.1402 },
+  "Business Bay, Dubai": { lat: 25.1886, lng: 55.2723 },
+};
+
+const DUBAI_CENTER = { lat: 25.2048, lng: 55.2708 };
+
+function propertyCoordinatesFor(location: string) {
+  const normalized = location
+    .split(",")
+    .slice(0, 2)
+    .map((part) => part.trim())
+    .join(", ");
+  return locationCoordinates[normalized] ?? DUBAI_CENTER;
+}
+
 /**
  * Home page "Featured Properties" / "Homes guests love" cards use the lighter
  * `Property` shape (mock-data.ts), not the rich `PropertyDetail` schema. Rather than
@@ -618,6 +648,7 @@ export function synthesizePropertyDetail(property: {
 }): PropertyDetail {
   const [city, country] = property.location.split(",").map((part) => part.trim());
   const clampScore = (score: number) => Math.min(9.9, Math.max(6, Math.round(score * 10) / 10));
+  const coords = propertyCoordinatesFor(property.location);
 
   return {
     id: property.id,
@@ -627,6 +658,8 @@ export function synthesizePropertyDetail(property: {
     ratingLabel: property.ratingLabel,
     reviews: property.reviews,
     location: property.location,
+    lat: coords.lat,
+    lng: coords.lng,
     distance: "1.5 km from center",
     country: country ?? "Pakistan",
     city: city ?? property.location,

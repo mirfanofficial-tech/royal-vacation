@@ -13,6 +13,7 @@ import { ReviewsSection } from "@/components/property/reviews-section";
 import { CheckAvailabilityCard } from "@/components/property/check-availability-card";
 import { WhyBookMiniCard } from "@/components/property/why-book-mini-card";
 import { MiniMapCard } from "@/components/property/mini-map-card";
+import { Mapbox3DMap } from "@/components/property/mapbox-3d-map";
 import { TopHighlightsCard } from "@/components/property/top-highlights-card";
 import { propertyDetails, getPropertyDetail } from "@/lib/property-detail-mock-data";
 import { featuredProperties, homesGuestsLove } from "@/lib/mock-data";
@@ -92,6 +93,25 @@ export default async function PropertyDetailPage({
             <PropertyTabs />
           </div>
 
+          <div className="mt-8 overflow-hidden rounded-xl border border-border bg-white">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div>
+                <h2 className="font-heading text-lg font-bold text-navy">3D Map View</h2>
+                <p className="text-sm text-muted-foreground">
+                  Explore {property.name} and its surroundings in 3D
+                </p>
+              </div>
+            </div>
+            <div className="relative h-[400px]">
+              <Mapbox3DMap
+                lat={property.lat}
+                lng={property.lng}
+                name={property.name}
+                className="h-full w-full"
+              />
+            </div>
+          </div>
+
           <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
             <div className="flex flex-col gap-8">
               <AboutSection property={property} />
@@ -103,7 +123,7 @@ export default async function PropertyDetailPage({
             <aside className="flex flex-col gap-5 lg:sticky lg:top-24 lg:self-start">
               <CheckAvailabilityCard demandNote={property.demandNote} />
               <WhyBookMiniCard />
-              <MiniMapCard location={property.location} />
+              <MiniMapCard location={property.location} lat={property.lat} lng={property.lng} />
               <TopHighlightsCard highlights={property.highlights} />
             </aside>
           </div>

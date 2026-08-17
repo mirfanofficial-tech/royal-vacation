@@ -10,6 +10,7 @@ from app.models.cms import (
     CmsMenuItem,
     CmsPage,
     CmsPageTranslation,
+    CmsTranslationTask,
 )
 from app.models.module import ThirdPartyModule
 from app.models.payment import PaymentGateway
@@ -43,6 +44,7 @@ __all__ = [
     "CmsMenuItem",
     "CmsPage",
     "CmsPageTranslation",
+    "CmsTranslationTask",
     "Country",
     "Currency",
     "Language",

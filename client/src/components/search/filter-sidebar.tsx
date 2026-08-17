@@ -18,10 +18,12 @@ import {
   Flower2,
   Users,
   Dumbbell,
+  Search,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   starRatingFilters,
   guestRatingFilters,
@@ -93,6 +95,15 @@ export function FilterSidebar({
         <button type="button" className="text-xs font-semibold text-gold hover:underline">
           Clear all
         </button>
+      </div>
+
+      <div>
+        <h3 className="mb-2 text-sm font-semibold text-foreground">Property name</h3>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Enter hotel name" className="pl-9" />
+        </div>
+        <p className="mt-1.5 text-xs text-muted-foreground">Filters the results in this search</p>
       </div>
 
       <div>

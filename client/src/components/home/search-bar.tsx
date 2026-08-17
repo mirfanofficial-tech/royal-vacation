@@ -51,7 +51,7 @@ export function SearchBar() {
   return (
     <form
       onSubmit={onSubmit}
-      className="grid w-full grid-cols-1 gap-3 rounded-2xl bg-white p-2 shadow-xl md:grid-cols-[1.4fr_1fr_1fr_auto] md:items-stretch md:gap-0 md:divide-x md:divide-border md:rounded-full md:p-1.5"
+      className="grid w-full grid-cols-1 gap-3 rounded-[10px] bg-white p-2 shadow-xl md:grid-cols-[1.4fr_1fr_1fr_auto] md:items-stretch md:gap-0 md:rounded-[10px] md:p-1.5"
     >
       <div className="flex flex-col justify-center gap-0.5 px-4 py-2">
         <label className="flex items-center gap-1.5 text-xs font-medium text-foreground">
@@ -75,12 +75,12 @@ export function SearchBar() {
         checkOut={checkOut}
         onCheckInChange={setCheckIn}
         onCheckOutChange={setCheckOut}
-        triggerClassName="justify-center px-4 py-2"
+        triggerClassName="justify-center border-l border-border px-4 py-2"
         numberOfMonths={2}
       />
 
       <Popover>
-        <PopoverTrigger className="flex flex-col items-start justify-center gap-0.5 px-4 py-2 text-left">
+        <PopoverTrigger className="flex flex-col items-start justify-center gap-0.5 border-l border-border px-4 py-2 text-left">
           <span className="flex items-center gap-1.5 text-xs font-medium text-foreground">
             <Users className="h-3.5 w-3.5 text-muted-foreground" />
             Guests &amp; rooms
@@ -154,10 +154,10 @@ export function SearchBar() {
         </PopoverContent>
       </Popover>
 
-      <div className="flex items-stretch">
+      <div className="flex items-stretch md:items-center">
         <Button
           type="submit"
-          className="h-12 w-full gap-2 rounded-full bg-navy px-6 text-white hover:bg-navy-light md:h-auto md:w-auto"
+          className="h-10 w-full gap-2 rounded-[10px] bg-navy px-6 text-white hover:bg-navy-light md:h-10 md:w-auto"
         >
           <Search className="h-4 w-4" />
           Search
