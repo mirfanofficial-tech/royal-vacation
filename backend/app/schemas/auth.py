@@ -24,6 +24,21 @@ class RegisterRequest(BaseModel):
         return v
 
 
+class GoogleAuthRequest(BaseModel):
+    # An OAuth2 access token from Google's implicit flow (obtained
+    # client-side via @react-oauth/google's useGoogleLogin) — verified
+    # server-side by calling Google's userinfo endpoint with it, not
+    # trusted as-is.
+    access_token: str
+
+
+class FacebookAuthRequest(BaseModel):
+    # An access token from the Facebook JS SDK's FB.login() — verified
+    # server-side by calling the Graph API's /me endpoint with it, not
+    # trusted as-is.
+    access_token: str
+
+
 class TokenPair(BaseModel):
     access_token: str
     refresh_token: str

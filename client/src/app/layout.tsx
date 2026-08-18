@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { FavoritesProvider } from "@/components/providers/favorites-provider";
@@ -24,11 +25,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${outfit.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col overflow-x-hidden">
-        <QueryProvider>
-          <LocaleProvider>
-            <FavoritesProvider>{children}</FavoritesProvider>
-          </LocaleProvider>
-        </QueryProvider>
+        <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ""}>
+          <QueryProvider>
+            <LocaleProvider>
+              <FavoritesProvider>{children}</FavoritesProvider>
+            </LocaleProvider>
+          </QueryProvider>
+        </GoogleOAuthProvider>
       </body>
     </html>
   );

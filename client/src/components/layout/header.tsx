@@ -10,7 +10,6 @@ import {
   Heart,
 } from "lucide-react";
 import { Logo } from "@/components/icons/logo";
-import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetTrigger,
@@ -22,6 +21,7 @@ import {
 import { navLinks } from "@/lib/mock-data";
 import { WishlistLink } from "@/components/layout/wishlist-link";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
+import { HeaderAuth } from "@/components/layout/header-auth";
 import { api } from "@/lib/api";
 
 // CMS menu items have no icon field, so icons are matched by label. Any
@@ -88,19 +88,7 @@ export async function Header() {
           >
             List your property
           </Link> */}
-          <Link
-            href="/register"
-            className="hidden text-sm font-medium text-foreground hover:text-navy lg:inline"
-          >
-            Register
-          </Link>
-          <Button
-            render={<Link href="/login" />}
-            nativeButton={false}
-            className="hidden rounded-full bg-navy px-6 text-white hover:bg-navy-light sm:inline-flex"
-          >
-            Sign in
-          </Button>
+          <HeaderAuth />
 
           <Sheet>
             <SheetTrigger
@@ -194,18 +182,7 @@ export async function Header() {
               </div>
 
               <div className="mt-auto border-t border-border p-4">
-                <SheetClose
-                  nativeButton={false}
-                  render={
-                    <Button
-                      render={<Link href="/login" />}
-                      nativeButton={false}
-                      className="w-full rounded-full bg-navy text-white hover:bg-navy-light"
-                    />
-                  }
-                >
-                  Sign in
-                </SheetClose>
+                <HeaderAuth variant="mobile" />
               </div>
             </SheetContent>
           </Sheet>

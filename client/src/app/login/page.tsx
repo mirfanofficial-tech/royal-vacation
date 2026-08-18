@@ -15,7 +15,7 @@ export default function LoginPage() {
     <>
       <Header />
       <main className="flex-1 bg-muted/40">
-        <div className="mx-auto max-w-[1400px] px-6 py-8 lg:px-10">
+        <div className="mx-auto max-w-[1400px] px-10 py-8 lg:px-24">
           <div className="grid grid-cols-1 overflow-hidden rounded-2xl border border-border bg-white shadow-sm lg:grid-cols-[1fr_1.15fr]">
             <LoginPromoPanel />
             <LoginForm />

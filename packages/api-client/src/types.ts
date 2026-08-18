@@ -20,6 +20,7 @@ export type PermissionModule =
   | "modules"
   | "cms"
   | "blog"
+  | "contact"
   | "reports"
   | "payments"
   | "settings"
@@ -40,6 +41,14 @@ export interface HealthResponse {
 export interface LoginRequest {
   email: string;
   password: string;
+}
+
+export interface GoogleAuthRequest {
+  access_token: string;
+}
+
+export interface FacebookAuthRequest {
+  access_token: string;
 }
 
 export interface RegisterRequest {
@@ -902,6 +911,12 @@ export interface ContactMessageOut {
   message: string;
   status: string;
   created_at: string;
+}
+
+export type ContactMessageStatus = "new" | "in_progress" | "resolved";
+
+export interface ContactMessageStatusUpdate {
+  status: ContactMessageStatus;
 }
 
 // ---- CMS ----------------------------------------------------------------

@@ -1,15 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Apple, Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck } from "lucide-react";
-import { GoogleIcon } from "@/components/icons/social-icons";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
+import { FacebookSignInButton } from "@/components/auth/facebook-sign-in-button";
+import { ApiError, login } from "@/lib/api";
+import { isAuthenticated } from "@/lib/auth";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email("Enter a valid email address"),
@@ -19,13 +23,14 @@ const loginSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>;
 
-const socialButtons = [
-  { id: "google", label: "Continue with Google", icon: GoogleIcon },
-  { id: "apple", label: "Continue with Apple", icon: Apple },
-];
-
 export function LoginForm() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isAuthenticated()) router.replace("/");
+  }, [router]);
 
   const {
     register,
@@ -37,8 +42,18 @@ export function LoginForm() {
     defaultValues: { email: "", password: "", rememberMe: true },
   });
 
-  const onSubmit = handleSubmit((values) => {
-    console.log("login", values);
+  const onSubmit = handleSubmit(async (values) => {
+    setSubmitError(null);
+    try {
+      await login(values.email, values.password);
+      router.push("/");
+    } catch (error) {
+      setSubmitError(
+        error instanceof ApiError
+          ? error.message
+          : "Couldn't reach the server. Please try again."
+      );
+    }
   });
 
   return (
@@ -48,17 +63,22 @@ export function LoginForm() {
         <p className="mt-2 text-sm text-muted-foreground">Sign in to your account</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {socialButtons.map((social) => (
-          <button
-            key={social.id}
-            type="button"
-            aria-label={social.label}
-            className="flex h-12 items-center justify-center rounded-lg border border-border py-2.5 text-foreground hover:border-navy hover:bg-muted"
-          >
-            <social.icon className="h-5 w-5" />
-          </button>
-        ))}
+      <div className="grid grid-cols-3 gap-3">
+        <GoogleSignInButton
+          onSuccess={() => router.push("/")}
+          onError={(message) => setSubmitError(message)}
+        />
+        <FacebookSignInButton
+          onSuccess={() => router.push("/")}
+          onError={(message) => setSubmitError(message)}
+        />
+        <button
+          type="button"
+          aria-label="Continue with Apple"
+          className="flex h-12 items-center justify-center rounded-lg border border-border py-2.5 text-foreground hover:border-navy hover:bg-muted"
+        >
+          <Apple className="h-5 w-5" />
+        </button>
       </div>
 
       <div className="flex items-center gap-3">
@@ -135,14 +155,18 @@ export function LoginForm() {
           Remember me
         </label>
 
+        {submitError && (
+          <p className="text-center text-sm font-medium text-destructive">{submitError}</p>
+        )}
+
         <Button
           type="submit"
           disabled={isSubmitting}
           className="w-full gap-2 rounded-lg bg-navy text-white hover:bg-navy-light disabled:opacity-60"
         >
           <Lock className="h-4 w-4" />
-          Sign in to your account
-          <ArrowRight className="h-4 w-4" />
+          {isSubmitting ? "Signing in…" : "Sign in to your account"}
+          {!isSubmitting && <ArrowRight className="h-4 w-4" />}
         </Button>
 
         <div className="flex items-start gap-3 rounded-lg bg-navy/5 p-4">

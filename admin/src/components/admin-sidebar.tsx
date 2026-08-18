@@ -21,6 +21,7 @@ import {
   Layers,
   List,
   LogOut,
+  Mail,
   MessageSquare,
   Newspaper,
   PanelsTopLeft,
@@ -125,6 +126,7 @@ const navItems: NavItem[] = [
       { href: "/blogs/comments", label: "Comments", icon: MessageSquare, module: "blog" },
     ],
   },
+  { href: "/contact", label: "Contact Messages", icon: Mail, module: "contact" },
   // {
   //   href: "/admin",
   //   label: "Administration",

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Mail, Apple, User, Lock, Eye, EyeOff, Check, UserPlus } from "lucide-react";
-import { GoogleIcon } from "@/components/icons/social-icons";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { countryOptions } from "@/lib/checkout-mock-data";
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
+import { FacebookSignInButton } from "@/components/auth/facebook-sign-in-button";
+import { ApiError, register as registerUser } from "@/lib/api";
+import { isAuthenticated } from "@/lib/auth";
 
 const registerSchema = z
   .object({
@@ -51,20 +55,25 @@ const passwordRules = [
 ];
 
 const socialButtons = [
-  { id: "google", label: "Continue with Google", icon: GoogleIcon },
   { id: "apple", label: "Continue with Apple", icon: Apple },
   { id: "email", label: "Continue with Email", icon: Mail },
 ];
 
 export function RegisterForm() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isAuthenticated()) router.replace("/");
+  }, [router]);
 
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors, isSubmitting, isSubmitSuccessful },
+    formState: { errors, isSubmitting },
   } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     mode: "onChange",
@@ -81,8 +90,26 @@ export function RegisterForm() {
 
   const password = useWatch({ control, name: "password" }) ?? "";
 
-  const onSubmit = handleSubmit((values) => {
-    console.log("register", values);
+  const onSubmit = handleSubmit(async (values) => {
+    setSubmitError(null);
+    const [firstName, ...rest] = values.fullName.trim().split(/\s+/);
+    try {
+      await registerUser({
+        email: values.email,
+        password: values.password,
+        first_name: firstName,
+        last_name: rest.join(" ") || undefined,
+        phone: `${values.dialCode}${values.phone}`,
+        account_type: "traveler",
+      });
+      router.push("/");
+    } catch (error) {
+      setSubmitError(
+        error instanceof ApiError
+          ? error.message
+          : "Couldn't reach the server. Please try again."
+      );
+    }
   });
 
   return (
@@ -96,7 +123,15 @@ export function RegisterForm() {
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
+        <GoogleSignInButton
+          onSuccess={() => router.push("/")}
+          onError={(message) => setSubmitError(message)}
+        />
+        <FacebookSignInButton
+          onSuccess={() => router.push("/")}
+          onError={(message) => setSubmitError(message)}
+        />
         {socialButtons.map((social) => (
           <button
             key={social.id}
@@ -293,23 +328,22 @@ export function RegisterForm() {
           )}
         </div>
 
+        {submitError && (
+          <p className="text-center text-sm font-medium text-destructive">{submitError}</p>
+        )}
+
         <Button
           type="submit"
           disabled={isSubmitting}
           className="w-full gap-2 rounded-lg bg-navy text-white hover:bg-navy-light disabled:opacity-60"
         >
           <UserPlus className="h-4 w-4" />
-          Create Account
+          {isSubmitting ? "Creating account…" : "Create Account"}
         </Button>
-        {isSubmitSuccessful && (
-          <p className="text-center text-sm font-medium text-rating">
-            Account created! You can now sign in.
-          </p>
-        )}
 
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link href="#" className="font-semibold text-gold hover:underline">
+          <Link href="/login" className="font-semibold text-gold hover:underline">
             Sign in
           </Link>
         </p>

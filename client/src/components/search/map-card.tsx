@@ -1,45 +1,26 @@
 "use client";
 
-import { useState } from "react";
 import { Maximize2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { LeafletMap } from "@/components/search/leaflet-map";
 import { mapPins } from "@/lib/search-mock-data";
 
 export function MapCard({ onExpand }: { onExpand?: () => void }) {
-  const [followMap, setFollowMap] = useState(true);
-
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-white">
-      <label
-        htmlFor="follow-map"
-        className="flex cursor-pointer items-center gap-2 border-b border-border px-3 py-2.5 text-sm text-foreground"
-      >
-        <Checkbox
-          id="follow-map"
-          checked={followMap}
-          onCheckedChange={(checked) => setFollowMap(checked === true)}
-        />
-        Search as I move the map
-      </label>
+      <div className="relative isolate aspect-[16/9] w-full">
+        <LeafletMap pins={mapPins} className="h-full w-full" showZoomControls={false} />
 
-      <div className="relative aspect-square w-full">
-        <LeafletMap pins={mapPins} className="h-full w-full" />
-      </div>
-
-      {onExpand && (
-        <div className="p-3">
-          <Button
+        {onExpand && (
+          <button
+            type="button"
             onClick={onExpand}
-            variant="outline"
-            className="w-full gap-1.5 rounded-lg"
+            className="absolute bottom-3 left-3 z-[500] flex w-fit items-center gap-1.5 rounded-lg bg-navy-dark/90 px-3 py-2 text-sm font-semibold text-white shadow-md backdrop-blur-sm hover:bg-navy-dark"
           >
             <Maximize2 className="h-3.5 w-3.5" />
             Show map
-          </Button>
-        </div>
-      )}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

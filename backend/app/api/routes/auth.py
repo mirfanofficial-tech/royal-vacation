@@ -9,6 +9,7 @@ for the bearer-token identity check used by the other modules.
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +30,8 @@ from app.models.user import User, UserLoginHistory, UserSession
 from app.schemas.auth import (
     AuthResponse,
     ConfirmResetRequest,
+    FacebookAuthRequest,
+    GoogleAuthRequest,
     LoginRequest,
     LogoutRequest,
     MessageResponse,
@@ -46,6 +49,9 @@ router = APIRouter()
 _GENERIC_RESET_MESSAGE = (
     "If an account exists for that email, a password reset link has been sent."
 )
+
+_GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
+_FACEBOOK_GRAPH_ME_URL = "https://graph.facebook.com/me"
 
 
 async def _issue_session(db: AsyncSession, user: User, request: Request | None) -> TokenPair:
@@ -85,18 +91,65 @@ def _record_login(
     status_: str,
     failure_reason: str | None = None,
     request: Request | None = None,
+    login_type: str = "email",
 ) -> None:
     db.add(
         UserLoginHistory(
             user_id=user_id,
             email=email,
-            login_type="email",
+            login_type=login_type,
             ip_address=request.client.host if request and request.client else None,
             user_agent=request.headers.get("user-agent") if request else None,
             status=status_,
             failure_reason=failure_reason,
         )
     )
+
+
+async def _find_or_create_social_user(
+    db: AsyncSession,
+    *,
+    email: str,
+    first_name: str | None,
+    last_name: str | None,
+    display_name: str | None,
+    request: Request,
+    login_type: str,
+) -> User:
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        user = User(
+            email=email,
+            password_hash=None,
+            first_name=first_name,
+            last_name=last_name,
+            display_name=display_name or first_name or email,
+            account_type="traveler",
+            status="active",
+            email_verified_at=datetime.now(timezone.utc),
+        )
+        db.add(user)
+        await db.flush()  # populates user.id before it's referenced below
+    elif user.deleted_at is not None or user.status in ("suspended", "deleted"):
+        _record_login(
+            db, email=email, user_id=user.id, status_="locked",
+            failure_reason=f"account_{user.status}", request=request, login_type=login_type,
+        )
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="This account is no longer active"
+        )
+    elif user.email_verified_at is None:
+        # The provider already verified this email — no reason to keep the
+        # account gated behind our own separate verification step.
+        user.email_verified_at = datetime.now(timezone.utc)
+        if user.status == "pending":
+            user.status = "active"
+
+    user.last_login_at = datetime.now(timezone.utc)
+    return user
 
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
@@ -179,6 +232,114 @@ async def login(
     user.last_login_at = datetime.now(timezone.utc)
     tokens = await _issue_session(db, user, request)
     _record_login(db, email=user.email, user_id=user.id, status_="success", request=request)
+    await db.commit()
+
+    user = await load_user_with_roles(db, user.id)
+    return AuthResponse(**tokens.model_dump(), user=to_user_out(user))
+
+
+@router.post("/google", response_model=AuthResponse)
+async def google_auth(
+    payload: GoogleAuthRequest, request: Request, db: AsyncSession = Depends(get_db)
+) -> AuthResponse:
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            response = await client.get(
+                _GOOGLE_USERINFO_URL,
+                headers={"Authorization": f"Bearer {payload.access_token}"},
+            )
+        except httpx.HTTPError:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Couldn't reach Google to verify sign-in. Please try again.",
+            )
+
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google sign-in token"
+        )
+
+    profile = response.json()
+    email = profile.get("email")
+    if not email or not profile.get("email_verified"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Your Google account has no verified email address",
+        )
+
+    user = await _find_or_create_social_user(
+        db,
+        email=email,
+        first_name=profile.get("given_name"),
+        last_name=profile.get("family_name"),
+        display_name=profile.get("given_name") or profile.get("name"),
+        request=request,
+        login_type="google",
+    )
+    tokens = await _issue_session(db, user, request)
+    _record_login(
+        db, email=user.email, user_id=user.id, status_="success",
+        request=request, login_type="google",
+    )
+    await db.commit()
+
+    user = await load_user_with_roles(db, user.id)
+    return AuthResponse(**tokens.model_dump(), user=to_user_out(user))
+
+
+@router.post("/facebook", response_model=AuthResponse)
+async def facebook_auth(
+    payload: FacebookAuthRequest, request: Request, db: AsyncSession = Depends(get_db)
+) -> AuthResponse:
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            response = await client.get(
+                _FACEBOOK_GRAPH_ME_URL,
+                params={
+                    "fields": "id,first_name,last_name,name,email",
+                    "access_token": payload.access_token,
+                },
+            )
+        except httpx.HTTPError:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Couldn't reach Facebook to verify sign-in. Please try again.",
+            )
+
+    profile = response.json()
+    if response.status_code != 200 or "error" in profile:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Facebook sign-in token"
+        )
+
+    # Unlike Google, Facebook's Graph API only returns `email` at all if the
+    # user granted the email permission AND has a verified email on file —
+    # it's simply absent otherwise, with no separate "unverified" state to
+    # check for.
+    email = profile.get("email")
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=(
+                "Your Facebook account doesn't have an email address we can use. "
+                "Please add one to your Facebook account or sign in another way."
+            ),
+        )
+
+    user = await _find_or_create_social_user(
+        db,
+        email=email,
+        first_name=profile.get("first_name"),
+        last_name=profile.get("last_name"),
+        display_name=profile.get("first_name") or profile.get("name"),
+        request=request,
+        login_type="facebook",
+    )
+    tokens = await _issue_session(db, user, request)
+    _record_login(
+        db, email=user.email, user_id=user.id, status_="success",
+        request=request, login_type="facebook",
+    )
     await db.commit()
 
     user = await load_user_with_roles(db, user.id)

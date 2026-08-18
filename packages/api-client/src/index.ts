@@ -16,6 +16,7 @@ import type {
   BlogPostUpdate,
   ContactMessageCreate,
   ContactMessageOut,
+  ContactMessageStatusUpdate,
   ChangePasswordRequest,
   CmsBlockCreate,
   CmsBlockOut,
@@ -36,6 +37,8 @@ import type {
   CurrencyCreate,
   CurrencyOut,
   CurrencyUpdate,
+  FacebookAuthRequest,
+  GoogleAuthRequest,
   HealthResponse,
   LanguageCreate,
   LanguageOut,
@@ -111,6 +114,10 @@ export class RoyalVacationApi extends ApiClient {
       this.post<AuthResponse>("/api/v1/auth/register", body),
     login: (body: LoginRequest) =>
       this.post<AuthResponse>("/api/v1/auth/login", body),
+    google: (body: GoogleAuthRequest) =>
+      this.post<AuthResponse>("/api/v1/auth/google", body),
+    facebook: (body: FacebookAuthRequest) =>
+      this.post<AuthResponse>("/api/v1/auth/facebook", body),
     logout: (body: LogoutRequest) =>
       this.post<void>("/api/v1/auth/logout", body),
     refreshToken: (body: RefreshTokenRequest) =>
@@ -330,6 +337,12 @@ export class RoyalVacationApi extends ApiClient {
         reply: (id: string, body: BlogCommentReplyCreate) =>
           this.post<BlogCommentAdminOut>(`/api/v1/admin/blog/comments/${id}/reply`, body),
       },
+    },
+    contact: {
+      list: (params?: { status?: string; topic?: string }) =>
+        this.get<ContactMessageOut[]>("/api/v1/admin/contact", { query: params }),
+      updateStatus: (id: string, body: ContactMessageStatusUpdate) =>
+        this.patch<ContactMessageOut>(`/api/v1/admin/contact/${id}`, body),
     },
     cms: {
       pages: {

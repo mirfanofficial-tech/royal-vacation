@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, MapPin, MapPinned } from "lucide-react";
+import { Heart, Star, MapPin, MapPinned, Check } from "lucide-react";
 import { useFavorites } from "@/components/providers/favorites-provider";
 import type { SearchProperty } from "@/lib/search-mock-data";
 
@@ -37,16 +37,9 @@ export function SearchResultGridCard({
             {property.badge.label}
           </span>
         )}
-        {onShowOnMap && (
-          <button
-            type="button"
-            onClick={() => onShowOnMap(property.id)}
-            className="absolute inset-x-0 bottom-3 z-10 mx-auto flex w-fit items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-navy opacity-0 shadow-md transition-opacity group-hover:opacity-100"
-          >
-            <MapPinned className="h-3.5 w-3.5" />
-            Show on map
-          </button>
-        )}
+        <span className="absolute bottom-2 left-2 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white">
+          +{property.extraPhotosCount} photos
+        </span>
       </div>
       <button
         type="button"
@@ -59,29 +52,48 @@ export function SearchResultGridCard({
       </button>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
+        <h3 className="line-clamp-1 font-heading text-base font-bold text-navy hover:underline">
+          <Link href={`/property/${property.id}`}>{property.name}</Link>
+        </h3>
+
+        <span className="flex items-center gap-0.5">
+          {Array.from({ length: property.starRating }, (_, i) => (
+            <Star key={i} className="h-3 w-3 fill-gold text-gold" />
+          ))}
+        </span>
+
         <div className="flex items-center gap-2">
           <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded bg-rating px-1.5 text-xs font-bold text-white">
             {property.rating.toFixed(1)}
           </span>
-          <div className="min-w-0 leading-tight">
-            <p className="truncate text-xs font-semibold text-foreground">
-              {property.ratingLabel}
-            </p>
-            <p className="truncate text-[11px] text-muted-foreground">
-              {property.reviews} reviews
-            </p>
-          </div>
+          <p className="truncate text-xs font-semibold text-foreground">
+            {property.ratingLabel}
+          </p>
+          <p className="truncate text-[11px] text-muted-foreground">
+            {property.reviews.toLocaleString()} reviews
+          </p>
         </div>
 
-        <h3 className="line-clamp-1 font-heading text-base font-semibold text-navy hover:underline">
-          <Link href={`/property/${property.id}`}>{property.name}</Link>
-        </h3>
-        <p className="flex items-center gap-1 text-sm text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5 shrink-0" />
-          <span className="line-clamp-1">{property.location}</span>
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            <span className="line-clamp-1">{property.location}</span>
+          </p>
+          {onShowOnMap && (
+            <button
+              type="button"
+              aria-label="Show on map"
+              onClick={() => onShowOnMap(property.id)}
+              className="shrink-0 text-navy hover:text-gold"
+            >
+              <MapPinned className="h-4 w-4" />
+            </button>
+          )}
+        </div>
 
-        <div className="flex flex-wrap gap-1.5">
+        <p className="line-clamp-1 text-sm italic text-muted-foreground">{property.quote}</p>
+
+        <div className="flex flex-wrap items-center gap-1.5">
           {property.amenityTags.slice(0, 2).map((tag) => (
             <span
               key={tag}
@@ -90,14 +102,44 @@ export function SearchResultGridCard({
               {tag}
             </span>
           ))}
+          {property.features.length > 0 && (
+            <span className="text-xs font-medium text-muted-foreground">
+              +{property.features.length} more
+            </span>
+          )}
         </div>
 
-        <div className="mt-auto pt-2 text-sm">
-          <span className="text-muted-foreground">From </span>
-          <span className="font-bold text-foreground">
+        <div className="flex flex-col gap-1 text-xs">
+          {property.freeCancellation && (
+            <span className="flex items-center gap-1 text-rating">
+              <Check className="h-3.5 w-3.5" /> Free cancellation
+            </span>
+          )}
+          {property.noPrepayment && (
+            <span className="flex items-center gap-1 text-rating">
+              <Check className="h-3.5 w-3.5" /> No prepayment needed
+            </span>
+          )}
+        </div>
+
+        <div className="mt-auto border-t border-border pt-3">
+          {property.originalPrice && property.discountPercent && (
+            <div className="flex items-center gap-2">
+              <span className="rounded bg-foreground px-1.5 py-0.5 text-[10px] font-bold text-background">
+                {property.discountPercent}% OFF
+              </span>
+              <span className="text-xs text-muted-foreground line-through">
+                {property.currency} {property.originalPrice.toLocaleString()}
+              </span>
+            </div>
+          )}
+          <p className="mt-0.5 text-lg font-bold text-foreground">
             {property.currency} {property.price.toLocaleString()}
-          </span>
-          <span className="text-muted-foreground"> / night</span>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Total for {property.nights} nights {property.currency}{" "}
+            {property.totalPrice.toLocaleString()}
+          </p>
         </div>
       </div>
     </article>

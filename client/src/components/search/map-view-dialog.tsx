@@ -53,6 +53,29 @@ export function MapViewDialog({
       lat: property.lat,
       lng: property.lng,
       price: `${property.currency} ${property.price.toLocaleString()}`,
+      details: {
+        image: property.image,
+        badge: property.badge,
+        extraPhotosCount: property.extraPhotosCount,
+        name: property.name,
+        starRating: property.starRating,
+        rating: property.rating,
+        ratingLabel: property.ratingLabel,
+        reviews: property.reviews,
+        location: property.location,
+        distance: property.distance,
+        quote: property.quote,
+        amenityTags: property.amenityTags,
+        featuresCount: property.features.length,
+        freeCancellation: property.freeCancellation,
+        noPrepayment: property.noPrepayment,
+        originalPrice: property.originalPrice,
+        discountPercent: property.discountPercent,
+        currency: property.currency,
+        priceValue: property.price,
+        nights: property.nights,
+        totalPrice: property.totalPrice,
+      },
     })),
   ];
 
@@ -60,13 +83,6 @@ export function MapViewDialog({
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/60 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0" />
-
-        <DialogPrimitive.Close
-          aria-label="Close map view"
-          className="fixed right-4 top-4 z-[60] flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
-        >
-          <X className="h-4 w-4" />
-        </DialogPrimitive.Close>
 
         <DialogPrimitive.Popup
           className={`fixed inset-0 z-50 flex flex-col overflow-hidden rounded-none bg-white shadow-2xl duration-150 data-ending-style:opacity-0 data-ending-style:scale-95 data-starting-style:opacity-0 data-starting-style:scale-95 lg:transition-[grid-template-columns] lg:duration-300 ${
@@ -158,7 +174,10 @@ export function MapViewDialog({
               Search as I move the map
             </label>
 
-            <DialogPrimitive.Close className="absolute right-4 top-4 z-20 flex items-center gap-1.5 rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-navy-light">
+            <DialogPrimitive.Close
+              aria-label="Close map view"
+              className="absolute right-4 top-4 z-20 flex items-center gap-1.5 rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-navy-light"
+            >
               <X className="h-3.5 w-3.5" />
               Close map
             </DialogPrimitive.Close>

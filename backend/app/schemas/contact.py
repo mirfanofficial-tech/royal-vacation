@@ -8,6 +8,7 @@ ContactTopic = Literal[
     "booking", "refund", "invoice", "stay_issue", "group", "press", "other"
 ]
 ContactChannel = Literal["email", "phone", "whatsapp"]
+ContactMessageStatus = Literal["new", "in_progress", "resolved"]
 
 
 class ContactMessageCreate(BaseModel):
@@ -33,3 +34,7 @@ class ContactMessageOut(BaseModel):
     message: str
     status: str
     created_at: datetime
+
+
+class ContactMessageStatusUpdate(BaseModel):
+    status: ContactMessageStatus

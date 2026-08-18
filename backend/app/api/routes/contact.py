@@ -1,9 +1,8 @@
 """Public Contact — `/api/v1/contact`, unauthenticated.
 
 Backs the client site's `/contact` concierge form. Every submission is
-persisted as a `ContactMessage` row (status starts `'new'`) — there is no
-admin UI for these yet, so triage happens by querying the table directly
-until one is built.
+persisted as a `ContactMessage` row (status starts `'new'`); admins triage
+them via `/api/v1/admin/contact`.
 """
 
 from fastapi import APIRouter, Depends, status

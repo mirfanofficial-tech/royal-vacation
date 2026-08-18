@@ -461,6 +461,7 @@ export type ModuleKey =
   | "modules"
   | "cms"
   | "blog"
+  | "contact"
   | "reports"
   | "payments"
   | "settings"
@@ -482,6 +483,7 @@ export interface Permissions {
   modules: PermissionAction[];
   cms: PermissionAction[];
   blog: PermissionAction[];
+  contact: PermissionAction[];
   reports: PermissionAction[];
   payments: PermissionAction[];
   settings: PermissionAction[];
@@ -499,6 +501,7 @@ export function createPermissions(full = false): Permissions {
     modules: [...actions],
     cms: [...actions],
     blog: [...actions],
+    contact: [...actions],
     reports: [...actions],
     payments: [...actions],
     settings: [...actions],
@@ -563,13 +566,14 @@ export const mockAdminRoles: AdminRole[] = [
   {
     id: "role_support",
     name: "Support Agent",
-    description: "Read-only access to bookings and guest records.",
+    description: "Read-only access to bookings, guest records and contact messages.",
     status: "active",
     permissions: {
       ...createPermissions(false),
       dashboard: ["view"],
       bookings: ["view"],
       guests: ["view"],
+      contact: ["view", "edit"],
     },
   },
 ];

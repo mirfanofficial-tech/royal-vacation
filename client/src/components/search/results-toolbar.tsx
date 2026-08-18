@@ -64,17 +64,6 @@ export function ResultsToolbar({
         <div className="flex items-center rounded-lg border border-border bg-white p-1">
           <button
             type="button"
-            aria-pressed={view === "grid"}
-            onClick={() => onViewChange("grid")}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              view === "grid" ? "bg-navy text-white" : "text-muted-foreground hover:text-navy"
-            }`}
-          >
-            <LayoutGrid className="h-3.5 w-3.5" />
-            Grid
-          </button>
-          <button
-            type="button"
             aria-pressed={view === "list"}
             onClick={() => onViewChange("list")}
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -83,6 +72,17 @@ export function ResultsToolbar({
           >
             <List className="h-3.5 w-3.5" />
             List
+          </button>
+          <button
+            type="button"
+            aria-pressed={view === "grid"}
+            onClick={() => onViewChange("grid")}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              view === "grid" ? "bg-navy text-white" : "text-muted-foreground hover:text-navy"
+            }`}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Grid
           </button>
         </div>
       </div>

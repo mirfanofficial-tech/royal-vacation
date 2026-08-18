@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { MapPin, Users, Search, Minus, Plus, X } from "lucide-react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { MapPin, Users, Search, Loader2, Minus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -33,6 +34,21 @@ export function SearchResultsBar({
   const [adults, setAdults] = useState(defaultAdults);
   const [children, setChildren] = useState(0);
   const [rooms, setRooms] = useState(defaultRooms);
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (destination) params.set("destination", destination);
+    if (checkIn) params.set("checkIn", checkIn.toISOString());
+    if (checkOut) params.set("checkOut", checkOut.toISOString());
+    params.set("adults", String(adults));
+    params.set("rooms", String(rooms));
+
+    startTransition(() => {
+      router.push(`/search?${params.toString()}`);
+    });
+  };
 
   return (
     <div className="bg-navy">
@@ -151,9 +167,24 @@ export function SearchResultsBar({
           </Popover>
 
           <div className="flex items-center px-1 py-1 md:py-0">
-            <Button className="h-10 w-full gap-2 rounded-[10px] bg-white px-6 text-navy hover:bg-white/90 md:h-10 md:w-auto">
-              <Search className="h-4 w-4" />
-              Search
+            <Button
+              type="button"
+              onClick={handleSearch}
+              disabled={isPending}
+              className="h-10 w-full gap-2 rounded-[10px] bg-white px-6 text-navy hover:bg-white/90 disabled:opacity-100 md:h-10 md:w-auto data-[pending=true]:bg-gold data-[pending=true]:text-navy-dark"
+              data-pending={isPending}
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Searching…
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4" />
+                  Search
+                </>
+              )}
             </Button>
           </div>
         </div>

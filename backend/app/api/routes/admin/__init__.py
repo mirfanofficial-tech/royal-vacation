@@ -16,6 +16,7 @@ from app.api.routes.admin import (
     cms_menus,
     cms_pages,
     cms_translations,
+    contact,
     modules,
     partners,
     payment_gateways,
@@ -61,5 +62,6 @@ router.include_router(cms_media.router, prefix="/cms/media", tags=["admin:cms"])
 router.include_router(
     cms_translations.router, prefix="/cms/translations", tags=["admin:cms"]
 )
+router.include_router(contact.router, prefix="/contact", tags=["admin:contact"])
 
 __all__ = ["router"]

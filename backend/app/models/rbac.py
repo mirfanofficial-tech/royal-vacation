@@ -70,7 +70,7 @@ class RolePermission(UUIDPrimaryKeyMixin, Base):
     __table_args__ = (
         CheckConstraint(
             "module IN ('dashboard','properties','bookings','guests','modules',"
-            "'cms','blog','reports','payments','settings','roles')",
+            "'cms','blog','contact','reports','payments','settings','roles','stays')",
             name="role_permissions_module_check",
         ),
         CheckConstraint(
@@ -108,7 +108,7 @@ class Permission(UUIDPrimaryKeyMixin, Base):
     __table_args__ = (
         CheckConstraint(
             "resource IN ('dashboard','properties','bookings','guests','modules',"
-            "'cms','blog','reports','payments','settings','roles')",
+            "'cms','blog','contact','reports','payments','settings','roles','stays')",
             name="permissions_resource_check",
         ),
         CheckConstraint(

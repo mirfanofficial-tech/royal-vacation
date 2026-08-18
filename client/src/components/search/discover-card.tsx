@@ -12,7 +12,7 @@ export function DiscoverCard({ destination }: { destination: string }) {
           alt={`${destination} skyline at dusk`}
           fill
           className="object-cover"
-          sizes="280px"
+          sizes="(min-width: 1024px) 33vw, 100vw"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-navy-dark/90 via-navy-dark/40 to-transparent" />
       </div>

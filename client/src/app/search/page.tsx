@@ -3,7 +3,6 @@ import { format } from "date-fns";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { SearchResultsBar } from "@/components/search/search-results-bar";
-import { Breadcrumb } from "@/components/shared/breadcrumb";
 import { SearchResultsView } from "@/components/search/search-results-view";
 import { NewsletterBanner } from "@/components/search/newsletter-banner";
 import { searchProperties } from "@/lib/search-mock-data";
@@ -70,6 +69,7 @@ export default async function SearchPage({
     checkIn,
     "d MMM"
   )} – ${format(checkOut, "d MMM")})`;
+  const dateRangeLabel = `${format(checkIn, "d")} – ${format(checkOut, "d MMM yyyy")}`;
 
   return (
     <>
@@ -84,18 +84,14 @@ export default async function SearchPage({
         />
 
         <div className="mx-auto max-w-[1400px] px-10 py-6 lg:px-24">
-          <Breadcrumb
-            items={[
-              { label: "Home", href: "/" },
-              { label: "Search Results" },
-              { label: destinationFull },
-            ]}
-          />
-
           <SearchResultsView
             destination={destination}
+            destinationFull={destinationFull}
             propertyCount={642}
             nightsLabel={nightsLabel}
+            dateRangeLabel={dateRangeLabel}
+            adults={adults}
+            rooms={rooms}
             properties={searchProperties}
             defaultTypeId={propertyType}
           />
