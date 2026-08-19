@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { Layers } from "lucide-react";
-import type { Map as MapboxMap } from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+import type { Map as MaplibreMap } from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 type Mapbox3DMapProps = {
   lat: number;
@@ -12,66 +12,131 @@ type Mapbox3DMapProps = {
   className?: string;
 };
 
-const MAPBOX_TOKEN =
-  process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
-const HAS_MAPBOX_TOKEN =
-  !!MAPBOX_TOKEN && !MAPBOX_TOKEN.includes("YOUR_MAPBOX_TOKEN");
+const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? "";
+
+const BUILDING_SOURCE_LAYERS = [
+  "building",
+  "buildings",
+  "building-extrusion",
+  "building_polygon",
+  "structures",
+  "building_parts",
+];
+
+function getStyleUrl(): string {
+  if (MAPTILER_KEY) {
+    return `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`;
+  }
+  return "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+}
+
+function getTerrainUrl(): string | null {
+  if (!MAPTILER_KEY) return null;
+  return `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${MAPTILER_KEY}`;
+}
 
 export function Mapbox3DMap({ lat, lng, name, className }: Mapbox3DMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<MapboxMap | null>(null);
+  const mapRef = useRef<MaplibreMap | null>(null);
 
   useEffect(() => {
     let disposed = false;
-    let map: MapboxMap | null = null;
+    let map: MaplibreMap | null = null;
 
     (async () => {
-      if (!HAS_MAPBOX_TOKEN) return;
-
-      const mapboxgl = (await import("mapbox-gl")).default;
+      const maplibregl = await import("maplibre-gl");
       if (disposed || !containerRef.current) return;
 
-      mapboxgl.accessToken = MAPBOX_TOKEN;
-      const instance = new mapboxgl.Map({
+      const m = new maplibregl.Map({
         container: containerRef.current,
         center: [lng, lat],
-        zoom: 15.5,
-        pitch: 60,
+        zoom: 16,
+        pitch: 65,
         bearing: -20,
-        style: "mapbox://styles/mapbox/streets-v12",
-        antialias: true,
-        attributionControl: true,
+        maxPitch: 85,
+        style: getStyleUrl(),
+        attributionControl: {},
       });
-      map = instance;
-      mapRef.current = map;
+      map = m;
+      mapRef.current = m;
 
-      instance.on("load", () => {
-        if (disposed || !mapRef.current) return;
-        mapRef.current.addSource("mapbox-dem", {
-          type: "raster-dem",
-          url: "mapbox://mapbox.terrain-rgb",
-          tileSize: 512,
-          maxzoom: 14,
-        });
-        mapRef.current.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
-        mapRef.current.addLayer({
-          id: "3d-buildings",
-          source: "composite",
-          "source-layer": "building",
-          filter: ["==", "extrude", "true"],
-          type: "fill-extrusion",
-          minzoom: 15,
-          paint: {
-            "fill-extrusion-color": "#aaa",
-            "fill-extrusion-height": ["coalesce", ["get", "height"], 0],
-            "fill-extrusion-base": ["coalesce", ["get", "min_height"], 0],
-            "fill-extrusion-opacity": 0.6,
-          },
-        });
+      m.on("error", (e) => {
+        console.error("MapLibre error:", e.error?.message ?? e);
+      });
 
-        new mapboxgl.Marker({ color: "#c9973c" })
+      m.on("load", () => {
+        if (disposed) return;
+
+        const terrainUrl = getTerrainUrl();
+        if (terrainUrl) {
+          m.addSource("terrain", {
+            type: "raster-dem",
+            url: terrainUrl,
+            tileSize: 512,
+            maxzoom: 14,
+          });
+          m.setTerrain({ source: "terrain", exaggeration: 1.5 });
+          m.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
+        }
+
+        const style = m.getStyle();
+        const vectorKeys = Object.keys(style.sources).filter(
+          (k) => style.sources[k].type === "vector"
+        );
+
+        for (const key of vectorKeys) {
+          const src = style.sources[key] as {
+            vector_layers?: Array<{ id: string }>;
+          };
+          const layerIds = src.vector_layers?.map((l) => l.id) ?? [];
+          const match = layerIds.find((id) =>
+            BUILDING_SOURCE_LAYERS.includes(id)
+          );
+          if (match) {
+            try {
+              m.addLayer({
+                id: "3d-buildings",
+                source: key,
+                "source-layer": match,
+                type: "fill-extrusion",
+                minzoom: 14,
+                paint: {
+                  "fill-extrusion-color": [
+                    "interpolate",
+                    ["linear"],
+                    ["coalesce", ["get", "render_height"], ["get", "height"], 0],
+                    0,
+                    "#dde4f0",
+                    50,
+                    "#c5d0e6",
+                    100,
+                    "#9faec4",
+                  ],
+                  "fill-extrusion-height": [
+                    "coalesce",
+                    ["get", "render_height"],
+                    ["get", "height"],
+                    0,
+                  ],
+                  "fill-extrusion-base": [
+                    "coalesce",
+                    ["get", "render_min_height"],
+                    ["get", "min_height"],
+                    0,
+                  ],
+                  "fill-extrusion-opacity": 0.7,
+                },
+              });
+              break;
+            } catch {
+              /* source-layer in metadata but not in tiles */
+            }
+          }
+        }
+
+        new maplibregl.Marker({ color: "#c9973c", scale: 1.2 })
           .setLngLat([lng, lat])
-          .addTo(mapRef.current);
+          .addTo(m);
       });
     })();
 
@@ -85,9 +150,9 @@ export function Mapbox3DMap({ lat, lng, name, className }: Mapbox3DMapProps) {
   return (
     <div className={`relative ${className ?? ""}`}>
       <div ref={containerRef} className="h-full w-full" />
-      {!HAS_MAPBOX_TOKEN && (
+      {!MAPTILER_KEY && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-muted px-6 text-center text-sm text-muted-foreground">
-          Set NEXT_PUBLIC_MAPBOX_TOKEN in client/.env.local to enable the 3D map.
+          Set NEXT_PUBLIC_MAPTILER_KEY in client/.env.local to enable the 3D map with buildings.
         </div>
       )}
       <div className="absolute bottom-3 right-3 z-10 flex h-8 items-center gap-1.5 rounded-md border border-border bg-white px-2.5 text-xs font-medium text-muted-foreground shadow-sm">
