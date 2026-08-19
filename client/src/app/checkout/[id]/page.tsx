@@ -79,7 +79,7 @@ export default async function CheckoutPage({
             adults={adults}
             rooms={rooms}
             nights={nights}
-            roomPrice={room.price}
+            roomPrice={room.ratePlans[0].price}
           />
         </div>
       </main>

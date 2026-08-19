@@ -85,7 +85,7 @@ export default async function InvoicePage({
   const transactionId = generateTransactionId(seed, format(checkIn, "yyyyMMdd"));
   const bookedOn = subDays(checkIn, 10);
 
-  const nightsSubtotal = room.price * nights;
+  const nightsSubtotal = room.ratePlans[0].price * nights;
   const extrasTotal = extraOptions
     .filter((extra) => selectedExtraIds.includes(extra.id))
     .reduce((sum, extra) => sum + extra.price, 0);
@@ -134,7 +134,7 @@ export default async function InvoicePage({
                 <BillingSummaryCard
                   currency={property.currency}
                   roomName={room.name}
-                  roomPrice={room.price}
+                  roomPrice={room.ratePlans[0].price}
                   checkIn={checkIn}
                   checkOut={checkOut}
                   nights={nights}
@@ -157,7 +157,7 @@ export default async function InvoicePage({
                 bookingId={bookingId}
                 bookedOn={format(bookedOn, "d MMM yyyy")}
                 currency={property.currency}
-                roomPrice={room.price}
+                roomPrice={room.ratePlans[0].price}
                 nights={nights}
                 selectedExtraIds={selectedExtraIds}
               />

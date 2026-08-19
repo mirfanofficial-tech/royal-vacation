@@ -6,15 +6,14 @@ import { Breadcrumb } from "@/components/shared/breadcrumb";
 import { PropertyGallery } from "@/components/property/property-gallery";
 import { PropertySummary } from "@/components/property/property-summary";
 import { PropertyTabs } from "@/components/property/property-tabs";
+import { SignInBanner } from "@/components/property/sign-in-banner";
 import { AboutSection } from "@/components/property/about-section";
-import { PopularFacilities } from "@/components/property/popular-facilities";
-import { RoomsSection } from "@/components/property/rooms-section";
-import { ReviewsSection } from "@/components/property/reviews-section";
-import { CheckAvailabilityCard } from "@/components/property/check-availability-card";
-import { WhyBookMiniCard } from "@/components/property/why-book-mini-card";
-import { MiniMapCard } from "@/components/property/mini-map-card";
-import { Mapbox3DMap } from "@/components/property/mapbox-3d-map";
 import { TopHighlightsCard } from "@/components/property/top-highlights-card";
+import { PopularFacilities } from "@/components/property/popular-facilities";
+import { AvailabilitySection } from "@/components/property/availability-section";
+import { ReviewsSection } from "@/components/property/reviews-section";
+import { ExploreMapSection } from "@/components/property/explore-map-section";
+import { TrustBadgesBand } from "@/components/property/trust-badges-band";
 import { propertyDetails, getPropertyDetail } from "@/lib/property-detail-mock-data";
 import { featuredProperties, homesGuestsLove } from "@/lib/mock-data";
 import { getRouteSeo, mergeRouteSeoMetadata } from "@/lib/cms-seo";
@@ -71,9 +70,13 @@ export default async function PropertyDetailPage({
                   `${property.city}, ${property.country}`
                 )}`,
               },
-              { label: property.name },
+              { label: `${property.name} (${property.badge ?? "Hotel"}) Deals` },
             ]}
           />
+
+          <div className="mt-4">
+            <PropertyTabs reviewCount={property.reviews} />
+          </div>
 
           <div className="mt-4">
             <PropertySummary property={property} />
@@ -86,46 +89,41 @@ export default async function PropertyDetailPage({
               galleryImages={property.galleryImages}
               extraPhotosCount={property.extraPhotosCount}
               name={property.name}
+              ratingLabel={property.ratingLabel}
+              reviews={property.reviews}
+              staffScore={property.staffScore}
+              guestLovedQuote={property.guestLovedQuote}
+              guestReviews={property.guestReviews}
+              location={property.location}
+              lat={property.lat}
+              lng={property.lng}
             />
           </div>
 
           <div className="mt-4">
-            <PropertyTabs />
+            <SignInBanner propertyName={property.name} />
           </div>
 
-          <div className="mt-8 overflow-hidden rounded-xl border border-border bg-white">
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <div>
-                <h2 className="font-heading text-lg font-bold text-navy">3D Map View</h2>
-                <p className="text-sm text-muted-foreground">
-                  Explore {property.name} and its surroundings in 3D
-                </p>
-              </div>
-            </div>
-            <div className="relative h-[400px]">
-              <Mapbox3DMap
-                lat={property.lat}
-                lng={property.lng}
-                name={property.name}
-                className="h-full w-full"
-              />
-            </div>
-          </div>
-
-          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-            <div className="flex flex-col gap-8">
-              <AboutSection property={property} />
-              <PopularFacilities facilities={property.popularFacilities} />
-              <RoomsSection rooms={property.rooms} currency={property.currency} propertyId={property.id} />
-              <ReviewsSection property={property} />
-            </div>
-
-            <aside className="flex flex-col gap-5 lg:sticky lg:top-24 lg:self-start">
-              <CheckAvailabilityCard demandNote={property.demandNote} />
-              <WhyBookMiniCard />
-              <MiniMapCard location={property.location} lat={property.lat} lng={property.lng} />
-              <TopHighlightsCard highlights={property.highlights} />
-            </aside>
+          <div className="mt-8 flex flex-col gap-8">
+            <AboutSection property={property} />
+            <TopHighlightsCard highlights={property.highlights} />
+            <PopularFacilities facilities={property.popularFacilities} />
+            <AvailabilitySection
+              rooms={property.rooms}
+              currency={property.currency}
+              demandNote={property.demandNote}
+            />
+            <ReviewsSection property={property} />
+            <ExploreMapSection
+              name={property.name}
+              location={property.location}
+              lat={property.lat}
+              lng={property.lng}
+              distance={property.distance}
+              nearby={property.nearby}
+              gettingAround={property.gettingAround}
+            />
+            <TrustBadgesBand />
           </div>
         </div>
       </main>
