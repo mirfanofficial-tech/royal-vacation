@@ -58,7 +58,7 @@ export default async function CheckoutPage({
     <>
       <CheckoutHeader />
       <main className="flex-1 bg-muted/40">
-        <div className="mx-auto max-w-[1400px] px-6 py-6 lg:px-10">
+        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 lg:px-10">
           <div className="mb-6">
             <StepIndicator currentStep={1} />
           </div>

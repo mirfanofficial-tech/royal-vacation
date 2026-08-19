@@ -94,7 +94,7 @@ export async function Footer() {
 
   return (
     <footer className="mt-10 bg-navy">
-      <div className="mx-auto grid max-w-[1400px] grid-cols-2 gap-10 px-10 py-12 sm:grid-cols-3 lg:grid-cols-6 lg:px-24">
+      <div className="mx-auto grid max-w-[1400px] grid-cols-2 gap-10 px-4 sm:px-6 py-12 sm:grid-cols-3 lg:grid-cols-6 lg:px-24">
         <div className="col-span-2 flex flex-col gap-3 sm:col-span-3 lg:col-span-1">
           <Link href="/" className="flex items-center gap-2">
             <Logo className="h-10 w-auto" />
@@ -141,7 +141,7 @@ export async function Footer() {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-[1400px] flex-col-reverse items-center justify-between gap-4 px-10 py-6 sm:flex-row lg:px-24">
+        <div className="mx-auto flex max-w-[1400px] flex-col-reverse items-center justify-between gap-4 px-4 sm:px-6 py-6 sm:flex-row lg:px-24">
           <p className="text-xs text-white/60">
             © 2026 Royal Vacation. All rights reserved.
           </p>

@@ -14,7 +14,7 @@ export default function WishlistPage() {
     <>
       <Header />
       <main className="flex-1 bg-muted/40">
-        <div className="mx-auto max-w-[1400px] px-6 py-6 lg:px-10">
+        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 lg:px-10">
           <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Wishlist" }]} />
 
           <div className="mt-4">

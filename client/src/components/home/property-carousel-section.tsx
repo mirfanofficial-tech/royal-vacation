@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { ChevronRight } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -18,16 +16,9 @@ export function PropertyCarouselSection({
   properties: Property[];
 }) {
   return (
-    <section className="mx-auto max-w-[1400px] px-10 py-10 lg:px-24">
-      <div className="mb-5 flex items-center justify-between">
+    <section className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-10 lg:px-24">
+      <div className="mb-5">
         <h2 className="font-heading text-2xl font-bold text-navy">{title}</h2>
-        <Link
-          href="/search"
-          className="flex items-center text-sm font-semibold text-gold hover:underline"
-        >
-          View all
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Link>
       </div>
 
       <Carousel opts={{ align: "start" }} className="px-1">

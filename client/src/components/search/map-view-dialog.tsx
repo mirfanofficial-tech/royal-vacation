@@ -102,7 +102,7 @@ export function MapViewDialog({
           </div>
 
           <div
-            className={`flex min-w-0 flex-col overflow-y-auto border-border lg:min-h-0 lg:w-[440px] lg:border-b-0 lg:border-r ${
+            className={`hidden min-w-0 flex-col overflow-y-auto border-border lg:flex lg:min-h-0 lg:w-[440px] lg:border-b-0 lg:border-r ${
               panelOpen ? "" : "lg:hidden"
             }`}
           >

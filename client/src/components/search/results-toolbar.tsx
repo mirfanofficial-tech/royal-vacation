@@ -1,21 +1,7 @@
 "use client";
 
 import { List, LayoutGrid, Info } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-const sortOptions = [
-  { value: "recommended", label: "Recommended" },
-  { value: "price-low", label: "Price (low to high)" },
-  { value: "price-high", label: "Price (high to low)" },
-  { value: "rating", label: "Guest rating" },
-  { value: "stars", label: "Star rating" },
-];
+import { SortSelect } from "@/components/search/sort-select";
 
 export type ResultsView = "list" | "grid";
 
@@ -45,23 +31,14 @@ export function ResultsToolbar({
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="hidden sm:inline">Sort by:</span>
-          <Select defaultValue="recommended">
-            <SelectTrigger className="h-9 min-w-[160px] rounded-lg bg-white">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {sortOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Below `lg` this moves next to the Filters/Map buttons in FilterPanel instead —
+            same breakpoint as FilterPanel's mobile row, so it never shows in both places. */}
+        <div className="hidden items-center gap-2 text-sm text-muted-foreground lg:flex">
+          <span>Sort by:</span>
+          <SortSelect />
         </div>
 
-        <div className="flex items-center rounded-lg border border-border bg-white p-1">
+        <div className="hidden items-center rounded-lg border border-border bg-white p-1 sm:flex">
           <button
             type="button"
             aria-pressed={view === "list"}

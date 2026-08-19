@@ -74,7 +74,7 @@ export default async function BlogDetailPage({
     <>
       <Header />
       <main className="flex-1 bg-muted/40">
-        <div className="mx-auto max-w-[1400px] px-6 pt-6 lg:px-10">
+        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 pt-6 lg:px-10">
           <Breadcrumb
             items={[
               { label: "Home", href: "/" },
@@ -99,7 +99,7 @@ export default async function BlogDetailPage({
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
             <div className="absolute inset-x-0 bottom-0">
-              <div className="mx-auto max-w-[1400px] px-6 pb-8 lg:px-10">
+              <div className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-8 lg:px-10">
                 {post.category_name && post.category_slug && (
                   <Link
                     href={`/blog?category=${post.category_slug}`}
@@ -118,7 +118,7 @@ export default async function BlogDetailPage({
             </div>
           </div>
         ) : (
-          <div className="mx-auto mt-4 max-w-[1400px] px-6 lg:px-10">
+          <div className="mx-auto mt-4 max-w-[1400px] px-4 sm:px-6 lg:px-10">
             {post.category_name && post.category_slug && (
               <Link
                 href={`/blog?category=${post.category_slug}`}
@@ -138,7 +138,7 @@ export default async function BlogDetailPage({
           </div>
         )}
 
-        <div className="mx-auto max-w-[1400px] px-6 py-8 lg:px-10">
+        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-8 lg:px-10">
           <div className="flex flex-wrap items-center gap-3 border-b border-border pb-6">
             <Avatar>
               <AvatarFallback className="bg-navy/10 font-semibold text-navy">

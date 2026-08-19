@@ -29,7 +29,7 @@ export default function ContactPage() {
       <Header />
       <main className="flex-1">
         <div className="bg-muted/40">
-          <div className="mx-auto max-w-[1400px] px-10 py-10 lg:px-24">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
             <Breadcrumb
               items={[
                 { label: "Home", href: "/" },
@@ -63,7 +63,7 @@ export default function ContactPage() {
         </div>
 
         <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-10 py-10 lg:px-24">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]">
               <ContactChannels />
               <ContactForm />
@@ -72,19 +72,19 @@ export default function ContactPage() {
         </div>
 
         <div className="bg-muted/40">
-          <div className="mx-auto max-w-[1400px] px-10 py-10 lg:px-24">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
             <OfficeLocations />
           </div>
         </div>
 
         <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-10 py-10 lg:px-24">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
             <QuickActions />
           </div>
         </div>
 
         <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-10 pb-10 lg:px-24">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-10 lg:px-24">
             <TrustBadgesRow variant="plain" />
           </div>
         </div>

@@ -36,7 +36,7 @@ export default function Home() {
         <GeniusBanner />
         <Destinations />
         <Blogs />
-        <div className="mx-auto max-w-[1400px] px-10 pb-10 lg:px-24">
+        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-10 lg:px-24">
           <TrustBadgesRow variant="plain" />
         </div>
       </main>

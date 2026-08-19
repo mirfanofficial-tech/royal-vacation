@@ -31,7 +31,7 @@ export function NewsletterBar() {
 
   return (
     <div className="bg-navy/5">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-10 py-6 sm:flex-row sm:items-center sm:justify-between lg:px-24">
+      <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-4 sm:px-6 py-6 sm:flex-row sm:items-center sm:justify-between lg:px-24">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold">
             <Mail className="h-5 w-5" />

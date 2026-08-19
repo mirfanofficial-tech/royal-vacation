@@ -21,37 +21,37 @@ export default function GeniusPage() {
       <Header />
       <main className="flex-1">
         <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-10 py-10 lg:px-24">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
             <GeniusWelcomeBanner />
           </div>
         </div>
 
         <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-10 py-10 lg:px-24">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
             <TierComparison />
           </div>
         </div>
 
         <div className="bg-muted/40">
-          <div className="mx-auto max-w-[1400px] px-10 py-10 lg:px-24">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
             <QualifyingStays />
           </div>
         </div>
 
         <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-10 py-10 lg:px-24">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
             <GeniusPropertyGrid />
           </div>
         </div>
 
         <div className="bg-muted/40">
-          <div className="mx-auto max-w-[1400px] px-10 py-10 lg:px-24">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
             <HowGeniusWorks />
           </div>
         </div>
 
         <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-10 pb-10 lg:px-24">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-10 lg:px-24">
             <TrustBadgesRow variant="plain" />
           </div>
         </div>

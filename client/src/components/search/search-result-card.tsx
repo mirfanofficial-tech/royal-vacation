@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, Star, MapPin, MapPinned, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { useFavorites } from "@/components/providers/favorites-provider";
 import type { SearchProperty } from "@/lib/search-mock-data";
 
@@ -16,20 +18,68 @@ export function SearchResultCard({
 }) {
   const { isFavorite, toggleFavorite } = useFavorites();
   const favorited = isFavorite(property.id);
+  const images = [property.image, ...property.thumbnails];
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    if (!api) return;
+    setCurrent(api.selectedScrollSnap());
+    api.on("select", () => setCurrent(api.selectedScrollSnap()));
+  }, [api]);
 
   return (
     <article className="group flex flex-col gap-4 rounded-xl border border-border bg-white p-3 sm:flex-row sm:gap-5 sm:p-4">
       <div className="relative w-full shrink-0 sm:w-64">
         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
-          <Link href={`/property/${property.id}`} className="absolute inset-0 z-0">
+          {/* Mobile: swipeable slider through every photo, thumbnail row hidden below.
+              Each slide sizes itself via aspect-[4/3] (matching the Destinations carousel's
+              pattern) rather than inheriting height from the Carousel's fixed internals —
+              CarouselContent's viewport wrapper has no explicit height, so percentage-height
+              children collapse to zero. */}
+          <div className="sm:hidden">
+            <Carousel setApi={setApi}>
+              <CarouselContent className="ml-0">
+                {images.map((src, index) => (
+                  <CarouselItem key={index} className="pl-0">
+                    <Link href={`/property/${property.id}`} className="relative block aspect-[4/3] w-full">
+                      <Image
+                        src={src}
+                        alt={property.name}
+                        fill
+                        className="object-cover"
+                        sizes="100vw"
+                      />
+                    </Link>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+            {images.length > 1 && (
+              <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 gap-1">
+                {images.map((_, index) => (
+                  <span
+                    key={index}
+                    className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                      index === current ? "bg-white" : "bg-white/50"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop / tablet: static main image, thumbnails shown separately below */}
+          <Link href={`/property/${property.id}`} className="absolute inset-0 z-0 hidden sm:block">
             <Image
               src={property.image}
               alt={property.name}
               fill
               className="object-cover"
-              sizes="(min-width: 640px) 256px, 100vw"
+              sizes="256px"
             />
           </Link>
+
           {property.badge && (
             <span
               className={`absolute left-2 top-2 z-10 rounded px-2 py-0.5 text-xs font-bold text-white ${
@@ -50,7 +100,7 @@ export function SearchResultCard({
           <Heart className={`h-3.5 w-3.5 ${favorited ? "fill-red-500 text-red-500" : ""}`} />
         </button>
 
-        <div className="mt-2 grid grid-cols-3 gap-1.5">
+        <div className="mt-2 hidden grid-cols-3 gap-1.5 sm:grid">
           {property.thumbnails.map((thumb, index) => (
             <div key={thumb} className="relative aspect-[4/3] overflow-hidden rounded-md">
               <Image src={thumb} alt="" fill className="object-cover" sizes="80px" />
@@ -166,7 +216,7 @@ export function SearchResultCard({
             <Button
               render={<Link href={`/property/${property.id}`} />}
               nativeButton={false}
-              className="w-full rounded-lg bg-navy text-white hover:bg-navy-light sm:w-auto"
+              className="hidden rounded-lg bg-navy text-white hover:bg-navy-light sm:inline-flex sm:w-auto"
             >
               See availability
             </Button>

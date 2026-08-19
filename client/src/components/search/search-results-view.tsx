@@ -103,8 +103,10 @@ export function SearchResultsView({
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
         <aside className="flex flex-col gap-5">
-          <MapCard onExpand={() => setMapDialogOpen(true)} />
-          <FilterPanel defaultTypeId={defaultTypeId} />
+          <div className="hidden lg:block">
+            <MapCard onExpand={() => setMapDialogOpen(true)} />
+          </div>
+          <FilterPanel defaultTypeId={defaultTypeId} onOpenMap={() => setMapDialogOpen(true)} />
         </aside>
 
         <section className="flex flex-col gap-4">

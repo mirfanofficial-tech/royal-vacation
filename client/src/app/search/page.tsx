@@ -83,7 +83,7 @@ export default async function SearchPage({
           defaultRooms={rooms}
         />
 
-        <div className="mx-auto max-w-[1400px] px-10 py-6 lg:px-24">
+        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 lg:px-24">
           <SearchResultsView
             destination={destination}
             destinationFull={destinationFull}
