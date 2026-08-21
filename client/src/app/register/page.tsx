@@ -15,7 +15,7 @@ export default function RegisterPage() {
   return (
     <>
       <Header />
-      <main className="flex-1 bg-muted/40">
+      <main className="flex-1 bg-white">
         <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 lg:px-24">
           <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Register" }]} />
 

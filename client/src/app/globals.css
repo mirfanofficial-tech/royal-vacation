@@ -144,6 +144,11 @@
   }
 }
 
+/* Site-wide card treatment: every bordered white card gets the same soft elevated shadow. */
+.border-border.bg-white {
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08), 0 8px 20px rgba(16, 24, 40, 0.08);
+}
+
 .leaflet-container {
   font-family: inherit;
   z-index: 0;

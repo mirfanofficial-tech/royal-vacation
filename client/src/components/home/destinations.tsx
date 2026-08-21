@@ -23,7 +23,7 @@ export function Destinations() {
           {popularDestinations.map((destination) => (
             <CarouselItem
               key={destination.id}
-              className="basis-1/2 sm:basis-1/3 lg:basis-1/5"
+              className="basis-1/2 sm:basis-1/3 lg:basis-1/4"
             >
               <Link
                 href={`/search?destination=${encodeURIComponent(
@@ -36,7 +36,7 @@ export function Destinations() {
                   alt={destination.city}
                   fill
                   className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  sizes="(min-width: 1024px) 20vw, (min-width: 640px) 33vw, 50vw"
+                  sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-navy-dark/85 via-navy-dark/10 to-transparent" />
                 <span className="absolute left-3 top-3 rounded bg-gold px-2 py-0.5 text-xs font-bold text-navy-dark">

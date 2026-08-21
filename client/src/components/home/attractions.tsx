@@ -19,32 +19,50 @@ export function Attractions() {
 
       <Carousel opts={{ align: "start" }} className="px-1">
         <CarouselContent>
-          {attractions.map((attraction) => (
-            <CarouselItem key={attraction.id} className="basis-1/2 sm:basis-1/3 lg:basis-1/6">
-              <Link href="#" className="group flex flex-col gap-2">
-                <div className="relative aspect-[4/3] overflow-hidden rounded-xl">
+          {attractions.map((attraction) => {
+            const city = attraction.location.split(",")[0].trim();
+            const filledStars = Math.round(attraction.rating);
+
+            return (
+              <CarouselItem key={attraction.id} className="sm:basis-1/2 lg:basis-1/3">
+                <Link
+                  href="#"
+                  className="group relative block aspect-[4/3] overflow-hidden rounded-xl"
+                >
                   <Image
                     src={attraction.image}
                     alt={attraction.name}
                     fill
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    sizes="(min-width: 1024px) 16vw, (min-width: 640px) 33vw, 50vw"
+                    sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                   />
-                </div>
-                <h3 className="line-clamp-1 font-heading text-sm font-semibold text-navy group-hover:underline">
-                  {attraction.name}
-                </h3>
-                <p className="text-xs text-muted-foreground">{attraction.location}</p>
-                <p className="flex items-center gap-1 text-xs text-foreground">
-                  <Star className="h-3 w-3 fill-gold text-gold" />
-                  <span className="font-semibold">{attraction.rating.toFixed(1)}</span>
-                  <span className="text-muted-foreground">
-                    ({attraction.reviews.toLocaleString()} reviews)
+                  <div className="absolute inset-0 bg-navy-dark/25" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 from-0% via-black/25 via-55% to-black/10" />
+                  <span className="absolute left-3 top-3 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
+                    {city}
                   </span>
-                </p>
-              </Link>
-            </CarouselItem>
-          ))}
+                  <div className="absolute bottom-3 left-3 right-3 text-white">
+                    <h3 className="line-clamp-1 font-heading text-base font-bold">
+                      {attraction.name}
+                    </h3>
+                    <p className="mt-1 flex items-center gap-0.5">
+                      {Array.from({ length: 5 }, (_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-3.5 w-3.5 ${
+                            i < filledStars ? "fill-gold text-gold" : "fill-transparent text-gold"
+                          }`}
+                        />
+                      ))}
+                      <span className="ml-1 text-[11px] text-white/85">
+                        ({attraction.reviews.toLocaleString()} Reviews)
+                      </span>
+                    </p>
+                  </div>
+                </Link>
+              </CarouselItem>
+            );
+          })}
         </CarouselContent>
         <CarouselPrevious className="hidden left-2 lg:flex" />
         <CarouselNext className="hidden right-2 lg:flex" />

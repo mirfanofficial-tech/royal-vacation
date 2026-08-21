@@ -1,13 +1,8 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
+import Link from "next/link";
+import { ArrowRight, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 import { BlogPostCard } from "@/components/blog/blog-post-card";
 import { useLatestBlogPostsQuery } from "@/lib/blog";
@@ -19,8 +14,14 @@ export function Blogs() {
 
   return (
     <section className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-10 lg:px-24">
-      <div className="mb-5">
+      <div className="mb-5 flex items-center justify-between">
         <h2 className="font-heading text-2xl font-bold text-navy">Featured Blogs</h2>
+        <Link href="/blog">
+          <Button variant="outline" className="gap-1.5 rounded-full">
+            View all articles
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </Link>
       </div>
 
       {isLoading ? (
@@ -28,17 +29,11 @@ export function Blogs() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <Carousel opts={{ align: "start" }} className="px-1">
-          <CarouselContent>
-            {posts.map((post) => (
-              <CarouselItem key={post.id} className="sm:basis-1/2 lg:basis-1/4">
-                <BlogPostCard post={post} variant="minimal" />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious className="hidden left-2 lg:flex" />
-          <CarouselNext className="hidden right-2 lg:flex" />
-        </Carousel>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {posts.map((post) => (
+            <BlogPostCard key={post.id} post={post} variant="grid" />
+          ))}
+        </div>
       )}
     </section>
   );

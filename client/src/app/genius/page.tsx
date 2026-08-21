@@ -32,7 +32,7 @@ export default function GeniusPage() {
           </div>
         </div>
 
-        <div className="bg-muted/40">
+        <div className="bg-white">
           <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
             <QualifyingStays />
           </div>
@@ -44,7 +44,7 @@ export default function GeniusPage() {
           </div>
         </div>
 
-        <div className="bg-muted/40">
+        <div className="bg-white">
           <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
             <HowGeniusWorks />
           </div>

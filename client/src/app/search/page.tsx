@@ -74,7 +74,7 @@ export default async function SearchPage({
   return (
     <>
       <Header />
-      <main className="flex-1 bg-muted/40">
+      <main className="flex-1 bg-white">
         <SearchResultsBar
           defaultDestination={destinationFull}
           defaultCheckIn={checkIn}

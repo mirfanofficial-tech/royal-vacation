@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, MessageSquare } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 
 import type { BlogPostSummaryOut } from "@royal-vacation/api-client";
 import { resolveAssetUrl } from "@/lib/api";
@@ -124,7 +124,7 @@ export function BlogPostCard({
       href={`/blog/${post.slug}`}
       className="group flex flex-col overflow-hidden rounded-xl border border-border bg-white transition-shadow hover:shadow-md"
     >
-      <div className="relative aspect-[16/10] w-full overflow-hidden bg-muted">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
         {post.cover_image_url && (
           <Image
             src={resolveAssetUrl(post.cover_image_url)}
@@ -136,24 +136,25 @@ export function BlogPostCard({
         )}
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
-        {post.category_name && (
-          <span className="w-fit rounded-full bg-navy/10 px-2.5 py-0.5 text-xs font-medium text-navy">
-            {post.category_name}
-          </span>
-        )}
-        <h2 className="line-clamp-2 font-heading text-base font-semibold text-navy group-hover:underline">
+        <div className="flex items-center gap-2 text-xs">
+          {post.category_name && (
+            <span className="font-bold uppercase tracking-wide text-gold">
+              {post.category_name}
+            </span>
+          )}
+          {post.category_name && <span className="text-muted-foreground">&middot;</span>}
+          <span className="text-muted-foreground">{post.reading_minutes} min read</span>
+        </div>
+        <h2 className="line-clamp-2 font-heading text-lg font-bold text-navy group-hover:underline">
           {post.title}
         </h2>
         {post.excerpt && (
           <p className="line-clamp-2 text-sm text-muted-foreground">{post.excerpt}</p>
         )}
-        <div className="mt-auto flex items-center gap-3 pt-2 text-xs text-muted-foreground">
-          {post.published_at && <span>{formatDate(post.published_at)}</span>}
-          <span className="flex items-center gap-1">
-            <MessageSquare className="h-3.5 w-3.5" />
-            {post.comment_count}
-          </span>
-        </div>
+        <span className="mt-auto flex items-center gap-1.5 pt-2 text-sm font-semibold text-navy">
+          Learn More
+          <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+        </span>
       </div>
     </Link>
   );

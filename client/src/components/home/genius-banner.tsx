@@ -1,18 +1,24 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Building2, Globe, Percent, Star, Tag, User, Users } from "lucide-react";
+import { ArrowRight, Percent, Star, Tag, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const features = [
-  { icon: Tag, lines: ["Exclusive", "Deals"] },
-  { icon: Percent, lines: ["Member", "Discounts"] },
-  { icon: Star, lines: ["More Benefits", "for You"] },
-];
-
-const stats = [
-  { icon: Users, value: "10K+", label: "Happy Members" },
-  { icon: Building2, value: "100K+", label: "Properties" },
-  { icon: Globe, value: "100+", label: "Countries" },
+  {
+    icon: Tag,
+    title: "Exclusive Deals",
+    description: "Access member-only offers & promotions",
+  },
+  {
+    icon: Percent,
+    title: "Member Discounts",
+    description: "Save more on every booking",
+  },
+  {
+    icon: Star,
+    title: "More Benefits",
+    description: "Enjoy extra perks made for you",
+  },
 ];
 
 export function GeniusBanner() {
@@ -22,9 +28,9 @@ export function GeniusBanner() {
         <div className="flex flex-col lg:flex-row">
           {/* Text content */}
           <div className="flex flex-1 flex-col items-start gap-4 px-6 py-8 sm:px-10 sm:py-9">
-            <div className="flex items-center gap-2">
-              <Image src="/assets/crown.png" alt="" width={60} height={42} className="h-6 w-auto" />
-              <span className="font-heading text-lg font-bold text-navy">Loyalty</span>
+            <div className="flex items-center gap-1.5">
+              <Image src="/assets/crown.png" alt="" width={60} height={42} className="h-4 w-auto" />
+              <span className="text-xs font-bold tracking-widest text-gold">LOYALTY</span>
             </div>
 
             <h2 className="max-w-md font-heading text-2xl font-bold leading-tight text-navy sm:text-3xl">
@@ -32,19 +38,19 @@ export function GeniusBanner() {
             </h2>
 
             <p className="max-w-md text-sm text-muted-foreground">
-              Sign in to enjoy exclusive deals and discounts at thousands of properties.
+              Sign in to enjoy exclusive member deals and special discounts on thousands of
+              properties worldwide.
             </p>
 
-            <div className="flex flex-wrap gap-5">
-              {features.map(({ icon: Icon, lines }) => (
-                <div key={lines.join(" ")} className="flex items-center gap-2">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold">
+            <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:gap-6">
+              {features.map(({ icon: Icon, title, description }) => (
+                <div key={title} className="flex max-w-[10.5rem] items-start gap-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold">
                     <Icon className="h-4 w-4" />
                   </span>
-                  <span className="text-xs font-medium leading-tight text-navy">
-                    {lines[0]}
-                    <br />
-                    {lines[1]}
+                  <span className="flex flex-col leading-tight">
+                    <span className="text-sm font-semibold text-navy">{title}</span>
+                    <span className="text-xs text-muted-foreground">{description}</span>
                   </span>
                 </div>
               ))}
@@ -59,45 +65,25 @@ export function GeniusBanner() {
             </Link>
           </div>
 
-          {/* Suitcase image */}
-          <div className="relative hidden w-64 shrink-0 overflow-hidden lg:block">
-            <Image
-              src="https://images.unsplash.com/photo-1670888664952-efff442ec0d2?auto=format&fit=crop&w=500&q=80"
-              alt="Blue travel suitcase"
-              fill
-              className="object-cover"
-            />
-          </div>
-
-          {/* Gold discount panel */}
-          <div className="relative hidden w-44 shrink-0 flex-col items-center justify-center gap-1 overflow-hidden bg-gradient-to-br from-gold-light to-gold px-4 py-8 text-center text-white lg:flex">
-            <div className="absolute right-3 top-3 grid grid-cols-3 gap-1 opacity-40">
+          {/* Member offer panel */}
+          <div className="relative flex w-full shrink-0 flex-col items-center justify-center gap-1 overflow-hidden border-t border-navy/10 px-6 py-8 text-center lg:w-64 lg:border-l lg:border-t-0">
+            <div className="absolute bottom-4 right-4 grid grid-cols-3 gap-1 opacity-30">
               {Array.from({ length: 9 }).map((_, i) => (
-                <span key={i} className="h-1 w-1 rounded-full bg-white" />
+                <span key={i} className="h-1 w-1 rounded-full bg-gold" />
               ))}
             </div>
-            <div className="absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-white/10" />
-            <span className="relative text-xs font-semibold tracking-wide">UP TO</span>
-            <span className="relative font-heading text-4xl font-extrabold">20%</span>
-            <span className="relative text-sm font-bold tracking-wide">OFF</span>
-            <span className="relative my-2 h-px w-10 bg-white/40" />
-            <span className="relative text-xs text-white/90">On thousands of properties</span>
+            <span className="relative text-xs font-semibold tracking-widest text-muted-foreground">
+              MEMBER OFFER
+            </span>
+            <span className="relative mt-2 text-xs font-semibold tracking-wide text-muted-foreground">
+              UP TO
+            </span>
+            <span className="relative font-heading text-4xl font-extrabold text-gold">20%</span>
+            <span className="relative text-sm font-bold tracking-wide text-navy">OFF</span>
+            <span className="relative mt-2 max-w-[10rem] text-xs text-muted-foreground">
+              On thousands of properties worldwide
+            </span>
           </div>
-        </div>
-
-        {/* Stats strip */}
-        <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3 border-t border-navy/10 bg-white/60 px-6 py-4">
-          {stats.map(({ icon: Icon, value, label }) => (
-            <div key={label} className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold">
-                <Icon className="h-4 w-4" />
-              </span>
-              <span className="flex flex-col leading-tight">
-                <span className="text-sm font-bold text-navy">{value}</span>
-                <span className="text-xs text-muted-foreground">{label}</span>
-              </span>
-            </div>
-          ))}
         </div>
       </div>
     </section>
