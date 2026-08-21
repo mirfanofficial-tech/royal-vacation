@@ -13,11 +13,16 @@ import { attractions } from "@/lib/mock-data";
 export function Attractions() {
   return (
     <section className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-10 lg:px-24">
-      <div className="mb-5">
-        <h2 className="font-heading text-2xl font-bold text-navy">Top attractions</h2>
-      </div>
+      <Carousel opts={{ align: "start" }}>
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <h2 className="font-heading text-2xl font-bold text-navy">Top attractions</h2>
+          <div className="hidden items-center gap-2 lg:flex">
+            <CarouselPrevious className="static inset-auto my-0 translate-y-0" />
+            <CarouselNext className="static inset-auto my-0 translate-y-0" />
+          </div>
+        </div>
 
-      <Carousel opts={{ align: "start" }} className="px-1">
+        <div className="px-1">
         <CarouselContent>
           {attractions.map((attraction) => {
             const city = attraction.location.split(",")[0].trim();
@@ -64,8 +69,7 @@ export function Attractions() {
             );
           })}
         </CarouselContent>
-        <CarouselPrevious className="hidden left-2 lg:flex" />
-        <CarouselNext className="hidden right-2 lg:flex" />
+        </div>
       </Carousel>
     </section>
   );

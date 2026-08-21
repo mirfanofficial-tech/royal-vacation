@@ -13,6 +13,7 @@ import { CommentsSection } from "@/components/blog/comments-section";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { TrustBadgesRow } from "@/components/login/trust-badges-row";
 import { NewsletterBanner } from "@/components/search/newsletter-banner";
+import { ScrollReveal } from "@/components/shared/scroll-reveal";
 import { api, resolveAssetUrl } from "@/lib/api";
 
 export async function generateMetadata({
@@ -198,28 +199,34 @@ export default async function BlogDetailPage({
           </div>
 
           {related.length > 0 && (
-            <div className="mt-14 border-t border-border pt-10">
-              <div className="mb-5 flex items-center justify-between">
-                <h2 className="font-heading text-2xl font-bold text-navy">More from the blog</h2>
-                <Link href="/blog" className="text-sm font-semibold text-gold hover:underline">
-                  View all
-                </Link>
+            <ScrollReveal>
+              <div className="mt-14 border-t border-border pt-10">
+                <div className="mb-5 flex items-center justify-between">
+                  <h2 className="font-heading text-2xl font-bold text-navy">More from the blog</h2>
+                  <Link href="/blog" className="text-sm font-semibold text-gold hover:underline">
+                    View all
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {related.slice(0, 3).map((p) => (
+                    <BlogPostCard key={p.id} post={p} variant="grid" />
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {related.slice(0, 3).map((p) => (
-                  <BlogPostCard key={p.id} post={p} variant="grid" />
-                ))}
-              </div>
-            </div>
+            </ScrollReveal>
           )}
 
-          <div className="mt-14">
-            <NewsletterBanner />
-          </div>
+          <ScrollReveal>
+            <div className="mt-14">
+              <NewsletterBanner />
+            </div>
+          </ScrollReveal>
 
-          <div className="mt-10">
-            <TrustBadgesRow variant="plain" />
-          </div>
+          <ScrollReveal>
+            <div className="mt-10">
+              <TrustBadgesRow variant="plain" />
+            </div>
+          </ScrollReveal>
         </div>
       </main>
       <Footer />

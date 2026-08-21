@@ -106,11 +106,16 @@ export async function Footer() {
 
         {columns.map((column) => (
           <div key={column.title} className="flex flex-col gap-3">
-            <h3 className="text-sm font-semibold text-white">{column.title}</h3>
+            <h3 className="relative pb-2 text-sm font-semibold text-white after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-6 after:bg-gold after:content-['']">
+              {column.title}
+            </h3>
             <ul className="flex flex-col gap-2">
               {column.links.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-white/70 hover:text-white">
+                  <Link
+                    href={link.href}
+                    className="relative inline-block text-sm text-white/70 transition-colors after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-gold after:transition-transform after:duration-300 after:content-[''] hover:text-white hover:after:scale-x-100"
+                  >
                     {link.label}
                   </Link>
                 </li>
@@ -120,7 +125,9 @@ export async function Footer() {
         ))}
 
         <div className="flex flex-col gap-3">
-          <h3 className="text-sm font-semibold text-white">Download the app</h3>
+          <h3 className="relative pb-2 text-sm font-semibold text-white after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-6 after:bg-gold after:content-['']">
+            Download the app
+          </h3>
           <div className="flex flex-col gap-2">
             <Link
               href="#"

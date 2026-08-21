@@ -9,6 +9,7 @@ import { ContactChannels } from "@/components/contact/contact-channels";
 import { ContactForm } from "@/components/contact/contact-form";
 import { OfficeLocations } from "@/components/contact/office-locations";
 import { QuickActions } from "@/components/contact/quick-actions";
+import { ScrollReveal } from "@/components/shared/scroll-reveal";
 
 export const metadata: Metadata = {
   title: "Contact Us | Royal Vacation",
@@ -62,32 +63,40 @@ export default function ContactPage() {
           </div>
         </div>
 
-        <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]">
-              <ContactChannels />
-              <ContactForm />
+        <ScrollReveal>
+          <div className="bg-white">
+            <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]">
+                <ContactChannels />
+                <ContactForm />
+              </div>
             </div>
           </div>
-        </div>
+        </ScrollReveal>
 
-        <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
-            <OfficeLocations />
+        <ScrollReveal>
+          <div className="bg-white">
+            <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
+              <OfficeLocations />
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
 
-        <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
-            <QuickActions />
+        <ScrollReveal>
+          <div className="bg-white">
+            <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
+              <QuickActions />
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
 
-        <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-10 lg:px-24">
-            <TrustBadgesRow variant="plain" />
+        <ScrollReveal>
+          <div className="bg-white">
+            <div className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-10 lg:px-24">
+              <TrustBadgesRow variant="plain" />
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
       </main>
       <Footer />
     </>

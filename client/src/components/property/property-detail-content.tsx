@@ -15,6 +15,7 @@ import { ExploreMapSection } from "@/components/property/explore-map-section";
 import { NearbyHotelsSection } from "@/components/property/nearby-hotels-section";
 import { TrustBadgesBand } from "@/components/property/trust-badges-band";
 import { PropertyLoadingSkeleton } from "@/components/property/property-loading-skeleton";
+import { ScrollReveal } from "@/components/shared/scroll-reveal";
 import { featuredProperties, homesGuestsLove } from "@/lib/mock-data";
 import type { PropertyDetail } from "@/lib/property-detail-mock-data";
 
@@ -91,26 +92,42 @@ export function PropertyDetailContent({ property }: { property: PropertyDetail }
       </div>
 
       <div className="mt-8 flex flex-col gap-8">
-        <AboutSection property={property} />
-        <TopHighlightsCard highlights={property.highlights} />
-        <PopularFacilities facilities={property.popularFacilities} />
-        <AvailabilitySection
-          rooms={property.rooms}
-          currency={property.currency}
-          demandNote={property.demandNote}
-        />
-        <ReviewsSection property={property} />
-        <ExploreMapSection
-          name={property.name}
-          location={property.location}
-          lat={property.lat}
-          lng={property.lng}
-          distance={property.distance}
-          nearby={property.nearby}
-          gettingAround={property.gettingAround}
-        />
-        <NearbyHotelsSection city={property.city} hotels={nearbyHotels} />
-        <TrustBadgesBand />
+        <ScrollReveal>
+          <AboutSection property={property} />
+        </ScrollReveal>
+        <ScrollReveal>
+          <TopHighlightsCard highlights={property.highlights} />
+        </ScrollReveal>
+        <ScrollReveal>
+          <PopularFacilities facilities={property.popularFacilities} />
+        </ScrollReveal>
+        <ScrollReveal>
+          <AvailabilitySection
+            rooms={property.rooms}
+            currency={property.currency}
+            demandNote={property.demandNote}
+          />
+        </ScrollReveal>
+        <ScrollReveal>
+          <ReviewsSection property={property} />
+        </ScrollReveal>
+        <ScrollReveal>
+          <ExploreMapSection
+            name={property.name}
+            location={property.location}
+            lat={property.lat}
+            lng={property.lng}
+            distance={property.distance}
+            nearby={property.nearby}
+            gettingAround={property.gettingAround}
+          />
+        </ScrollReveal>
+        <ScrollReveal>
+          <NearbyHotelsSection city={property.city} hotels={nearbyHotels} />
+        </ScrollReveal>
+        <ScrollReveal>
+          <TrustBadgesBand />
+        </ScrollReveal>
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import { EditorsPick } from "@/components/blog/editors-pick";
 import { TrendingSection } from "@/components/blog/trending-section";
 import { JournalPagination } from "@/components/blog/journal-pagination";
 import { SortSelect } from "@/components/blog/sort-select";
+import { ScrollReveal } from "@/components/shared/scroll-reveal";
 import { api } from "@/lib/api";
 
 const PAGE_SIZE = 12;
@@ -90,7 +91,7 @@ export default async function BlogIndexPage({
     <>
       <Header />
       <main className="flex-1 bg-white">
-        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 lg:px-10">
+        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 lg:px-24">
           <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Blog" }]} />
 
           <div className="mt-4">
@@ -103,12 +104,14 @@ export default async function BlogIndexPage({
           </div>
 
           {showEditorial && editorsPick && (
-            <div className="mt-8">
-              <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Editor&apos;s pick
-              </p>
-              <EditorsPick post={editorsPick} />
-            </div>
+            <ScrollReveal>
+              <div className="mt-8">
+                <p className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  Editor&apos;s pick
+                </p>
+                <EditorsPick post={editorsPick} />
+              </div>
+            </ScrollReveal>
           )}
 
           <div className="mt-8 mb-6 flex flex-wrap items-center gap-3">
@@ -155,43 +158,49 @@ export default async function BlogIndexPage({
               No articles found.
             </div>
           ) : (
-            <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {latestPosts.map((post) => (
-                <BlogPostCard key={post.id} post={post} variant="journal" />
-              ))}
-            </div>
-          )}
-
-          {trending.length > 0 && (
-            <div className="mt-10">
-              <TrendingSection posts={trending} />
-            </div>
-          )}
-
-          {morePosts.length > 0 && (
-            <div className="mt-10">
-              <div className="mb-4 flex items-baseline justify-between">
-                <div>
-                  <h2 className="font-heading text-xl font-bold text-navy">
-                    More from the journal
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Guides, reviews and slow reads worth saving
-                  </p>
-                </div>
-                <Link
-                  href="/blog"
-                  className="text-sm font-medium text-navy hover:underline"
-                >
-                  See archive →
-                </Link>
-              </div>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                {morePosts.map((post) => (
+            <ScrollReveal>
+              <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {latestPosts.map((post) => (
                   <BlogPostCard key={post.id} post={post} variant="journal" />
                 ))}
               </div>
-            </div>
+            </ScrollReveal>
+          )}
+
+          {trending.length > 0 && (
+            <ScrollReveal>
+              <div className="mt-10">
+                <TrendingSection posts={trending} />
+              </div>
+            </ScrollReveal>
+          )}
+
+          {morePosts.length > 0 && (
+            <ScrollReveal>
+              <div className="mt-10">
+                <div className="mb-4 flex items-baseline justify-between">
+                  <div>
+                    <h2 className="font-heading text-xl font-bold text-navy">
+                      More from the journal
+                    </h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Guides, reviews and slow reads worth saving
+                    </p>
+                  </div>
+                  <Link
+                    href="/blog"
+                    className="text-sm font-medium text-navy hover:underline"
+                  >
+                    See archive →
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                  {morePosts.map((post) => (
+                    <BlogPostCard key={post.id} post={post} variant="journal" />
+                  ))}
+                </div>
+              </div>
+            </ScrollReveal>
           )}
 
           {visiblePosts.length > 0 && (
@@ -206,13 +215,17 @@ export default async function BlogIndexPage({
             </div>
           )}
 
-          <div className="mt-10">
-            <NewsletterBanner />
-          </div>
+          <ScrollReveal>
+            <div className="mt-10">
+              <NewsletterBanner />
+            </div>
+          </ScrollReveal>
 
-          <div className="mt-10">
-            <TrustBadgesRow variant="plain" />
-          </div>
+          <ScrollReveal>
+            <div className="mt-10">
+              <TrustBadgesRow variant="plain" />
+            </div>
+          </ScrollReveal>
         </div>
       </main>
       <Footer />

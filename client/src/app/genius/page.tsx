@@ -8,6 +8,7 @@ import { TierComparison } from "@/components/genius/tier-comparison";
 import { QualifyingStays } from "@/components/genius/qualifying-stays";
 import { GeniusPropertyGrid } from "@/components/genius/genius-property-grid";
 import { HowGeniusWorks } from "@/components/genius/how-genius-works";
+import { ScrollReveal } from "@/components/shared/scroll-reveal";
 
 export const metadata: Metadata = {
   title: "Genius Loyalty | Royal Vacation",
@@ -26,35 +27,45 @@ export default function GeniusPage() {
           </div>
         </div>
 
-        <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
-            <TierComparison />
+        <ScrollReveal>
+          <div className="bg-white">
+            <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
+              <TierComparison />
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
 
-        <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
-            <QualifyingStays />
+        <ScrollReveal>
+          <div className="bg-white">
+            <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
+              <QualifyingStays />
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
 
-        <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
-            <GeniusPropertyGrid />
+        <ScrollReveal>
+          <div className="bg-white">
+            <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
+              <GeniusPropertyGrid />
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
 
-        <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
-            <HowGeniusWorks />
+        <ScrollReveal>
+          <div className="bg-white">
+            <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
+              <HowGeniusWorks />
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
 
-        <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-10 lg:px-24">
-            <TrustBadgesRow variant="plain" />
+        <ScrollReveal>
+          <div className="bg-white">
+            <div className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-10 lg:px-24">
+              <TrustBadgesRow variant="plain" />
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
       </main>
       <Footer />
     </>

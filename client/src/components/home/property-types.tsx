@@ -18,18 +18,31 @@ export function PropertyTypes() {
 
   if (!isLoading && propertyTypes.length === 0) return null;
 
-  return (
-    <section className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-10 pt-8 lg:px-24">
-      <div className="mb-5">
-        <h2 className="font-heading text-2xl font-bold text-navy">Browse by property type</h2>
-      </div>
-
-      {isLoading ? (
+  if (isLoading) {
+    return (
+      <section className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-10 pt-8 lg:px-24">
+        <div className="mb-5">
+          <h2 className="font-heading text-2xl font-bold text-navy">Browse by property type</h2>
+        </div>
         <div className="flex justify-center py-10">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      ) : (
-        <Carousel opts={{ align: "start" }} className="px-1">
+      </section>
+    );
+  }
+
+  return (
+    <section className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-10 pt-8 lg:px-24">
+      <Carousel opts={{ align: "start" }}>
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <h2 className="font-heading text-2xl font-bold text-navy">Browse by property type</h2>
+          <div className="hidden items-center gap-2 lg:flex">
+            <CarouselPrevious className="static inset-auto my-0 translate-y-0" />
+            <CarouselNext className="static inset-auto my-0 translate-y-0" />
+          </div>
+        </div>
+
+        <div className="px-1">
           <CarouselContent>
             {propertyTypes.map((type) => (
               <CarouselItem key={type.id} className="basis-1/2 sm:basis-1/3 lg:basis-1/6">
@@ -58,10 +71,8 @@ export function PropertyTypes() {
               </CarouselItem>
             ))}
           </CarouselContent>
-          <CarouselPrevious className="hidden left-2 lg:flex" />
-          <CarouselNext className="hidden right-2 lg:flex" />
-        </Carousel>
-      )}
+        </div>
+      </Carousel>
     </section>
   );
 }

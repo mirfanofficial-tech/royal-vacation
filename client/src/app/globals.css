@@ -149,6 +149,21 @@
   box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08), 0 8px 20px rgba(16, 24, 40, 0.08);
 }
 
+/* Active-item underline that grows left-to-right on mount (header nav, etc.). */
+@keyframes underline-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.animate-underline-grow {
+  transform-origin: left;
+  animation: underline-grow 0.5s ease forwards;
+}
+
 .leaflet-container {
   font-family: inherit;
   z-index: 0;

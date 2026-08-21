@@ -63,15 +63,21 @@ export async function Header() {
               <Link
                 key={item.id}
                 href={item.href}
-                className={`flex flex-col items-center gap-1 text-xs font-medium transition-colors ${
-                  active ? "text-navy" : "text-muted-foreground hover:text-navy"
+                className={`flex items-center gap-1.5 text-sm transition-colors ${
+                  active
+                    ? "font-semibold text-navy"
+                    : "font-medium text-muted-foreground hover:text-navy"
                 }`}
               >
                 <Icon className="h-5 w-5" strokeWidth={1.75} />
-                {item.label}
-                <span
-                  className={`h-1 w-1 rounded-full ${active ? "bg-navy" : "bg-transparent"}`}
-                />
+                <span className="relative">
+                  {item.label}
+                  <span
+                    className={`absolute -bottom-2 left-0 h-0.5 w-1/2 rounded-full bg-gold ${
+                      active ? "animate-underline-grow" : "scale-x-0"
+                    }`}
+                  />
+                </span>
               </Link>
             );
           })}

@@ -1,8 +1,14 @@
+"use client";
+
+import { useState } from "react";
 import { ReviewSummaryCard } from "@/components/property/review-summary-card";
 import { ReviewCard } from "@/components/property/review-card";
+import { ReviewsModal } from "@/components/property/reviews-modal";
 import type { PropertyDetail } from "@/lib/property-detail-mock-data";
 
 export function ReviewsSection({ property }: { property: PropertyDetail }) {
+  const [reviewsModalOpen, setReviewsModalOpen] = useState(false);
+
   return (
     <section id="reviews" className="scroll-mt-36">
       <h2 className="mb-4 font-heading text-xl font-bold text-navy">
@@ -49,12 +55,23 @@ export function ReviewsSection({ property }: { property: PropertyDetail }) {
           </div>
           <button
             type="button"
+            onClick={() => setReviewsModalOpen(true)}
             className="mt-1 text-sm font-semibold text-navy hover:underline"
           >
             Read all &rarr;
           </button>
         </div>
       </div>
+
+      <ReviewsModal
+        open={reviewsModalOpen}
+        onClose={() => setReviewsModalOpen(false)}
+        reviews={property.guestReviews}
+        totalReviews={property.reviews}
+        rating={property.rating}
+        ratingLabel={property.ratingLabel}
+        propertyName={property.name}
+      />
     </section>
   );
 }

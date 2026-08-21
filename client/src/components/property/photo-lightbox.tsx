@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { X } from "lucide-react";
 
@@ -30,7 +31,7 @@ export function PhotoLightbox({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -66,6 +67,7 @@ export function PhotoLightbox({
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

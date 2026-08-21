@@ -4,6 +4,7 @@ import { Footer } from "@/components/layout/footer";
 import { LoginForm } from "@/components/login/login-form";
 import { LoginPromoPanel } from "@/components/login/login-promo-panel";
 import { TrustBadgesRow } from "@/components/login/trust-badges-row";
+import { ScrollReveal } from "@/components/shared/scroll-reveal";
 
 export const metadata: Metadata = {
   title: "Sign In | Royal Vacation",
@@ -21,9 +22,11 @@ export default function LoginPage() {
             <LoginForm />
           </div>
 
-          <div className="mt-6">
-            <TrustBadgesRow />
-          </div>
+          <ScrollReveal>
+            <div className="mt-6">
+              <TrustBadgesRow />
+            </div>
+          </ScrollReveal>
         </div>
       </main>
       <Footer />

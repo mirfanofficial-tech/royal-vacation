@@ -16,7 +16,7 @@ export function ReviewCard({ review }: { review: GuestReview }) {
   const extraCount = review.photos.length - maxVisible;
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-white p-4">
+    <div className="flex h-full flex-col gap-3 rounded-xl border border-border bg-white p-4">
       {/* ---------- Header row ---------- */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
@@ -83,7 +83,7 @@ export function ReviewCard({ review }: { review: GuestReview }) {
 
       {/* ---------- Trip info footer ---------- */}
       {review.tripInfo && (
-        <div className="flex items-center gap-1.5 border-t border-border pt-2.5">
+        <div className="mt-auto flex items-center gap-1.5 border-t border-border pt-2.5">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"

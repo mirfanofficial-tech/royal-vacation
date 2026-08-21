@@ -5,6 +5,7 @@ import { Breadcrumb } from "@/components/shared/breadcrumb";
 import { RegisterForm } from "@/components/register/register-form";
 import { RegisterPromoPanel } from "@/components/register/register-promo-panel";
 import { NewsletterBar } from "@/components/register/newsletter-bar";
+import { ScrollReveal } from "@/components/shared/scroll-reveal";
 
 export const metadata: Metadata = {
   title: "Create Your Account | Royal Vacation",
@@ -25,9 +26,11 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        <div className="mt-8">
-          <NewsletterBar />
-        </div>
+        <ScrollReveal>
+          <div className="mt-8">
+            <NewsletterBar />
+          </div>
+        </ScrollReveal>
       </main>
       <Footer />
     </>

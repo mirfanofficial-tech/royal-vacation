@@ -5,6 +5,7 @@ import { Footer } from "@/components/layout/footer";
 import { SearchResultsBar } from "@/components/search/search-results-bar";
 import { SearchResultsView } from "@/components/search/search-results-view";
 import { NewsletterBanner } from "@/components/search/newsletter-banner";
+import { ScrollReveal } from "@/components/shared/scroll-reveal";
 import { searchProperties } from "@/lib/search-mock-data";
 import { getRouteSeo, mergeRouteSeoMetadata } from "@/lib/cms-seo";
 
@@ -96,9 +97,11 @@ export default async function SearchPage({
             defaultTypeId={propertyType}
           />
 
-          <div className="mt-8">
-            <NewsletterBanner />
-          </div>
+          <ScrollReveal>
+            <div className="mt-8">
+              <NewsletterBanner />
+            </div>
+          </ScrollReveal>
         </div>
       </main>
       <Footer />
