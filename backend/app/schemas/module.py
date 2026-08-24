@@ -34,6 +34,11 @@ class ApiConfig(BaseModel):
     auth_header: str | None = None
     auth_username_key: str | None = None
     auth_password_key: str | None = None
+    # Static header_name -> credential_key pairs sent alongside the primary
+    # auth header on every request. Covers providers (Vervotech: `apikey` +
+    # `accountId`) that need more than one credential-derived header but
+    # aren't a real auth handshake — still config-driven, not bespoke code.
+    extra_headers: dict[str, str] = {}
     endpoints: dict[str, dict[str, str]] = {}
 
 

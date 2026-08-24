@@ -69,7 +69,7 @@ export async function Header() {
                     : "font-medium text-muted-foreground hover:text-navy"
                 }`}
               >
-                <Icon className="h-5 w-5" strokeWidth={1.75} />
+                <Icon className="h-4 w-4" strokeWidth={1.75} />
                 <span className="relative">
                   {item.label}
                   <span

@@ -17,7 +17,7 @@ export function Destinations() {
           <h2 className="font-heading text-2xl font-bold text-navy">
             Popular with travelers from Dubai
           </h2>
-          <div className="hidden items-center gap-2 lg:flex">
+          <div className="items-center gap-2 flex">
             <CarouselPrevious className="static inset-auto my-0 translate-y-0" />
             <CarouselNext className="static inset-auto my-0 translate-y-0" />
           </div>

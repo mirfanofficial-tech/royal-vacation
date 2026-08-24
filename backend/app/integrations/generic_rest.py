@@ -39,6 +39,18 @@ class GenericRestSupplierClient(BaseSupplierClient):
             raise IntegrationError(f"{self.provider_slug}: no '{name}' endpoint configured")
         return endpoint
 
+    def _extra_headers(self, config: dict) -> dict[str, str]:
+        headers: dict[str, str] = {}
+        for header_name, credential_key in config.get("extra_headers", {}).items():
+            value = self.credentials.get(credential_key)
+            if not value:
+                raise IntegrationError(
+                    f"{self.provider_slug}: credential '{credential_key}' not set "
+                    f"for extra header '{header_name}'"
+                )
+            headers[header_name] = value
+        return headers
+
     def _auth_kwargs(self) -> dict[str, Any]:
         config = self.module.api_config or {}
         auth_type = config.get("auth_type")
@@ -50,7 +62,7 @@ class GenericRestSupplierClient(BaseSupplierClient):
                 raise IntegrationError(
                     f"{self.provider_slug}: credential '{key}' not set for bearer auth"
                 )
-            return {"headers": {"Authorization": f"Bearer {token}"}}
+            return {"headers": {"Authorization": f"Bearer {token}", **self._extra_headers(config)}}
 
         if auth_type == "api_key":
             key = config.get("auth_credential_key", "api_key")
@@ -60,7 +72,7 @@ class GenericRestSupplierClient(BaseSupplierClient):
                     f"{self.provider_slug}: credential '{key}' not set for api_key auth"
                 )
             header = config.get("auth_header", "X-API-Key")
-            return {"headers": {header: value}}
+            return {"headers": {header: value, **self._extra_headers(config)}}
 
         if auth_type == "basic":
             username_key = config.get("auth_username_key", "username")
@@ -71,7 +83,7 @@ class GenericRestSupplierClient(BaseSupplierClient):
                 raise IntegrationError(
                     f"{self.provider_slug}: username/password not set for basic auth"
                 )
-            return {"auth": (username, password)}
+            return {"auth": (username, password), "headers": self._extra_headers(config)}
 
         raise IntegrationError(f"{self.provider_slug}: unsupported auth_type '{auth_type}'")
 

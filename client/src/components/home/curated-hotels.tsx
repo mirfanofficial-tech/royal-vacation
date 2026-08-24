@@ -40,7 +40,7 @@ export function CuratedHotels() {
               Curated hotel content, mapped across our booking partners.
             </p>
           </div>
-          <div className="hidden items-center gap-2 lg:flex">
+          <div className="items-center gap-2 flex">
             <CarouselPrevious className="static inset-auto my-0 translate-y-0" />
             <CarouselNext className="static inset-auto my-0 translate-y-0" />
           </div>
