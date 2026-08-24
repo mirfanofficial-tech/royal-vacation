@@ -361,6 +361,31 @@ session evidently didn't persist to this database. Fixed:
   10 hotels, all linked under `ratehawk` — see the "Supplier roster
   corrected" note above.
 
+### RateHawk credentials received, blocked on IP allowlisting (2026-08-24)
+
+Real production credentials arrived — `key_id: 11321` + a real `api_key`
+(Production key type, not sandbox). Stored the same way as Vervotech:
+`PATCH /api/v1/admin/modules/{id}` → Fernet-encrypted, masked on read.
+
+Verified the auth shape against the official `papi-sdk-python` source
+(EmergingTravel/papi-sdk-python on GitHub — docs.emergingtravel.com itself
+blocks automated fetches) rather than guessing: base URL
+`https://api.worldota.net`, HTTP Basic auth (`key_id` as username, `api_key`
+as password — the schema seeded in Stage A guessed right), and a safe
+read-only `GET /api/b2b/v3/overview/` endpoint for connectivity checks (the
+same one the official SDK uses for this). Configured `api_config`
+accordingly.
+
+**Real, informative failure**: both a direct curl and `test-connection`
+through our backend got back a structured `403 not_allowed_host` response
+that echoes `key_id: 11321` — proving the credentials themselves are valid
+and recognized, not a config error. RateHawk restricts **Production** keys
+to an IP allowlist, and the calling machine's IP isn't on it yet. This is
+expected supplier-side behavior, not a bug: **next step is whitelisting the
+real deployment server's IP in the RateHawk partner dashboard** (and
+optionally this dev machine's IP too, for local testing) before
+`test-connection` can succeed and the module can go `active`.
+
 ### Vervotech is live (2026-08-24)
 
 Real credentials arrived — `accountId: royalvacations` + a real `apiKey`.
@@ -576,14 +601,17 @@ suppliers are identified and credentialed (§7 unchanged on that point).
 Can't be planned around — need an answer to scope the work honestly.
 
 - **~~Which suppliers, specifically?~~ Answered 2026-08-24: RateHawk**,
-  with a 2nd supplier expected later (identity still unknown). RateHawk
-  credentials are pending — user has said they'll provide them.
-- **Is RateHawk "generic-shaped"?** `ratehawk`'s seeded `credential_schema`
-  (`key_id` + `api_key`) assumes RateHawk's well-known HTTP Basic-auth
-  convention, but that's recalled from general knowledge, not verified
-  against RateHawk's real docs the way Vervotech's was — fetch RateHawk's
-  actual API docs once available and correct the `api_config`/
-  `credential_schema` before trusting it, same treatment Vervotech got.
+  with a 2nd supplier expected later (identity still unknown).
+  **~~RateHawk credentials?~~ Received 2026-08-24** — real Production
+  key (`key_id: 11321`), stored encrypted. **New blocker: IP allowlisting**
+  — RateHawk rejects Production-key calls from non-whitelisted IPs
+  (confirmed via a real `403 not_allowed_host` response). Need the real
+  deployment server's IP whitelisted in the RateHawk partner dashboard
+  before `test-connection` can succeed.
+- **~~Is RateHawk "generic-shaped"?~~ Answered 2026-08-24: yes.**
+  Verified against the official `papi-sdk-python` source (not just
+  recalled): `https://api.worldota.net`, HTTP Basic auth
+  (`key_id`/`api_key`), fits `GenericRestSupplierClient` with no new code.
 - **Once a 2nd supplier is confirmed**: how much catalog overlap is
   expected with RateHawk? Heavy overlap makes Vervotech's mapping/dedup
   urgent immediately; light overlap means it mostly matters once that 2nd
@@ -594,9 +622,10 @@ Can't be planned around — need an answer to scope the work honestly.
   automatically, or does Royal Vacation need a tie-breaking rule? (Moot
   until a 2nd supplier exists — RateHawk alone has nothing to disagree
   with.)
-- **Do we have sandbox credentials for RateHawk and Vervotech yet?**
-  Vervotech: yes, live. RateHawk: pending. Stages B (real pull)–C all need
-  RateHawk access to build and test against for real.
+- **Do we have working credentials for RateHawk and Vervotech yet?**
+  Vervotech: yes, live. RateHawk: credentials valid but calls blocked until
+  IP allowlisting is done (see above) — Stages B (real pull)–C are blocked
+  on that, not on the credentials themselves anymore.
 - **Which page goes live first?** Home page carousels are still the
   lowest-risk place to prove the pipeline before touching search or the
   booking-adjacent property page.
