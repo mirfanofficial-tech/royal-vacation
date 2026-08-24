@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   transpilePackages: ["@royal-vacation/api-client"],
   images: {
     remotePatterns: [
@@ -11,6 +12,8 @@ const nextConfig: NextConfig = {
       // Backend-served uploads (logos, property type images, ...).
       { protocol: "http", hostname: "localhost", port: "8090" },
       { protocol: "http", hostname: "localhost", port: "8000" },
+      // TODO: add the production API hostname here once the domain is live,
+      // e.g. { protocol: "https", hostname: "api.example.com" }.
     ],
   },
 };

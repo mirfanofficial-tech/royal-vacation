@@ -1,0 +1,11 @@
+# Applies to builds using the repo root as context (client/, admin/ — see
+# docker-compose.prod.yml). backend/ has its own .dockerignore since it
+# builds with backend/ as its own context.
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+.git/
+.env
+.env.*
+**/*.log
