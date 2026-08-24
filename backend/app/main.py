@@ -8,6 +8,7 @@ from app.api.routes import (
     cms,
     contact,
     health,
+    hotels,
     partner,
     profile,
     properties,
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(
         property_types.router, prefix=f"{prefix}/property-types", tags=["property-types"]
     )
+    app.include_router(hotels.router, prefix=f"{prefix}/hotels", tags=["hotels"])
     app.include_router(blog.router, prefix=f"{prefix}/blog", tags=["blog"])
     app.include_router(cms.router, prefix=f"{prefix}/cms", tags=["cms"])
     app.include_router(contact.router, prefix=f"{prefix}/contact", tags=["contact"])

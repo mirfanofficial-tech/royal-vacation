@@ -17,6 +17,7 @@ from app.api.routes.admin import (
     cms_pages,
     cms_translations,
     contact,
+    hotels,
     modules,
     partners,
     payment_gateways,
@@ -47,6 +48,7 @@ router.include_router(
     payment_gateways.router, prefix="/payment-gateways", tags=["admin:payment-gateways"]
 )
 router.include_router(modules.router, prefix="/modules", tags=["admin:modules"])
+router.include_router(hotels.router, prefix="/hotels", tags=["admin:hotels"])
 router.include_router(theme.router, prefix="/theme", tags=["admin:theme"])
 router.include_router(stays.router, prefix="/stays/settings", tags=["admin:stays"])
 router.include_router(

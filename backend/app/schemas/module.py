@@ -24,6 +24,19 @@ class CredentialFieldOut(BaseModel):
     value: str | None = None
 
 
+class ApiConfig(BaseModel):
+    """How to call this provider's API — see app/integrations/generic_rest.py
+    for the exact shape this drives (auth type, credential key, endpoints)."""
+
+    base_url: str
+    auth_type: str  # "bearer" | "api_key" | "basic"
+    auth_credential_key: str | None = None
+    auth_header: str | None = None
+    auth_username_key: str | None = None
+    auth_password_key: str | None = None
+    endpoints: dict[str, dict[str, str]] = {}
+
+
 class ThirdPartyModuleOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -41,8 +54,29 @@ class ThirdPartyModuleOut(BaseModel):
     tax: TaxConfig
     credential_fields: list[CredentialFieldOut]
     help_text: str | None = None
+    api_config: ApiConfig | None = None
+    field_mapping: dict[str, str] = {}
     created_at: datetime
     updated_at: datetime
+
+
+class ThirdPartyModuleCreate(BaseModel):
+    provider: str
+    module_id: str
+    name: str
+    category: str
+    status: str = "inactive"
+    ai_enabled: bool = False
+    environment: str = "development"
+    markup_b2b: MarkupRule = MarkupRule(type="percentage", value=Decimal("0"))
+    markup_b2c: MarkupRule = MarkupRule(type="percentage", value=Decimal("0"))
+    base_currency: str = ""
+    tax: TaxConfig = TaxConfig(type="percentage", value=Decimal("0"))
+    credential_schema: list[dict] = []
+    credentials: dict[str, str] = {}
+    help_text: str | None = None
+    api_config: ApiConfig | None = None
+    field_mapping: dict[str, str] = {}
 
 
 class ThirdPartyModuleUpdate(BaseModel):
@@ -56,3 +90,11 @@ class ThirdPartyModuleUpdate(BaseModel):
     # Only the provided keys are merged into the encrypted blob — an omitted
     # key keeps its existing stored value unchanged.
     credentials: dict[str, str] | None = None
+    api_config: ApiConfig | None = None
+    field_mapping: dict[str, str] | None = None
+
+
+class TestConnectionResult(BaseModel):
+    ok: bool
+    message: str
+    preview: dict | None = None

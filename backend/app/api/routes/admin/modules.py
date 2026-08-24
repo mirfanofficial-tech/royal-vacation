@@ -4,8 +4,13 @@ Credentials are Fernet-encrypted at rest (app/core/crypto.py) and never
 returned in full — reads only ever see a masked preview of fields marked
 `secret` in `credential_schema`. There is deliberately no "reveal" endpoint;
 to change a credential, set a new value (an omitted key on update keeps the
-current value). List/get/update only — the admin UI has no add/remove-
-provider flow, so there are no create/delete endpoints here.
+current value).
+
+Create/delete (added for VERVOTECH_INTEGRATION.md Stage A — admin-driven
+provider onboarding, mirroring app/api/routes/admin/payment_gateways.py's
+create_gateway/delete_gateway). `api_config`/`field_mapping` drive
+GenericRestSupplierClient (app/integrations/generic_rest.py); test-connection
+runs a real call through it via app/integrations/registry.py.
 """
 
 from uuid import UUID
@@ -17,11 +22,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_admin
 from app.core.crypto import decrypt_json, encrypt_json
 from app.db.session import get_db
+from app.integrations.base import IntegrationError
+from app.integrations.generic_rest import GenericRestSupplierClient
+from app.integrations.registry import get_client
 from app.models.module import ThirdPartyModule
 from app.schemas.module import (
+    ApiConfig,
     CredentialFieldOut,
     MarkupRule,
     TaxConfig,
+    TestConnectionResult,
+    ThirdPartyModuleCreate,
     ThirdPartyModuleOut,
     ThirdPartyModuleUpdate,
 )
@@ -68,6 +79,8 @@ def _to_out(module: ThirdPartyModule) -> ThirdPartyModuleOut:
         tax=TaxConfig(type=module.tax_type, value=module.tax_value),
         credential_fields=fields,
         help_text=module.help_text,
+        api_config=ApiConfig(**module.api_config) if module.api_config else None,
+        field_mapping=module.field_mapping or {},
         created_at=module.created_at,
         updated_at=module.updated_at,
     )
@@ -89,6 +102,45 @@ async def _get_module(db: AsyncSession, module_id: str) -> ThirdPartyModule:
 async def list_modules(db: AsyncSession = Depends(get_db)) -> list[ThirdPartyModuleOut]:
     result = await db.execute(select(ThirdPartyModule).order_by(ThirdPartyModule.name))
     return [_to_out(m) for m in result.scalars().all()]
+
+
+@router.post("", response_model=ThirdPartyModuleOut, status_code=status.HTTP_201_CREATED)
+async def create_module(
+    payload: ThirdPartyModuleCreate, db: AsyncSession = Depends(get_db)
+) -> ThirdPartyModuleOut:
+    existing = await db.execute(
+        select(ThirdPartyModule).where(ThirdPartyModule.provider == payload.provider)
+    )
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Provider already exists"
+        )
+
+    module = ThirdPartyModule(
+        provider=payload.provider,
+        module_id=payload.module_id,
+        name=payload.name,
+        category=payload.category,
+        status=payload.status,
+        ai_enabled=payload.ai_enabled,
+        environment=payload.environment,
+        markup_b2b_type=payload.markup_b2b.type,
+        markup_b2b_value=payload.markup_b2b.value,
+        markup_b2c_type=payload.markup_b2c.type,
+        markup_b2c_value=payload.markup_b2c.value,
+        base_currency=payload.base_currency,
+        tax_type=payload.tax.type,
+        tax_value=payload.tax.value,
+        credential_schema=payload.credential_schema,
+        credentials_encrypted=encrypt_json(payload.credentials) if payload.credentials else None,
+        help_text=payload.help_text,
+        api_config=payload.api_config.model_dump() if payload.api_config else None,
+        field_mapping=payload.field_mapping,
+    )
+    db.add(module)
+    await db.commit()
+    await db.refresh(module)
+    return _to_out(module)
 
 
 @router.get("/{module_id}", response_model=ThirdPartyModuleOut)
@@ -125,3 +177,59 @@ async def update_module(
     await db.commit()
     await db.refresh(module)
     return _to_out(module)
+
+
+@router.delete("/{module_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_module(module_id: str, db: AsyncSession = Depends(get_db)) -> None:
+    module = await _get_module(db, module_id)
+    await db.delete(module)
+    await db.commit()
+
+
+# Sample search params for a test-connection call — Stage A has no real hotel
+# context yet (that's Stage B/C), so this just proves the request/auth/field-
+# mapping pipeline works end to end against whatever the admin configured.
+_TEST_CONNECTION_SAMPLE_PARAMS = {
+    "checkIn": "2026-09-01",
+    "checkOut": "2026-09-03",
+    "adults": "2",
+}
+
+
+@router.post("/{module_id}/test-connection", response_model=TestConnectionResult)
+async def test_module_connection(
+    module_id: str, db: AsyncSession = Depends(get_db)
+) -> TestConnectionResult:
+    module = await _get_module(db, module_id)
+    if not module.api_config:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Add an API configuration before testing the connection",
+        )
+
+    try:
+        client = await get_client(db, module.provider)
+    except Exception as exc:  # ProviderNotConfiguredError or a lookup failure
+        return TestConnectionResult(ok=False, message=str(exc))
+
+    if not isinstance(client, GenericRestSupplierClient):
+        return TestConnectionResult(
+            ok=False,
+            message=f"'{module.provider}' uses a bespoke client — test connection isn't wired up for it yet",
+        )
+
+    try:
+        preview = await client.search(_TEST_CONNECTION_SAMPLE_PARAMS)
+    except IntegrationError as exc:
+        return TestConnectionResult(ok=False, message=str(exc))
+
+    if module.field_mapping and not preview:
+        return TestConnectionResult(
+            ok=False,
+            message="Connected, but no configured field mapping matched the response — check the JSONPath expressions",
+            preview=preview,
+        )
+
+    return TestConnectionResult(
+        ok=True, message=f"Connected to {module.name} and mapped {len(preview)} field(s)", preview=preview
+    )

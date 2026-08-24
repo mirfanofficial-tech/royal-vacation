@@ -54,6 +54,13 @@ class ThirdPartyModule(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base
     # secret fields before serializing a response.
     credentials_encrypted: Mapped[str | None] = mapped_column(Text)
     help_text: Mapped[str | None] = mapped_column(Text)
+    # How to call this provider's API — base URL, auth type, endpoint paths
+    # for search/rates/booking. Null until configured from the admin UI.
+    # See VERVOTECH_INTEGRATION.md §4.
+    api_config: Mapped[dict | None] = mapped_column(JSONB)
+    # Canonical field -> JSONPath into this provider's response, e.g.
+    # {"hotel.name": "$.propertyName"}. Walked by GenericRestSupplierClient.
+    field_mapping: Mapped[dict | None] = mapped_column(JSONB)
 
     __table_args__ = (
         CheckConstraint(

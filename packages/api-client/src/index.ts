@@ -84,6 +84,10 @@ import type {
   StaySettingCreate,
   StaySettingOut,
   StaySettingUpdate,
+  HotelOut,
+  HotelPipelineStatsOut,
+  ModuleTestConnectionResult,
+  ThirdPartyModuleCreate,
   ThirdPartyModuleOut,
   ThirdPartyModuleUpdate,
   TokenPair,
@@ -248,8 +252,17 @@ export class RoyalVacationApi extends ApiClient {
     modules: {
       list: () => this.get<ThirdPartyModuleOut[]>("/api/v1/admin/modules"),
       get: (id: string) => this.get<ThirdPartyModuleOut>(`/api/v1/admin/modules/${id}`),
+      create: (body: ThirdPartyModuleCreate) =>
+        this.post<ThirdPartyModuleOut>("/api/v1/admin/modules", body),
       update: (id: string, body: ThirdPartyModuleUpdate) =>
         this.patch<ThirdPartyModuleOut>(`/api/v1/admin/modules/${id}`, body),
+      remove: (id: string) => this.delete<void>(`/api/v1/admin/modules/${id}`),
+      testConnection: (id: string) =>
+        this.post<ModuleTestConnectionResult>(`/api/v1/admin/modules/${id}/test-connection`, {}),
+    },
+    hotels: {
+      list: () => this.get<HotelOut[]>("/api/v1/admin/hotels"),
+      stats: () => this.get<HotelPipelineStatsOut>("/api/v1/admin/hotels/stats"),
     },
     theme: {
       get: () => this.get<SiteThemeOut>("/api/v1/admin/theme"),
@@ -476,6 +489,12 @@ export class RoyalVacationApi extends ApiClient {
 
   propertyTypes = {
     list: () => this.get<PropertyTypeOut[]>("/api/v1/property-types"),
+  };
+
+  // ---- Public hotels (VERVOTECH_INTEGRATION.md Stage B curated content) ----
+
+  hotels = {
+    list: () => this.get<HotelOut[]>("/api/v1/hotels"),
   };
 
   // ---- Public blog ---------------------------------------------------------

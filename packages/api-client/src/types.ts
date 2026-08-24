@@ -492,6 +492,27 @@ export interface ThirdPartyCredentialFieldOut {
   value: string | null;
 }
 
+export type ModuleAuthType = "bearer" | "api_key" | "basic";
+
+export interface ModuleApiConfigEndpoint {
+  method: string;
+  path: string;
+}
+
+/** How to call a provider's API — drives GenericRestSupplierClient server-side. */
+export interface ModuleApiConfig {
+  base_url: string;
+  auth_type: ModuleAuthType;
+  auth_credential_key?: string | null;
+  auth_header?: string | null;
+  auth_username_key?: string | null;
+  auth_password_key?: string | null;
+  endpoints: Record<string, ModuleApiConfigEndpoint>;
+}
+
+/** Canonical field -> JSONPath into the provider's response, e.g. {"hotel.name": "$.propertyName"}. */
+export type ModuleFieldMapping = Record<string, string>;
+
 export interface ThirdPartyModuleOut {
   id: string;
   provider: string;
@@ -507,8 +528,29 @@ export interface ThirdPartyModuleOut {
   tax: ModuleTaxConfig;
   credential_fields: ThirdPartyCredentialFieldOut[];
   help_text?: string | null;
+  api_config?: ModuleApiConfig | null;
+  field_mapping: ModuleFieldMapping;
   created_at: string;
   updated_at: string;
+}
+
+export interface ThirdPartyModuleCreate {
+  provider: string;
+  module_id: string;
+  name: string;
+  category: string;
+  status?: ModuleStatus;
+  ai_enabled?: boolean;
+  environment?: ModuleEnvironment;
+  markup_b2b?: MarkupRule;
+  markup_b2c?: MarkupRule;
+  base_currency?: string;
+  tax?: ModuleTaxConfig;
+  credential_schema?: { key: string; label: string; secret?: boolean; required?: boolean }[];
+  credentials?: Record<string, string>;
+  help_text?: string | null;
+  api_config?: ModuleApiConfig | null;
+  field_mapping?: ModuleFieldMapping;
 }
 
 export interface ThirdPartyModuleUpdate {
@@ -521,6 +563,49 @@ export interface ThirdPartyModuleUpdate {
   tax?: ModuleTaxConfig;
   /** Only provided keys are merged in — an omitted key keeps its current value. */
   credentials?: Record<string, string>;
+  api_config?: ModuleApiConfig | null;
+  field_mapping?: ModuleFieldMapping | null;
+}
+
+export interface ModuleTestConnectionResult {
+  ok: boolean;
+  message: string;
+  preview?: Record<string, unknown> | null;
+}
+
+// ---- Hotel mapping pipeline (VERVOTECH_INTEGRATION.md Stage B) --------
+
+export interface SupplierHotelLinkOut {
+  supplier: string;
+  supplier_hotel_id: string;
+}
+
+export interface HotelOut {
+  id: string;
+  vervotech_id: string;
+  name: string;
+  description?: string | null;
+  star_rating?: number | null;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  amenities: string[];
+  hero_image?: string | null;
+  gallery_images: string[];
+  content_synced_at?: string | null;
+  supplier_links: SupplierHotelLinkOut[];
+  created_at: string;
+  updated_at: string;
+}
+
+/** Stage B pipeline snapshot — all zero until real supplier/Vervotech pulls run. */
+export interface HotelPipelineStatsOut {
+  mapped_hotels: number;
+  raw_supplier_records: number;
+  raw_records_by_supplier: Record<string, number>;
+  supplier_links: number;
 }
 
 // ---- Reference data --------------------------------------------------

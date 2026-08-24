@@ -19,6 +19,7 @@ import {
   Languages,
   LayoutDashboard,
   Layers,
+  Link2,
   List,
   LogOut,
   Mail,
@@ -66,7 +67,7 @@ const navItems: NavItem[] = [
   // { href: "/properties", label: "Properties", icon: Building2, module: "properties" },
   // { href: "/bookings", label: "Bookings", icon: CalendarCheck, module: "bookings" },
   // { href: "/guests", label: "Guests", icon: Users, module: "guests" },
-  // { href: "/modules", label: "Modules", icon: Plug, module: "modules" },
+  { href: "/modules", label: "Modules", icon: Plug, module: "modules" },
   {
     href: "/stays",
     label: "Stays",
@@ -75,6 +76,7 @@ const navItems: NavItem[] = [
     children: [
       { href: "/stays/config", label: "Stays Config", icon: SlidersHorizontal, module: "stays" },
       { href: "/stays/property-types", label: "Property Types", icon: Building2, module: "stays" },
+      { href: "/hotel-mapping", label: "Hotel Mapping", icon: Link2, module: "stays" },
     ],
   },
   // {

@@ -6,9 +6,103 @@ doesn't, and the fact that **3 supplier APIs are already in place, with more
 planned.**
 
 - **Source**: [docs.vervotech.com](https://docs.vervotech.com/getting-started-1677930m0) — Getting Started
-- **Status**: Planning — not started
+- **Status**: Stage A done. Stage B schema done (steps 14/16); steps 12/13/15
+  blocked on real supplier/Vervotech credentials — see below.
 - **Codebase**: `backend/` + `client/`
 - **Suppliers**: 3 confirmed today, more expected — names/details TBD (see open questions)
+
+## Status
+
+| Stage | Feature | Status |
+|---|---|---|
+| A | Foundations (admin-driven onboarding, no external calls) | ✅ Done |
+| B | Content & mapping pipeline (batch, offline) | 🟡 Schema done, data pull blocked |
+| C | Live rates layer | ⬜ Not started |
+| D | Booking | ⬜ Not started |
+| E | Sync & freshness | ⬜ Not started |
+| F | Frontend cutover | ⬜ Not started |
+| G | Operational readiness | ⬜ Not started |
+
+### Stage A — done, curl-verified end-to-end (2026-08-22)
+
+All 11 steps built and verified against the dockerized Postgres + a live
+backend, logged in as `admin@royalvacation.com`:
+
+- `third_party_modules` gained `api_config`/`field_mapping` (JSONB) via
+  Alembic revision `2b52dac1184c` (hand-trimmed of unrelated autogenerate
+  drift — see the migration's own docstring), seeded with `vervotech` (real
+  `accountId`/`apiKey` credential schema) + `supplier-a`/`b`/`c` placeholder
+  rows (`category = 'Hotels Module'`, `status = 'inactive'`) — the 3 real
+  suppliers are still unnamed per the open questions below, so these are
+  renamed from the admin UI once known, not hardcoded.
+- `jsonpath-ng==1.6.1` added to `requirements.txt`.
+- New `backend/app/integrations/` package: `schemas.py` (canonical
+  `Hotel`/`RoomOption`/`RatePlan`, mirroring
+  `client/src/lib/property-detail-mock-data.ts`), `base.py`
+  (`BaseSupplierClient` — credentialed httpx plumbing, 2-attempt retry, no
+  prior retry precedent existed so this is new), `generic_rest.py`
+  (`GenericRestSupplierClient` — config-driven auth + endpoint calls +
+  JSONPath field mapping), `registry.py` (`provider_slug -> client`, empty
+  `PROVIDER_CLIENT_OVERRIDES` for future bespoke clients).
+- `backend/app/core/providers.py`: `get_provider_credentials()`, raises
+  `ProviderNotConfiguredError` rather than propagating `decrypt_json`'s soft
+  `{}` failure.
+- `admin/modules.py` gained `POST`/`DELETE` (mirroring
+  `payment_gateways.py` exactly — 409 on duplicate `provider`, plain
+  delete/204) and `POST /{id}/test-connection`, which runs a *real* request
+  through the registry and returns a normalized preview.
+- Admin UI: **API Configuration** (base URL, auth type, per-auth-type
+  fields, search/rates/booking endpoint rows) and **Field Mapping**
+  (repeatable canonical-field-dropdown + JSONPath rows) tabs added to
+  `admin/src/app/(dashboard)/modules/[id]/page.tsx`; `testModuleConnection()`
+  in `admin/src/lib/modules.ts` is a real backend call now, no more
+  `setTimeout` mock.
+- **Verified live**: PATCH'd Vervotech's row to point at `https://httpbin.org/get`
+  (api-key auth, `X-API-Key` header) with a field mapping pulling
+  `checkIn`/`adults` back out of the echoed request — `test-connection`
+  returned `{"ok": true, "preview": {"hotel.name": "2026-09-01", "hotel.city": "2"}}`,
+  proving the full auth → request → JSONPath pipeline works end to end
+  against a real HTTP response. Reset back to `null` afterward — this was a
+  connectivity proof, not real Vervotech config (no sandbox credentials
+  exist yet per the open questions).
+- **Scope note**: create/delete/test-connection were curl-verified directly;
+  the admin UI's two new tabs were verified via typecheck + lint + a
+  successful page load, not a live click-through (no browser automation
+  available in this session).
+
+### Stage B — schema done (2026-08-23), data pull explicitly blocked
+
+Steps 14/16 built and applied via Alembic revision `7f12d5a2f255` (same
+hand-trim-of-drift treatment as `2b52dac1184c`). **Steps 12/13/15 were not
+attempted** — they require pulling real hotel exports from the 3 (still
+unnamed) suppliers and calling Vervotech's Hotel Mapping + Curated Content
+APIs, and there are no real credentials for any of them yet (§7). Building
+fake calls against fabricated data would violate the "grounded in what's
+real" principle this whole doc opened with, so this stage stops at schema.
+
+- `backend/app/models/hotel.py` (new): `RawSupplierHotel` (step 12's
+  landing table — `payload` JSONB, unique on `(supplier, supplier_hotel_id)`),
+  `Hotel` (step 14 — keyed by unique `vervotech_id`; deliberately scoped to
+  genuine *curated content* fields only — name, location, star rating,
+  amenities, images — not `rating`/`reviews`/`price`, which are live/computed
+  elsewhere and don't belong hardcoded here), `SupplierHotelLink` (step 13's
+  output — join table, FK to `hotels.id` cascade-delete, unique on
+  `(supplier, supplier_hotel_id)`).
+- Registered in `backend/app/models/__init__.py` so Alembic's metadata sees
+  them.
+- **Verified**: `\d hotels` / `\d raw_supplier_hotels` / `\d
+  supplier_hotel_links` on the dockerized Postgres match the models exactly;
+  backend restarted clean with the new models loaded (no import/mapper
+  errors).
+- **Explicitly not done** (steps 12/13/15, and therefore the stage's own
+  "done when" bar of "a handful of known hotels... spot-checked against a
+  supplier's own site"): pulling supplier exports into
+  `raw_supplier_hotels`, calling Vervotech Hotel Mapping, calling Vervotech
+  Curated Content. All three tables are empty. Next real step once
+  supplier/Vervotech access exists: `backend/app/integrations/generic_rest.py`
+  already has everything needed to pull a supplier's hotel list (point
+  `api_config.endpoints` at their export endpoint) — the missing piece is
+  purely credentials + knowing who the 3 suppliers are.
 
 ## 0. The one thing to understand before scoping this
 

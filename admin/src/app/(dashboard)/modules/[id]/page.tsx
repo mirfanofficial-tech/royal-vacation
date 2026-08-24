@@ -10,19 +10,26 @@ import {
   BookOpen,
   Bug,
   FlaskConical,
+  Globe,
   Info,
   KeyRound,
+  ListTree,
   Loader2,
   Percent,
+  Plus,
   Receipt,
   Save,
   SlidersHorizontal,
+  Trash2,
 } from "lucide-react";
 
 import { useModules, testModuleConnection } from "@/lib/modules";
 import type {
   MarkupType,
+  ModuleApiConfig,
+  ModuleAuthType,
   ModuleEnvironment,
+  ModuleFieldMapping,
   TaxType,
   ThirdPartyModuleOut,
   ThirdPartyModuleUpdate,
@@ -76,10 +83,65 @@ const tabs = [
   { id: "general", label: "General", icon: SlidersHorizontal },
   { id: "markup-tax", label: "Markup & Tax", icon: Percent },
   { id: "credentials", label: "API Credentials", icon: KeyRound },
+  { id: "api-config", label: "API Configuration", icon: Globe },
+  { id: "field-mapping", label: "Field Mapping", icon: ListTree },
   { id: "testing", label: "API Testing", icon: FlaskConical },
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
+
+// Canonical fields from app/integrations/schemas.py (Hotel/RoomOption/RatePlan)
+// — see VERVOTECH_INTEGRATION.md Stage A step 6. Not exhaustive, just the
+// fields most useful to preview during onboarding.
+const canonicalFieldOptions = [
+  "hotel.id",
+  "hotel.name",
+  "hotel.star_rating",
+  "hotel.rating",
+  "hotel.city",
+  "hotel.country",
+  "hotel.hero_image",
+  "hotel.price",
+  "hotel.currency",
+  "room.name",
+  "room.max_guests",
+  "rate.price",
+  "rate.currency",
+  "rate.cancellation",
+  "rate.refundable",
+];
+
+const authTypeOptions: { value: ModuleAuthType; label: string }[] = [
+  { value: "bearer", label: "Bearer token" },
+  { value: "api_key", label: "API key header" },
+  { value: "basic", label: "Basic auth (username/password)" },
+];
+
+const endpointNames = ["search", "rates", "booking"] as const;
+
+function emptyApiConfig(): ModuleApiConfig {
+  return {
+    base_url: "",
+    auth_type: "bearer",
+    auth_credential_key: "",
+    auth_header: "",
+    auth_username_key: "",
+    auth_password_key: "",
+    endpoints: {},
+  };
+}
+
+type FieldMappingRow = { field: string; path: string };
+
+function fieldMappingToRows(mapping: ModuleFieldMapping): FieldMappingRow[] {
+  return Object.entries(mapping).map(([field, path]) => ({ field, path }));
+}
+
+function rowsToFieldMapping(rows: FieldMappingRow[]): ModuleFieldMapping {
+  return Object.fromEntries(
+    rows.filter((row) => row.field.trim() && row.path.trim()).map((row) => [row.field, row.path])
+  );
+}
 
 function Toggle({
   checked,
@@ -154,6 +216,12 @@ function ModuleConfigView({
         .map((field) => [field.key, field.value ?? ""])
     )
   );
+  const [apiConfig, setApiConfig] = useState<ModuleApiConfig>(
+    providerModule.api_config ?? emptyApiConfig()
+  );
+  const [fieldMappingRows, setFieldMappingRows] = useState<FieldMappingRow[]>(
+    fieldMappingToRows(providerModule.field_mapping)
+  );
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -161,25 +229,19 @@ function ModuleConfigView({
     "idle"
   );
   const [testMessage, setTestMessage] = useState("");
+  const [testPreview, setTestPreview] = useState<Record<string, unknown> | null>(null);
+
+  function updateEndpoint(name: (typeof endpointNames)[number], patch: { method?: string; path?: string }) {
+    setApiConfig((prev) => {
+      const current = prev.endpoints[name] ?? { method: "GET", path: "" };
+      return {
+        ...prev,
+        endpoints: { ...prev.endpoints, [name]: { ...current, ...patch } },
+      };
+    });
+  }
 
   const currencyCode = baseCurrency.split(" ")[0] ?? baseCurrency;
-
-  function buildDraft(): ThirdPartyModuleOut {
-    return {
-      ...providerModule,
-      status,
-      ai_enabled: aiEnabled,
-      environment,
-      markup_b2b: { type: b2bType, value: Number(b2bValue) || 0 },
-      markup_b2c: { type: b2cType, value: Number(b2cValue) || 0 },
-      base_currency: baseCurrency,
-      tax: { type: taxType, value: Number(taxValue) || 0 },
-      credential_fields: providerModule.credential_fields.map((field) => ({
-        ...field,
-        value: credentials[field.key] ?? field.value,
-      })),
-    };
-  }
 
   async function handleSave() {
     setSaveError("");
@@ -196,6 +258,8 @@ function ModuleConfigView({
         credentials: Object.fromEntries(
           Object.entries(credentials).filter(([, v]) => v.trim() !== "")
         ),
+        api_config: apiConfig.base_url.trim() ? apiConfig : null,
+        field_mapping: rowsToFieldMapping(fieldMappingRows),
       });
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2000);
@@ -206,12 +270,21 @@ function ModuleConfigView({
     }
   }
 
+  // Runs against the last *saved* configuration, not unsaved edits in this
+  // form — save first if you've just changed the API config or mapping.
   async function handleTest() {
     setTest("testing");
     setTestMessage("");
-    const result = await testModuleConnection(buildDraft());
-    setTest(result.ok ? "success" : "error");
-    setTestMessage(result.message);
+    setTestPreview(null);
+    try {
+      const result = await testModuleConnection(providerModule.id);
+      setTest(result.ok ? "success" : "error");
+      setTestMessage(result.message);
+      setTestPreview(result.preview ?? null);
+    } catch (err) {
+      setTest("error");
+      setTestMessage(errorMessage(err, "Test connection failed."));
+    }
   }
 
   return (
@@ -556,6 +629,225 @@ function ModuleConfigView({
             </Card>
           )}
 
+          {activeTab === "api-config" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Globe className="size-4 text-muted-foreground" />
+                  API Configuration
+                </CardTitle>
+                <CardDescription>
+                  How to call {providerModule.name}&apos;s API — base URL, auth, and endpoint
+                  paths. This drives the generic REST client, so most providers need no custom
+                  code at all.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div>
+                  <label className={fieldLabel} htmlFor="module-base-url">
+                    Base URL
+                  </label>
+                  <Input
+                    id="module-base-url"
+                    placeholder="https://api.example.com"
+                    value={apiConfig.base_url}
+                    onChange={(e) => setApiConfig((prev) => ({ ...prev, base_url: e.target.value }))}
+                    className="font-mono text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className={fieldLabel} htmlFor="module-auth-type">
+                    Auth Type
+                  </label>
+                  <select
+                    id="module-auth-type"
+                    value={apiConfig.auth_type}
+                    onChange={(e) =>
+                      setApiConfig((prev) => ({ ...prev, auth_type: e.target.value as ModuleAuthType }))
+                    }
+                    className={selectClass}
+                  >
+                    {authTypeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {(apiConfig.auth_type === "bearer" || apiConfig.auth_type === "api_key") && (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className={fieldLabel} htmlFor="module-auth-credential-key">
+                        Credential field to use
+                      </label>
+                      <Input
+                        id="module-auth-credential-key"
+                        placeholder="apiKey"
+                        value={apiConfig.auth_credential_key ?? ""}
+                        onChange={(e) =>
+                          setApiConfig((prev) => ({ ...prev, auth_credential_key: e.target.value }))
+                        }
+                        className="font-mono text-xs"
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Matches a key from the API Credentials tab.
+                      </p>
+                    </div>
+                    {apiConfig.auth_type === "api_key" && (
+                      <div>
+                        <label className={fieldLabel} htmlFor="module-auth-header">
+                          Header name
+                        </label>
+                        <Input
+                          id="module-auth-header"
+                          placeholder="X-API-Key"
+                          value={apiConfig.auth_header ?? ""}
+                          onChange={(e) =>
+                            setApiConfig((prev) => ({ ...prev, auth_header: e.target.value }))
+                          }
+                          className="font-mono text-xs"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {apiConfig.auth_type === "basic" && (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className={fieldLabel} htmlFor="module-auth-username-key">
+                        Username field
+                      </label>
+                      <Input
+                        id="module-auth-username-key"
+                        placeholder="username"
+                        value={apiConfig.auth_username_key ?? ""}
+                        onChange={(e) =>
+                          setApiConfig((prev) => ({ ...prev, auth_username_key: e.target.value }))
+                        }
+                        className="font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className={fieldLabel} htmlFor="module-auth-password-key">
+                        Password field
+                      </label>
+                      <Input
+                        id="module-auth-password-key"
+                        placeholder="password"
+                        value={apiConfig.auth_password_key ?? ""}
+                        onChange={(e) =>
+                          setApiConfig((prev) => ({ ...prev, auth_password_key: e.target.value }))
+                        }
+                        className="font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-3 border-t border-border pt-4">
+                  <p className="text-sm font-medium">Endpoints</p>
+                  {endpointNames.map((name) => {
+                    const endpoint = apiConfig.endpoints[name] ?? { method: "GET", path: "" };
+                    return (
+                      <div key={name} className="grid grid-cols-[6rem_5.5rem_1fr] items-end gap-2">
+                        <p className="pb-2 text-xs font-medium capitalize text-muted-foreground">
+                          {name}
+                        </p>
+                        <select
+                          aria-label={`${name} method`}
+                          value={endpoint.method}
+                          onChange={(e) => updateEndpoint(name, { method: e.target.value })}
+                          className={selectClass}
+                        >
+                          <option value="GET">GET</option>
+                          <option value="POST">POST</option>
+                        </select>
+                        <Input
+                          aria-label={`${name} path`}
+                          placeholder="/hotels/search"
+                          value={endpoint.path}
+                          onChange={(e) => updateEndpoint(name, { path: e.target.value })}
+                          className="font-mono text-xs"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {activeTab === "field-mapping" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ListTree className="size-4 text-muted-foreground" />
+                  Field Mapping
+                </CardTitle>
+                <CardDescription>
+                  Canonical field → JSONPath into {providerModule.name}&apos;s response, e.g.{" "}
+                  <code className="rounded bg-muted px-1 py-0.5 text-[11px]">hotel.name</code> →{" "}
+                  <code className="rounded bg-muted px-1 py-0.5 text-[11px]">$.propertyName</code>.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {fieldMappingRows.map((row, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <select
+                      aria-label="Canonical field"
+                      value={row.field}
+                      onChange={(e) =>
+                        setFieldMappingRows((prev) =>
+                          prev.map((r, i) => (i === index ? { ...r, field: e.target.value } : r))
+                        )
+                      }
+                      className={cn(selectClass, "w-48 shrink-0")}
+                    >
+                      <option value="">Select a field…</option>
+                      {canonicalFieldOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                    <Input
+                      aria-label="JSONPath"
+                      placeholder="$.propertyName"
+                      value={row.path}
+                      onChange={(e) =>
+                        setFieldMappingRows((prev) =>
+                          prev.map((r, i) => (i === index ? { ...r, path: e.target.value } : r))
+                        )
+                      }
+                      className="font-mono text-xs"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Remove row"
+                      onClick={() => setFieldMappingRows((prev) => prev.filter((_, i) => i !== index))}
+                    >
+                      <Trash2 className="size-4 text-muted-foreground" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFieldMappingRows((prev) => [...prev, { field: "", path: "" }])}
+                >
+                  <Plus data-icon="inline-start" />
+                  Add field
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {activeTab === "testing" && (
             <Card>
               <CardHeader>
@@ -564,7 +856,10 @@ function ModuleConfigView({
                   API Testing
                 </CardTitle>
                 <CardDescription>
-                  Test your API credentials to ensure connectivity.
+                  Calls the configured search endpoint with sample parameters and runs your field
+                  mapping against the real response — tests the last{" "}
+                  <span className="font-medium">saved</span> configuration, not unsaved edits on
+                  this page.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -600,6 +895,14 @@ function ModuleConfigView({
                       <Bug className="mt-0.5 size-4 shrink-0" />
                     )}
                     <span>{testMessage}</span>
+                  </div>
+                )}
+                {testPreview && (
+                  <div>
+                    <p className={fieldLabel}>Normalized preview</p>
+                    <pre className="overflow-x-auto rounded-lg border border-border bg-muted/30 p-3 font-mono text-xs">
+                      {JSON.stringify(testPreview, null, 2)}
+                    </pre>
                   </div>
                 )}
               </CardContent>
