@@ -2,14 +2,31 @@
 
 A working plan for replacing Royal Vacation's mock hotel data with real
 content — grounded in what Vervotech's API actually provides, what it
-doesn't, and the fact that **3 supplier APIs are already in place, with more
-planned.**
+doesn't, and the fact that **Vervotech is the primary mapping/content tool,
+with RateHawk as the one confirmed live rate supplier so far** (a second is
+expected later — see §7).
 
 - **Source**: [docs.vervotech.com](https://docs.vervotech.com/getting-started-1677930m0) — Getting Started
-- **Status**: Stage A done. Stage B schema done (steps 14/16); steps 12/13/15
-  blocked on real supplier/Vervotech credentials — see below.
+- **Status**: Stage A + B schema applied to the live database and verified
+  (2026-08-24). **Vervotech itself is now genuinely live** — real
+  `accountId`/`apiKey` configured, test-connection verified against
+  `hotelmapping.vervotech.com` with real mapped data (see below).
+  **Supplier roster corrected (2026-08-24)**: the earlier "3 unnamed
+  suppliers" placeholder rows (`supplier-a/b/c`) were wrong — there is
+  exactly **one** confirmed real supplier today, **RateHawk**. Deleted the
+  3 placeholders via the admin API and created a real `ratehawk` row
+  (`Hotels Module`, `status='inactive'`, credential fields `key_id` +
+  `api_key` — RateHawk's real API uses HTTP Basic auth with Key ID as
+  username and API Key as password; unconfirmed against real docs, will be
+  corrected once credentials/docs arrive, same as Vervotech's schema was).
+  Re-seeded all 10 sample hotels' `supplier_hotel_links`/
+  `raw_supplier_hotels` under `ratehawk` alone (was spread across the 3
+  fake placeholders). Steps 12/13/15 (the actual supplier export + mapping
+  pull) are still blocked —
+  Vervotech is one leg of that pipeline, but the 3 suppliers' own
+  identities/credentials are still unknown (§7).
 - **Codebase**: `backend/` + `client/`
-- **Suppliers**: 3 confirmed today, more expected — names/details TBD (see open questions)
+- **Suppliers**: 1 confirmed today — **RateHawk** — with a 2nd expected later (credentials TBD, see open questions)
 
 ## Status
 
@@ -32,9 +49,10 @@ backend, logged in as `admin@royalvacation.com`:
   Alembic revision `2b52dac1184c` (hand-trimmed of unrelated autogenerate
   drift — see the migration's own docstring), seeded with `vervotech` (real
   `accountId`/`apiKey` credential schema) + `supplier-a`/`b`/`c` placeholder
-  rows (`category = 'Hotels Module'`, `status = 'inactive'`) — the 3 real
-  suppliers are still unnamed per the open questions below, so these are
-  renamed from the admin UI once known, not hardcoded.
+  rows (`category = 'Hotels Module'`, `status = 'inactive'`) — placeholders
+  since the real suppliers were unnamed at the time. **Superseded
+  2026-08-24**: deleted via the admin API once RateHawk was confirmed as the
+  one real supplier — see the "Supplier roster corrected" note above.
 - `jsonpath-ng==1.6.1` added to `requirements.txt`.
 - New `backend/app/integrations/` package: `schemas.py` (canonical
   `Hotel`/`RoomOption`/`RatePlan`, mirroring
@@ -314,6 +332,105 @@ step small enough to land and verify on its own before the next depends on
 it. Grouped into seven stages; nothing in a later stage should start before
 the stage before it is actually working, not just written.
 
+### Reality check — DB sync (2026-08-24)
+
+Both migrations existed on disk and this doc already claimed Stage A/B were
+"done," but the database the backend actually connects to
+(`backend/.env` → native Postgres on `localhost:5432`, not the
+`royal_vacation_db2` Docker container also present on this machine, on
+`5433`, which has no `alembic_version` table at all — an unrelated stale
+container, not the source of truth) was still two revisions behind
+(`8fd69e86b751`). Verifying "curl-verified end-to-end" claims from a prior
+session evidently didn't persist to this database. Fixed:
+
+- Ran `alembic upgrade head` — applied `2b52dac1184c` (api_config/field_mapping
+  + Vervotech/supplier-a/b/c seed rows) and `7f12d5a2f255` (hotels /
+  raw_supplier_hotels / supplier_hotel_links) for real.
+- Found `jsonpath-ng` was listed in `requirements.txt` but never actually
+  `pip install`ed into `backend/.venv` — meant a fresh backend boot crashed
+  on import (`app/integrations/generic_rest.py` → `ModuleNotFoundError`).
+  The dev server on port 8000 was silently running a *stale* pre-integration
+  build the whole time, which is how this went unnoticed. Installed it,
+  restarted the server clean.
+- Ran `backend/app/db/seed_hotels.py` — sample hotels seeded with supplier
+  links across the then-placeholder supplier-a/b/c rows, now real rows in
+  `hotels`/`supplier_hotel_links`/`raw_supplier_hotels`.
+- Verified live: `GET /api/v1/hotels` returned all seeded hotels with their
+  `supplier_links`, `third_party_modules` had the Hotels Module rows,
+  `alembic current` reported `7f12d5a2f255`. **Superseded 2026-08-24**: now
+  10 hotels, all linked under `ratehawk` — see the "Supplier roster
+  corrected" note above.
+
+### RateHawk credentials received, blocked on IP allowlisting (2026-08-24)
+
+Real production credentials arrived — `key_id: 11321` + a real `api_key`
+(Production key type, not sandbox). Stored the same way as Vervotech:
+`PATCH /api/v1/admin/modules/{id}` → Fernet-encrypted, masked on read.
+
+Verified the auth shape against the official `papi-sdk-python` source
+(EmergingTravel/papi-sdk-python on GitHub — docs.emergingtravel.com itself
+blocks automated fetches) rather than guessing: base URL
+`https://api.worldota.net`, HTTP Basic auth (`key_id` as username, `api_key`
+as password — the schema seeded in Stage A guessed right), and a safe
+read-only `GET /api/b2b/v3/overview/` endpoint for connectivity checks (the
+same one the official SDK uses for this). Configured `api_config`
+accordingly.
+
+**Real, informative failure**: both a direct curl and `test-connection`
+through our backend got back a structured `403 not_allowed_host` response
+that echoes `key_id: 11321` — proving the credentials themselves are valid
+and recognized, not a config error. RateHawk restricts **Production** keys
+to an IP allowlist, and the calling machine's IP isn't on it yet. This is
+expected supplier-side behavior, not a bug: **next step is whitelisting the
+real deployment server's IP in the RateHawk partner dashboard** (and
+optionally this dev machine's IP too, for local testing) before
+`test-connection` can succeed and the module can go `active`.
+
+### Vervotech is live (2026-08-24)
+
+Real credentials arrived — `accountId: royalvacations` + a real `apiKey`.
+Stored the only correct way: `PATCH /api/v1/admin/modules/{id}` with
+`credentials`, which Fernet-encrypts them into `credentials_encrypted`
+(verified in the DB directly — the column holds a `gAAAAAB…` Fernet token,
+never plaintext). At no point did either value touch a file, `.env`, or this
+doc.
+
+Fetched Vervotech's real docs/Swagger to get the actual auth shape (the
+earlier draft of this doc could only guess): base URL
+`https://hotelmapping.vervotech.com`, and **two static headers** — `apikey`
+and `accountId` — no bearer/session-token exchange. That's one header more
+than `GenericRestSupplierClient`'s `api_key` auth type supported, so added
+`api_config.extra_headers` (`{header_name: credential_key}`, applied
+alongside the primary auth header) to `backend/app/schemas/module.py` +
+`backend/app/integrations/generic_rest.py`, mirrored in
+`packages/api-client/src/types.ts`. Small, generic, config-only change —
+**Vervotech turns out to be generic-shaped after all**, once its real auth
+was known. The earlier assumption that it'd need a bespoke client
+(§4/§6 Stage A step 10) was wrong; worth remembering as a general lesson —
+"needs bespoke code" was a guess made without the real docs, not a property
+of the API.
+
+Configured via the same admin PATCH: `endpoints.search` →
+`GET /api/3.0/content/GetMasterCountryCodes` (a real metadata endpoint, no
+params needed) and a `field_mapping` pulling two country names out of the
+response by JSONPath. `test-connection` against the live API returned:
+
+```json
+{"ok": true, "message": "Connected to Vervotech and mapped 2 field(s)",
+ "preview": {"metadata.sample_country_ae": "United Arab Emirates",
+             "metadata.sample_country_gb": "United Kingdom"}}
+```
+
+Real HTTP call, real headers, real response, real JSONPath extraction —
+not a fabrication. Flipped `status` to `active`. This is genuinely the
+first live third-party call this codebase has ever made (§2's "two gaps"
+callout is now half-resolved for real, not just in the abstract).
+
+**Still not done**: this only proves connectivity + metadata mapping.
+Vervotech's actual job here — Hotel Mapping (step 13) and Curated Content
+(step 15) against real supplier exports — still can't run until the 3
+suppliers are identified and credentialed (§7 unchanged on that point).
+
 ### Stage A — Foundations (no external calls yet)
 
 1. Add `POST`/`DELETE` to `admin/modules.py`, mirroring
@@ -483,24 +600,32 @@ the stage before it is actually working, not just written.
 
 Can't be planned around — need an answer to scope the work honestly.
 
-- **Which 3 suppliers, specifically?** Names determine auth style, rate
-  limits, and — now that onboarding is meant to be config-driven —
-  whether each one actually fits the generic REST/JSON client or needs
-  its own bespoke code.
-- **Which of the 3 (and Vervotech) are "generic-shaped"?** Concretely:
-  standard REST + JSON + Bearer/API-key/Basic auth = generic client, no
-  new code. Custom auth handshake, XML/SOAP, or a multi-step booking flow
-  = a dedicated file. Worth a quick pass over each provider's real docs
-  before assuming all 3 fit the generic path.
-- **How much catalog overlap is expected between them?** Heavy overlap
-  makes mapping urgent immediately; light overlap means mapping mostly
-  matters for the *next* supplier added, not these 3.
+- **~~Which suppliers, specifically?~~ Answered 2026-08-24: RateHawk**,
+  with a 2nd supplier expected later (identity still unknown).
+  **~~RateHawk credentials?~~ Received 2026-08-24** — real Production
+  key (`key_id: 11321`), stored encrypted. **New blocker: IP allowlisting**
+  — RateHawk rejects Production-key calls from non-whitelisted IPs
+  (confirmed via a real `403 not_allowed_host` response). Need the real
+  deployment server's IP whitelisted in the RateHawk partner dashboard
+  before `test-connection` can succeed.
+- **~~Is RateHawk "generic-shaped"?~~ Answered 2026-08-24: yes.**
+  Verified against the official `papi-sdk-python` source (not just
+  recalled): `https://api.worldota.net`, HTTP Basic auth
+  (`key_id`/`api_key`), fits `GenericRestSupplierClient` with no new code.
+- **Once a 2nd supplier is confirmed**: how much catalog overlap is
+  expected with RateHawk? Heavy overlap makes Vervotech's mapping/dedup
+  urgent immediately; light overlap means it mostly matters once that 2nd
+  supplier lands, not before.
 - **When two suppliers disagree on content for the same mapped hotel**
   (different star rating, different photos, different address
   formatting) — does Vervotech's Curated Content resolve that
-  automatically, or does Royal Vacation need a tie-breaking rule?
-- **Do we have sandbox credentials for all 3 suppliers and Vervotech
-  yet?** Stages A–C all need live access to build and test against.
+  automatically, or does Royal Vacation need a tie-breaking rule? (Moot
+  until a 2nd supplier exists — RateHawk alone has nothing to disagree
+  with.)
+- **Do we have working credentials for RateHawk and Vervotech yet?**
+  Vervotech: yes, live. RateHawk: credentials valid but calls blocked until
+  IP allowlisting is done (see above) — Stages B (real pull)–C are blocked
+  on that, not on the credentials themselves anymore.
 - **Which page goes live first?** Home page carousels are still the
-  lowest-risk place to prove the merged pipeline before touching search
-  or the booking-adjacent property page.
+  lowest-risk place to prove the pipeline before touching search or the
+  booking-adjacent property page.

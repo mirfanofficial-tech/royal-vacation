@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/popover";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DateRangePicker } from "@/components/shared/date-range-picker";
+import { DestinationAutocomplete } from "@/components/shared/destination-autocomplete";
 
 function GuestStepper({ label, value, onChange, min = 0 }: { label: string; value: number; onChange: (v: number) => void; min?: number }) {
   return (
@@ -62,6 +63,8 @@ export function SearchResultsBar({
   const [children, setChildren] = useState(0);
   const [rooms, setRooms] = useState(defaultRooms);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileDateOpen, setMobileDateOpen] = useState(false);
+  const [desktopDateOpen, setDesktopDateOpen] = useState(false);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -107,11 +110,11 @@ export function SearchResultsBar({
                     <MapPin className="h-3.5 w-3.5 text-navy" />
                     Destination
                   </label>
-                  <input
+                  <DestinationAutocomplete
                     value={destination}
-                    onChange={(e) => setDestination(e.target.value)}
-                    placeholder="Search for destination, property or city"
-                    className="w-full rounded-lg border border-border px-3 py-2.5 text-sm outline-none focus-visible:border-navy"
+                    onChange={setDestination}
+                    onSelect={() => setMobileDateOpen(true)}
+                    inputClassName="w-full rounded-lg border border-border px-3 py-2.5 text-sm outline-none focus-visible:border-navy"
                   />
                 </div>
 
@@ -121,6 +124,8 @@ export function SearchResultsBar({
                   checkOut={checkOut}
                   onCheckInChange={setCheckIn}
                   onCheckOutChange={setCheckOut}
+                  open={mobileDateOpen}
+                  onOpenChange={setMobileDateOpen}
                   triggerClassName="w-full rounded-lg border border-border px-3 py-2.5"
                   numberOfMonths={1}
                 />
@@ -166,11 +171,11 @@ export function SearchResultsBar({
                 <MapPin className="h-3.5 w-3.5 text-gold-light" />
                 Destination
               </label>
-              <input
+              <DestinationAutocomplete
                 value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                placeholder="Search for destination, property or city"
-                className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/50"
+                onChange={setDestination}
+                onSelect={() => setDesktopDateOpen(true)}
+                inputClassName="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/50"
               />
             </div>
             {destination && (
@@ -191,6 +196,8 @@ export function SearchResultsBar({
             checkOut={checkOut}
             onCheckInChange={setCheckIn}
             onCheckOutChange={setCheckOut}
+            open={desktopDateOpen}
+            onOpenChange={setDesktopDateOpen}
             triggerClassName="border-l border-white/20 px-4 py-2"
             labelClassName="text-white"
             valueClassName="text-white/80"

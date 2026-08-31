@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -177,10 +177,13 @@ function Toggle({
 function ModuleConfigView({
   providerModule,
   updateModule,
+  deleteModule,
 }: {
   providerModule: ThirdPartyModuleOut;
   updateModule: (id: string, body: ThirdPartyModuleUpdate) => Promise<ThirdPartyModuleOut>;
+  deleteModule: (id: string) => Promise<void>;
 }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>("general");
   const [status, setStatus] = useState<"active" | "inactive">(
     providerModule.status
@@ -230,6 +233,27 @@ function ModuleConfigView({
   );
   const [testMessage, setTestMessage] = useState("");
   const [testPreview, setTestPreview] = useState<Record<string, unknown> | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  async function handleDelete() {
+    if (
+      !window.confirm(
+        `Delete "${providerModule.name}"? This removes its stored credentials and configuration and cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setDeleteError("");
+    setDeleting(true);
+    try {
+      await deleteModule(providerModule.id);
+      router.push("/modules");
+    } catch (err) {
+      setDeleteError(errorMessage(err, "Failed to delete this supplier."));
+      setDeleting(false);
+    }
+  }
 
   function updateEndpoint(name: (typeof endpointNames)[number], patch: { method?: string; path?: string }) {
     setApiConfig((prev) => {
@@ -314,19 +338,40 @@ function ModuleConfigView({
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? (
-              <Loader2 data-icon="inline-start" className="animate-spin" />
-            ) : (
-              <Save data-icon="inline-start" />
-            )}
-            Save Configuration
-            {saved && <BadgeCheck className="ml-1 size-4 text-gold" />}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <Loader2 data-icon="inline-start" className="animate-spin" />
+              ) : (
+                <Trash2 data-icon="inline-start" />
+              )}
+              Delete
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <Loader2 data-icon="inline-start" className="animate-spin" />
+              ) : (
+                <Save data-icon="inline-start" />
+              )}
+              Save Configuration
+              {saved && <BadgeCheck className="ml-1 size-4 text-gold" />}
+            </Button>
+          </div>
           {saveError && (
             <p className="flex items-center gap-1.5 text-xs text-destructive">
               <AlertTriangle className="size-3.5 shrink-0" />
               {saveError}
+            </p>
+          )}
+          {deleteError && (
+            <p className="flex items-center gap-1.5 text-xs text-destructive">
+              <AlertTriangle className="size-3.5 shrink-0" />
+              {deleteError}
             </p>
           )}
         </div>
@@ -996,7 +1041,7 @@ function ModuleConfigView({
 
 export default function ModuleConfigPage() {
   const { id } = useParams<{ id: string }>();
-  const { modules, isLoading, error, updateModule } = useModules();
+  const { modules, isLoading, error, updateModule, deleteModule } = useModules();
   const providerModule = modules.find((m) => m.id === id);
 
   if (isLoading) {
@@ -1036,6 +1081,7 @@ export default function ModuleConfigPage() {
       key={providerModule.id}
       providerModule={providerModule}
       updateModule={updateModule}
+      deleteModule={deleteModule}
     />
   );
 }

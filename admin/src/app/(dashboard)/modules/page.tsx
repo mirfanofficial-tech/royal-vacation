@@ -9,6 +9,7 @@ import {
   Loader2,
   Plane,
   Plug,
+  Plus,
   Search,
   Settings2,
   ShieldCheck,
@@ -30,6 +31,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { AddSupplierSheet } from "./add-supplier-sheet";
 
 function errorMessage(err: unknown, fallback: string) {
   return err instanceof ApiError ? err.message : fallback;
@@ -76,6 +78,7 @@ function credentialState(module: ThirdPartyModuleOut): {
 export default function ModulesPage() {
   const { modules, isLoading, error } = useModules();
   const [query, setQuery] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
 
   const filtered = modules.filter((module) =>
     `${module.name} ${module.category} ${module.provider}`
@@ -97,13 +100,21 @@ export default function ModulesPage() {
 
   return (
     <div className="space-y-6 p-6 lg:p-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-navy">Modules</h1>
-        <p className="text-sm text-muted-foreground">
-          Third-party API providers powering properties, ferries, flights,
-          transfers and more.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-navy">Modules</h1>
+          <p className="text-sm text-muted-foreground">
+            Third-party API providers powering properties, ferries, flights,
+            transfers and more.
+          </p>
+        </div>
+        <Button onClick={() => setAddOpen(true)}>
+          <Plus data-icon="inline-start" />
+          Add supplier
+        </Button>
       </div>
+
+      <AddSupplierSheet open={addOpen} onOpenChange={setAddOpen} />
 
       {error && (
         <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm break-words text-destructive">

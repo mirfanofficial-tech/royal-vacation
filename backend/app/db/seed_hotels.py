@@ -2,11 +2,13 @@
 supplier links) so the admin Hotel Mapping screen and the client's homepage
 have real data to show.
 
-This is explicitly sample/demo data, not a real Vervotech/supplier pull —
-VERVOTECH_INTEGRATION.md's steps 12/13/15 are still blocked on real
+This is explicitly sample/demo data, not a real Vervotech/RateHawk pull —
+VERVOTECH_INTEGRATION.md's steps 12/13/15 are still blocked on real RateHawk
 credentials (see the doc's §7). It exists so "seed data and show it on the
 client, dynamically" has something real to fetch from `hotels` instead of
-staying at zero rows forever.
+staying at zero rows forever. Single-supplier (`ratehawk`) for now — the
+multi-supplier dedup story this data originally modeled (supplier-a/b/c)
+returns once a second real supplier is confirmed.
 
 Run with:
     cd backend && ..\\.venv\\Scripts\\python.exe -m app.db.seed_hotels
@@ -48,7 +50,7 @@ HOTELS = [
         "lng": "55.185500",
         "amenities": ["Private beach", "Rolls-Royce chauffeur", "Underwater restaurant", "Spa"],
         "hero_image": "https://images.unsplash.com/photo-1518684079-3c830dcef090?auto=format&fit=crop&w=800&q=80",
-        "suppliers": [("supplier-a", "SA-1001"), ("supplier-b", "SB-2001")],
+        "suppliers": [("ratehawk", "RH-1001")],
     },
     {
         "vervotech_id": "vt-sample-atlantis-palm",
@@ -65,7 +67,7 @@ HOTELS = [
         "lng": "55.117200",
         "amenities": ["Waterpark", "Aquarium", "Private beach", "Kids club"],
         "hero_image": "https://images.unsplash.com/photo-1634148551170-d37d021e0cc9?auto=format&fit=crop&w=800&q=80",
-        "suppliers": [("supplier-a", "SA-1002"), ("supplier-c", "SC-3001")],
+        "suppliers": [("ratehawk", "RH-1002")],
     },
     {
         "vervotech_id": "vt-sample-address-downtown",
@@ -82,7 +84,7 @@ HOTELS = [
         "lng": "55.274600",
         "amenities": ["Rooftop pool", "Skyline views", "Fountain views", "Spa"],
         "hero_image": "https://plus.unsplash.com/premium_photo-1733317416241-d92ba6af4e51?auto=format&fit=crop&w=800&q=80",
-        "suppliers": [("supplier-b", "SB-2002")],
+        "suppliers": [("ratehawk", "RH-1003")],
     },
     {
         "vervotech_id": "vt-sample-jumeirah-beach-resort",
@@ -99,7 +101,7 @@ HOTELS = [
         "lng": "55.191900",
         "amenities": ["Private beach", "Waterpark access", "Multiple pools", "Family rooms"],
         "hero_image": "https://images.unsplash.com/photo-1523816572-a1a23d1a67b8?auto=format&fit=crop&w=800&q=80",
-        "suppliers": [("supplier-a", "SA-1003"), ("supplier-b", "SB-2003"), ("supplier-c", "SC-3002")],
+        "suppliers": [("ratehawk", "RH-1004")],
     },
     {
         "vervotech_id": "vt-sample-palm-view-resort-spa",
@@ -116,7 +118,92 @@ HOTELS = [
         "lng": "55.138900",
         "amenities": ["Infinity pool", "Spa", "Adults only", "Ocean view rooms"],
         "hero_image": "https://images.unsplash.com/photo-1543489822-c49534f3271f?auto=format&fit=crop&w=800&q=80",
-        "suppliers": [("supplier-c", "SC-3003")],
+        "suppliers": [("ratehawk", "RH-1005")],
+    },
+    {
+        "vervotech_id": "vt-sample-the-savoy-london",
+        "name": "The Savoy",
+        "description": (
+            "A storied riverside hotel on the Strand, blending Edwardian and "
+            "Art Deco style with views over the Thames."
+        ),
+        "star_rating": 5,
+        "address": "Strand",
+        "city": "London",
+        "country": "United Kingdom",
+        "lat": "51.510067",
+        "lng": "-0.120327",
+        "amenities": ["Thames views", "Afternoon tea", "Spa", "Michelin dining"],
+        "hero_image": "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?auto=format&fit=crop&w=800&q=80",
+        "suppliers": [("ratehawk", "RH-1006")],
+    },
+    {
+        "vervotech_id": "vt-sample-le-meurice-paris",
+        "name": "Le Meurice",
+        "description": (
+            "A palace hotel opposite the Tuileries Garden, steps from the "
+            "Louvre, with interiors inspired by Versailles."
+        ),
+        "star_rating": 5,
+        "address": "228 Rue de Rivoli",
+        "city": "Paris",
+        "country": "France",
+        "lat": "48.865400",
+        "lng": "2.328400",
+        "amenities": ["Garden views", "Spa", "Michelin dining", "Concierge"],
+        "hero_image": "https://images.unsplash.com/photo-1541343672885-9be56236302a?auto=format&fit=crop&w=800&q=80",
+        "suppliers": [("ratehawk", "RH-1007")],
+    },
+    {
+        "vervotech_id": "vt-sample-soneva-jani-maldives",
+        "name": "Soneva Jani",
+        "description": (
+            "Overwater villas with retractable roofs and private water "
+            "slides in the Noonu Atoll, built around a lagoon."
+        ),
+        "star_rating": 5,
+        "address": "Medhufaru, Noonu Atoll",
+        "city": "Maldives",
+        "country": "Maldives",
+        "lat": "5.652900",
+        "lng": "73.365300",
+        "amenities": ["Overwater villas", "Private slide", "Snorkeling", "Observatory"],
+        "hero_image": "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?auto=format&fit=crop&w=800&q=80",
+        "suppliers": [("ratehawk", "RH-1008")],
+    },
+    {
+        "vervotech_id": "vt-sample-mandarin-oriental-bangkok",
+        "name": "Mandarin Oriental Bangkok",
+        "description": (
+            "A riverside institution on the Chao Phraya, hosting royalty "
+            "and writers since 1876."
+        ),
+        "star_rating": 5,
+        "address": "48 Oriental Ave",
+        "city": "Bangkok",
+        "country": "Thailand",
+        "lat": "13.723900",
+        "lng": "100.514400",
+        "amenities": ["River views", "Spa", "Cooking school", "Private boat shuttle"],
+        "hero_image": "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?auto=format&fit=crop&w=800&q=80",
+        "suppliers": [("ratehawk", "RH-1009")],
+    },
+    {
+        "vervotech_id": "vt-sample-ciragan-palace-istanbul",
+        "name": "Çırağan Palace Kempinski",
+        "description": (
+            "A restored 19th-century Ottoman palace on the Bosphorus "
+            "shoreline, with a private waterfront and palace suites."
+        ),
+        "star_rating": 5,
+        "address": "Çırağan Cd. No:32, Beşiktaş",
+        "city": "Istanbul",
+        "country": "Turkey",
+        "lat": "41.041500",
+        "lng": "29.011000",
+        "amenities": ["Bosphorus views", "Infinity pool", "Palace suites", "Spa"],
+        "hero_image": "https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?auto=format&fit=crop&w=800&q=80",
+        "suppliers": [("ratehawk", "RH-1010")],
     },
 ]
 

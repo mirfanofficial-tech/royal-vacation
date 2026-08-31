@@ -25,7 +25,7 @@ export function PropertyTypes() {
           <h2 className="font-heading text-2xl font-bold text-navy">Browse by property type</h2>
         </div>
         <div className="flex justify-center py-10">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <p className="text-lg text-muted-foreground">Loading property types...</p>
         </div>
       </section>
     );
@@ -36,10 +36,10 @@ export function PropertyTypes() {
       <Carousel opts={{ align: "start" }}>
         <div className="mb-5 flex items-center justify-between gap-4">
           <h2 className="font-heading text-2xl font-bold text-navy">Browse by property type</h2>
-          <div className="hidden items-center gap-2 lg:flex">
-            <CarouselPrevious className="static inset-auto my-0 translate-y-0" />
-            <CarouselNext className="static inset-auto my-0 translate-y-0" />
-          </div>
+<div className="items-center gap-2 flex">
+          <CarouselPrevious className="static inset-auto my-0 translate-y-0" />
+          <CarouselNext className="static inset-auto my-0 translate-y-0" />
+        </div>
         </div>
 
         <div className="px-1">
@@ -48,23 +48,21 @@ export function PropertyTypes() {
               <CarouselItem key={type.id} className="basis-1/2 sm:basis-1/3 lg:basis-1/6">
                 <Link
                   href={`/search?propertyType=${type.slug}`}
-                  className="group block overflow-hidden rounded-xl border border-border bg-white transition-shadow hover:shadow-md"
+                  className="group relative block aspect-[3/4] overflow-hidden rounded-xl transition-shadow hover:shadow-md"
                 >
-                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
-                    {type.image_url && (
-                      <Image
-                        src={resolveAssetUrl(type.image_url)}
-                        alt={type.name}
-                        fill
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                        sizes="(min-width: 1024px) 16vw, (min-width: 640px) 33vw, 50vw"
-                      />
-                    )}
-                  </div>
-                  <div className="px-3 py-3 text-center">
-                    <p className="text-sm font-semibold text-foreground">{type.name}</p>
+                  {type.image_url && (
+                    <Image
+                      src={resolveAssetUrl(type.image_url)}
+                      alt={type.name}
+                      fill
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      sizes="(min-width: 1024px) 16vw, (min-width: 640px) 33vw, 50vw"
+                    />
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-navy/90 via-navy/60 to-transparent pt-12 pb-4 px-3">
+                    <p className="text-sm font-semibold text-white">{type.name}</p>
                     {type.count_label && (
-                      <p className="text-xs text-muted-foreground">{type.count_label}</p>
+                      <p className="text-xs text-white/80">{type.count_label}</p>
                     )}
                   </div>
                 </Link>

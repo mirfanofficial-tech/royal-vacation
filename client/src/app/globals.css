@@ -413,5 +413,42 @@
   text-align: center;
   font-size: 12px;
   font-weight: 600;
-  color: #fff;
+  color: #fff
+}
+
+/* Golden scrollbar matching the logo */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--gold);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--gold-light);
+}
+
+::-moz-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-moz-scrollbar-track {
+  background: transparent;
+}
+
+::-moz-scrollbar-thumb {
+  background-color: var(--gold);
+  border-radius: 2px;
+}
+
+::-moz-scrollbar-thumb:hover {
+  background-color: var(--gold-light);
 }

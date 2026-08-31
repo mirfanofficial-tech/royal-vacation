@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { PropertyTypes } from "@/components/home/property-types";
 import { PropertyCarouselSection } from "@/components/home/property-carousel-section";
+import { CuratedHotels } from "@/components/home/curated-hotels";
 import { Attractions } from "@/components/home/attractions";
 import { GeniusBanner } from "@/components/home/genius-banner";
 import { Destinations } from "@/components/home/destinations";
@@ -37,6 +38,9 @@ export function HomeContent() {
       </ScrollReveal>
       <ScrollReveal>
         <PropertyCarouselSection title="Featured Properties" properties={featuredProperties} />
+      </ScrollReveal>
+      <ScrollReveal>
+        <CuratedHotels />
       </ScrollReveal>
       <ScrollReveal>
         <PropertyCarouselSection title="Homes guests love" properties={homesGuestsLove} />

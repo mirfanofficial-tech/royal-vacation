@@ -507,6 +507,8 @@ export interface ModuleApiConfig {
   auth_header?: string | null;
   auth_username_key?: string | null;
   auth_password_key?: string | null;
+  /** Static header_name -> credential_key pairs sent alongside the primary auth header. */
+  extra_headers?: Record<string, string>;
   endpoints: Record<string, ModuleApiConfigEndpoint>;
 }
 
