@@ -1,0 +1,18 @@
+# Build context for client/Dockerfile and admin/Dockerfile is the repo
+# root — keep this broad so `docker build` doesn't ship node_modules/.git/
+# venvs into the daemon (slow, and stale local dist/node_modules would
+# otherwise shadow what each Dockerfile installs fresh).
+**/node_modules
+**/.next
+**/dist
+**/__pycache__
+**/*.pyc
+.git
+.venv
+backend/.venv
+backend/static/uploads
+**/.env
+**/.env.local
+**/dev-run.log
+**/*.log
+.claude

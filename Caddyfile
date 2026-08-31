@@ -1,0 +1,23 @@
+# Reverse proxy + automatic HTTPS (Let's Encrypt) for all three apps.
+# Caddy issues and renews certs on its own — no certbot, no manual cron.
+#
+# Requires DOMAIN and LETSENCRYPT_EMAIL in .env, and DNS A records already
+# pointing {DOMAIN}, admin.{DOMAIN}, api.{DOMAIN} at this server's IP before
+# `docker compose up` — Caddy needs to complete an HTTP challenge on first
+# request to each hostname.
+
+{
+	email {$LETSENCRYPT_EMAIL}
+}
+
+{$DOMAIN}, www.{$DOMAIN} {
+	reverse_proxy client:3000
+}
+
+admin.{$DOMAIN} {
+	reverse_proxy admin:3000
+}
+
+api.{$DOMAIN} {
+	reverse_proxy backend:8000
+}
