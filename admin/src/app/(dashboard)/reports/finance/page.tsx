@@ -33,7 +33,7 @@ import {
 import { PermissionGuard } from "@/components/permission-guard";
 import { AreaChart, DonutChart } from "@/components/finance-charts";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -164,12 +164,10 @@ function FinancePage() {
           <DropdownMenu>
             <DropdownMenuTrigger
               aria-label="Export report"
-              className="outline-none"
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "outline-none")}
             >
-              <Button variant="outline" size="sm">
-                <Download data-icon="inline-start" />
-                Export
-              </Button>
+              <Download data-icon="inline-start" />
+              Export
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" alignOffset={-8} className="w-48">
               <DropdownMenuLabel>Export as</DropdownMenuLabel>

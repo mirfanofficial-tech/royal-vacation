@@ -87,14 +87,16 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Admin sidebar — dark blue by default; overridable from Settings →
+     Admin Appearance via runtime CSS-var overrides (see lib/admin-theme.tsx). */
+  --sidebar: #14284b;
+  --sidebar-foreground: oklch(0.97 0 0);
+  --sidebar-primary: #c9973c;
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: #1f3a63;
+  --sidebar-accent-foreground: oklch(0.99 0 0);
+  --sidebar-border: #23406e;
+  --sidebar-ring: var(--gold);
 }
 
 .dark {
@@ -140,5 +142,27 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer utilities {
+  /* Slim scrollbar — used for the admin sidebar nav. */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, currentColor 25%, transparent) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, currentColor 25%, transparent);
+    border-radius: 9999px;
+  }
+  .scrollbar-thin:hover::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, currentColor 40%, transparent);
   }
 }

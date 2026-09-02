@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { ArrowRight, Building2, ShieldCheck, Users } from "lucide-react";
+import {
+  ArrowRight,
+  Briefcase,
+  Building2,
+  Luggage,
+  ShieldCheck,
+  Truck,
+  UserCog,
+} from "lucide-react";
 
 import { PermissionGuard } from "@/components/permission-guard";
 import {
@@ -12,11 +20,38 @@ import {
 
 const sections = [
   {
-    href: "/admin/users",
-    icon: Users,
-    title: "User Management",
-    description:
-      "Admin panel users, their roles, status and access to the dashboard.",
+    href: "/admin/users/travelers",
+    icon: Luggage,
+    title: "Travelers",
+    description: "Customer accounts used to browse and book stays.",
+    accent: "bg-navy/5 text-navy",
+  },
+  {
+    href: "/admin/users/property-agents",
+    icon: Building2,
+    title: "Property Agents",
+    description: "Partner accounts that list and manage properties.",
+    accent: "bg-gold/10 text-gold",
+  },
+  {
+    href: "/admin/users/employees",
+    icon: Briefcase,
+    title: "Employees",
+    description: "Staff accounts running day-to-day operations and content.",
+    accent: "bg-sky-600/10 text-sky-600",
+  },
+  {
+    href: "/admin/users/suppliers",
+    icon: Truck,
+    title: "Suppliers",
+    description: "Third-party inventory and service supplier accounts.",
+    accent: "bg-violet-600/10 text-violet-600",
+  },
+  {
+    href: "/admin/users/admins",
+    icon: UserCog,
+    title: "Admin Users",
+    description: "Platform administrators with full admin-panel access.",
     accent: "bg-navy/5 text-navy",
   },
   {

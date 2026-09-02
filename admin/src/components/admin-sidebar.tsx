@@ -5,8 +5,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
+  Briefcase,
   Building2,
   CalendarCheck,
+  CalendarX,
   ChevronDown,
   Coins,
   CreditCard,
@@ -22,9 +24,11 @@ import {
   Link2,
   List,
   LogOut,
+  Luggage,
   Mail,
   MessageSquare,
   Newspaper,
+  Paintbrush,
   PanelsTopLeft,
   Palette,
   Plug,
@@ -33,6 +37,8 @@ import {
   Settings,
   ShieldCheck,
   SlidersHorizontal,
+  TrendingUp,
+  Truck,
   Undo2,
   UserCog,
   Users,
@@ -60,14 +66,12 @@ interface NavItem {
   icon: LucideIcon;
   module: ModuleKey;
   children?: NavChild[];
+  /** Only highlight the parent row on an exact path match, not sub-paths. */
+  exact?: boolean;
 }
 
 const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, module: "dashboard" },
-  // { href: "/properties", label: "Properties", icon: Building2, module: "properties" },
-  // { href: "/bookings", label: "Bookings", icon: CalendarCheck, module: "bookings" },
-  // { href: "/guests", label: "Guests", icon: Users, module: "guests" },
-  { href: "/modules", label: "Modules", icon: Plug, module: "modules" },
   {
     href: "/stays",
     label: "Stays",
@@ -79,28 +83,43 @@ const navItems: NavItem[] = [
       { href: "/hotel-mapping", label: "Hotel Mapping", icon: Link2, module: "stays" },
     ],
   },
-  // {
-  //   href: "/reports",
-  //   label: "Reports",
-  //   icon: BarChart3,
-  //   module: "reports",
-  //   children: [
-  //     { href: "/reports/finance", label: "Finance", icon: BarChart3, module: "reports" },
-  //     { href: "/reports/occupancy", label: "Occupancy", icon: Hotel, module: "reports" },
-  //     { href: "/reports/payouts", label: "Payouts", icon: Coins, module: "reports" },
-  //   ],
-  // },
-  // {
-  //   href: "/payments",
-  //   label: "Payments",
-  //   icon: Wallet,
-  //   module: "payments",
-  //   children: [
-  //     { href: "/payments/transactions", label: "Transactions", icon: CreditCard, module: "payments" },
-  //     { href: "/payments/invoices", label: "Invoices", icon: ReceiptText, module: "payments" },
-  //     { href: "/payments/refunds", label: "Refunds", icon: Undo2, module: "payments" },
-  //   ],
-  // },
+  // { href: "/properties", label: "Properties", icon: Building2, module: "properties" },
+  {
+    href: "/bookings",
+    label: "Bookings",
+    icon: CalendarCheck,
+    module: "bookings",
+    children: [
+      { href: "/bookings", label: "Hotel Bookings", icon: Hotel, module: "bookings" },
+      // Flight Bookings — added here once the flights module lands.
+    ],
+  },
+  // { href: "/guests", label: "Guests", icon: Users, module: "guests" },
+  
+  {
+    href: "/reports",
+    label: "Reports",
+    icon: BarChart3,
+    module: "reports",
+    children: [
+      { href: "/reports/bookings", label: "Booking Report", icon: FileText, module: "reports" },
+      { href: "/reports/cancellations", label: "Cancellation Report", icon: CalendarX, module: "reports" },
+      { href: "/reports/payments", label: "Payment Report", icon: CreditCard, module: "reports" },
+      { href: "/reports/revenue", label: "Revenue Report", icon: TrendingUp, module: "reports" },
+      { href: "/reports/refunds", label: "Refund Report", icon: Undo2, module: "reports" },
+    ],
+  },
+  {
+    href: "/payments",
+    label: "Payments",
+    icon: Wallet,
+    module: "payments",
+    children: [
+      { href: "/payments/transactions", label: "Transactions", icon: CreditCard, module: "payments" },
+      { href: "/payments/invoices", label: "Invoices", icon: ReceiptText, module: "payments" },
+      { href: "/payments/refunds", label: "Refunds", icon: Undo2, module: "payments" },
+    ],
+  },
   {
     href: "/cms",
     label: "CMS",
@@ -128,18 +147,30 @@ const navItems: NavItem[] = [
       { href: "/blogs/comments", label: "Comments", icon: MessageSquare, module: "blog" },
     ],
   },
-  { href: "/contact", label: "Contact Messages", icon: Mail, module: "contact" },
-  // {
-  //   href: "/admin",
-  //   label: "Administration",
-  //   icon: UserCog,
-  //   module: "roles",
-  //   children: [
-  //     { href: "/admin/users", label: "User Management", icon: Users, module: "roles" },
-  //     { href: "/admin/roles", label: "Roles & Permissions", icon: ShieldCheck, module: "roles" },
-  //     { href: "/admin/partners", label: "Partners", icon: Building2, module: "roles" },
-  //   ],
-  // },
+  {
+    href: "/admin/users/travelers",
+    label: "Users",
+    icon: Users,
+    module: "roles",
+    children: [
+      { href: "/admin/users/travelers", label: "Travelers", icon: Luggage, module: "roles" },
+      { href: "/admin/users/property-agents", label: "Property Agents", icon: Building2, module: "roles" },
+      { href: "/admin/users/employees", label: "Employees", icon: Briefcase, module: "roles" },
+      { href: "/admin/users/suppliers", label: "Suppliers", icon: Truck, module: "roles" },
+      { href: "/admin/users/admins", label: "Admin Users", icon: ShieldCheck, module: "roles" },
+    ],
+  },
+  {
+    href: "/admin",
+    label: "Administration",
+    icon: UserCog,
+    module: "roles",
+    exact: true,
+    children: [
+      { href: "/admin/roles", label: "Roles & Permissions", icon: ShieldCheck, module: "roles" },
+      { href: "/admin/partners", label: "Partners", icon: Building2, module: "roles" },
+    ],
+  },
   {
     href: "/settings",
     label: "Settings",
@@ -147,17 +178,21 @@ const navItems: NavItem[] = [
     module: "settings",
     children: [
       { href: "/settings", label: "General", icon: Settings, module: "settings" },
+      { href: "/modules", label: "Modules", icon: Plug, module: "modules" },
       { href: "/settings/currency", label: "Currency", icon: Coins, module: "settings" },
       { href: "/settings/language", label: "Language", icon: Languages, module: "settings" },
       { href: "/settings/countries", label: "Countries", icon: Globe2, module: "settings" },
       { href: "/settings/payment-gateways", label: "Payment Gateways", icon: CreditCard, module: "settings" },
       { href: "/settings/themes", label: "Themes", icon: Palette, module: "settings" },
+      { href: "/settings/appearance", label: "Admin Appearance", icon: Paintbrush, module: "settings" },
     ],
   },
+  { href: "/contact", label: "Contact Messages", icon: Mail, module: "contact" },
 ];
 
-const activeRow = "bg-navy/[0.07] text-navy font-semibold";
-const inactiveRow = "text-muted-foreground hover:bg-muted hover:text-foreground";
+const activeRow = "bg-sidebar-accent text-sidebar-accent-foreground font-semibold";
+const inactiveRow =
+  "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground";
 
 export function AdminSidebar({
   collapsed = false,
@@ -212,7 +247,7 @@ export function AdminSidebar({
   return (
     <aside
       className={cn(
-        "flex h-screen shrink-0 flex-col border-r border-border bg-card shadow-[1px_0_3px_rgba(15,23,42,0.04)] transition-[width] duration-200",
+        "flex h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200",
         collapsed ? "w-20" : "w-64"
       )}
     >
@@ -236,21 +271,22 @@ export function AdminSidebar({
         </span>
         {!collapsed && (
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-navy">Royal Vacation</p>
-            <p className="truncate text-xs text-muted-foreground">Admin Panel</p>
+            <p className="truncate text-sm font-semibold text-sidebar-foreground">Royal Vacation</p>
+            <p className="truncate text-xs text-sidebar-foreground/60">Admin Panel</p>
           </div>
         )}
       </div>
 
-      <div className="mx-4 border-t border-border" />
+      <div className="mx-4 border-t border-sidebar-border" />
 
-      <nav className={cn("flex-1 space-y-0.5 overflow-y-auto py-3", collapsed ? "px-2.5" : "px-3")}>
+      <nav className={cn("scrollbar-thin flex-1 space-y-0.5 overflow-y-auto py-3", collapsed ? "px-2.5" : "px-3")}>
           {visibleNav.map((item) => {
             const Icon = item.icon;
+            const selfActive = item.exact ? pathname === item.href : isActive(item.href);
             const active =
               item.children?.length
-                ? isActive(item.href) || hasActiveChild(item)
-                : isActive(item.href);
+                ? selfActive || hasActiveChild(item)
+                : selfActive;
             const open = expanded[item.href] ?? hasActiveChild(item);
 
             if (!item.children) {
@@ -311,8 +347,8 @@ export function AdminSidebar({
                     aria-expanded={open}
                     aria-label={open ? "Collapse" : "Expand"}
                     className={cn(
-                      "mr-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50",
-                      active && "text-navy hover:bg-navy/10 hover:text-navy"
+                      "mr-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-sidebar-foreground/70 transition-colors outline-none hover:bg-sidebar-accent/60 hover:text-sidebar-foreground focus-visible:ring-3 focus-visible:ring-ring/50",
+                      active && "text-sidebar-accent-foreground hover:bg-sidebar-accent"
                     )}
                   >
                     <ChevronDown
@@ -330,7 +366,7 @@ export function AdminSidebar({
                   )}
                 >
                   <div className="overflow-hidden">
-                    <div className="mt-0.5 ml-5 space-y-0.5 border-l border-border py-0.5 pl-3">
+                    <div className="mt-0.5 ml-5 space-y-0.5 border-l border-sidebar-border py-0.5 pl-3">
                       {item.children
                         .filter((child) => can(child.module, "view"))
                         .map((child) => {
@@ -361,7 +397,7 @@ export function AdminSidebar({
         <div className={cn("mt-auto p-3", collapsed ? "px-2.5" : "px-3")}>
           <div
             className={cn(
-              "flex items-center gap-2.5 rounded-xl border border-border bg-muted/40 p-2",
+              "flex items-center gap-2.5 rounded-xl border border-sidebar-border bg-sidebar-accent/40 p-2",
               collapsed && "justify-center"
             )}
           >
@@ -371,10 +407,10 @@ export function AdminSidebar({
             {!collapsed && (
               <>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">
+                  <p className="truncate text-sm font-medium text-sidebar-foreground">
                     {session?.name ?? "Admin"}
                   </p>
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="truncate text-xs text-sidebar-foreground/60">
                     {session?.email ?? "admin@royalvacation.com"}
                   </p>
                 </div>
@@ -383,7 +419,7 @@ export function AdminSidebar({
                   onClick={handleSignOut}
                   title="Sign out"
                   aria-label="Sign out"
-                  className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors outline-none hover:bg-white hover:text-destructive focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="flex size-7 shrink-0 items-center justify-center rounded-lg text-sidebar-foreground/70 transition-colors outline-none hover:bg-sidebar-accent hover:text-destructive focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   <LogOut className="size-4" />
                 </button>
@@ -396,7 +432,7 @@ export function AdminSidebar({
               onClick={handleSignOut}
               title="Sign out"
               aria-label="Sign out"
-              className="mt-1.5 flex w-full items-center justify-center rounded-xl py-2 text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-destructive focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="mt-1.5 flex w-full items-center justify-center rounded-xl py-2 text-sidebar-foreground/70 transition-colors outline-none hover:bg-sidebar-accent/60 hover:text-destructive focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               <LogOut className="size-4" />
             </button>

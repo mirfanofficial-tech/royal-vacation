@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AdminSidebar } from "@/components/admin-sidebar";
 import { AdminTopbar } from "@/components/admin-topbar";
+import { AdminThemeProvider } from "@/lib/admin-theme";
 
 export default function DashboardLayout({
   children,
@@ -14,16 +15,18 @@ export default function DashboardLayout({
 
   return (
     <AuthGuard>
-      <div className="flex h-screen overflow-hidden">
-        <AdminSidebar collapsed={collapsed} />
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <AdminTopbar
-            collapsed={collapsed}
-            onToggleCollapse={() => setCollapsed((c) => !c)}
-          />
-          <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">{children}</main>
+      <AdminThemeProvider>
+        <div className="flex h-screen overflow-hidden">
+          <AdminSidebar collapsed={collapsed} />
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <AdminTopbar
+              collapsed={collapsed}
+              onToggleCollapse={() => setCollapsed((c) => !c)}
+            />
+            <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">{children}</main>
+          </div>
         </div>
-      </div>
+      </AdminThemeProvider>
     </AuthGuard>
   );
 }

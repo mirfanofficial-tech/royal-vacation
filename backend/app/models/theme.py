@@ -24,6 +24,15 @@ class SiteTheme(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     )
     logo_url: Mapped[str | None] = mapped_column(Text)
 
+    # Admin-panel colour overrides. NULL = use the admin panel's built-in
+    # defaults. Separate from the header/footer/font fields above, which style
+    # the public website.
+    admin_sidebar_color: Mapped[str | None] = mapped_column(String(7))
+    admin_sidebar_text_color: Mapped[str | None] = mapped_column(String(7))
+    admin_primary_color: Mapped[str | None] = mapped_column(String(7))
+    admin_accent_color: Mapped[str | None] = mapped_column(String(7))
+    admin_corner_style: Mapped[str | None] = mapped_column(String(10))
+
     __table_args__ = (
         CheckConstraint(
             "header_variant IN ('default', 'classic', 'variant_2', 'variant_3', 'variant_4', 'variant_5')",
@@ -44,5 +53,25 @@ class SiteTheme(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
         CheckConstraint(
             "font_family IN ('outfit', 'inter', 'poppins', 'playfair_display', 'roboto')",
             name="site_theme_font_family_check",
+        ),
+        CheckConstraint(
+            "admin_sidebar_color IS NULL OR admin_sidebar_color ~ '^#[0-9A-Fa-f]{6}$'",
+            name="site_theme_admin_sidebar_color_check",
+        ),
+        CheckConstraint(
+            "admin_sidebar_text_color IS NULL OR admin_sidebar_text_color ~ '^#[0-9A-Fa-f]{6}$'",
+            name="site_theme_admin_sidebar_text_color_check",
+        ),
+        CheckConstraint(
+            "admin_primary_color IS NULL OR admin_primary_color ~ '^#[0-9A-Fa-f]{6}$'",
+            name="site_theme_admin_primary_color_check",
+        ),
+        CheckConstraint(
+            "admin_accent_color IS NULL OR admin_accent_color ~ '^#[0-9A-Fa-f]{6}$'",
+            name="site_theme_admin_accent_color_check",
+        ),
+        CheckConstraint(
+            "admin_corner_style IS NULL OR admin_corner_style IN ('sharp', 'soft', 'round')",
+            name="site_theme_admin_corner_style_check",
         ),
     )

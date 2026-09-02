@@ -175,7 +175,7 @@ function UserDetail({ userId }: { userId: string }) {
       return;
     try {
       await deleteUser(user.id);
-      router.push("/admin/users");
+      router.push("/admin/users/admins");
     } catch (err) {
       setError(errorMessage(err, "Couldn't delete this user."));
     }
@@ -189,7 +189,7 @@ function UserDetail({ userId }: { userId: string }) {
             variant="ghost"
             size="sm"
             className="-ml-2 text-muted-foreground"
-            render={<Link href="/admin/users" />}
+            render={<Link href="/admin/users/admins" />}
           >
             <ArrowLeft data-icon="inline-start" />
             Back to Users

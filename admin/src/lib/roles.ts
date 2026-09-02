@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import type {
+  AccountType,
   RoleCreate,
   RoleOut,
   RolePermissionsUpdate,
@@ -147,20 +148,20 @@ export function useSetRolePermissions(roleId: string | undefined) {
 
 // ---- Admin (staff) users -----------------------------------------------
 
-export function useAdminUsersQuery() {
+export function useAccountUsersQuery(accountType: AccountType = "admin") {
   return useQuery({
-    queryKey: ADMIN_USERS_KEY,
+    queryKey: [...ADMIN_USERS_KEY, accountType],
     queryFn: () =>
-      callApi(() => api.admin.users.list({ account_type: "admin", limit: 200 })),
+      callApi(() => api.admin.users.list({ account_type: accountType, limit: 200 })),
   });
 }
 
-export function useUsers() {
-  const query = useAdminUsersQuery();
+export function useUsers(accountType: AccountType = "admin") {
+  const query = useAccountUsersQuery(accountType);
   const qc = useQueryClient();
 
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
+    qc.invalidateQueries({ queryKey: [...ADMIN_USERS_KEY, accountType] });
     qc.invalidateQueries({ queryKey: ME_KEY });
   };
 

@@ -32,7 +32,7 @@ import { logout } from "@/lib/api";
 import { getSession, type AdminSession } from "@/lib/auth";
 import { usePermissions } from "@/lib/roles";
 import type { ModuleKey } from "@/lib/mock-data";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -89,7 +89,7 @@ const quickCreateGroups: QuickCreateGroup[] = [
     label: "Administration",
     items: [
       { href: "/admin/roles/new", label: "Role", icon: ShieldCheck, module: "roles" },
-      { href: "/admin/users", label: "Invite user", icon: Users, module: "roles" },
+      { href: "/admin/users/admins", label: "Invite user", icon: Users, module: "roles" },
     ],
   },
 ];
@@ -266,12 +266,10 @@ export function AdminTopbar({
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label="Quick actions"
-            className="outline-none"
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "outline-none")}
           >
-            <Button variant="outline" size="sm">
-              <Plus data-icon="inline-start" />
-              <span className="hidden lg:inline">New</span>
-            </Button>
+            <Plus data-icon="inline-start" />
+            <span className="hidden lg:inline">New</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" alignOffset={-8} className="w-60">
             <p className="px-2 py-1.5 text-sm font-semibold text-foreground">Quick create</p>
@@ -400,7 +398,7 @@ export function AdminTopbar({
               </p>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem render={<Link href="/admin/users" />}>
+            <DropdownMenuItem render={<Link href="/admin/users/admins" />}>
               <UserRound />
               My profile
             </DropdownMenuItem>

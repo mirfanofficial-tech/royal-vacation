@@ -739,6 +739,8 @@ export type HeaderVariant = "default" | "classic" | "variant_2" | "variant_3" | 
 export type FooterVariant = "classic" | "variant_2" | "variant_3" | "variant_4" | "variant_5";
 export type FontSizeOption = "sm" | "md" | "lg" | "xl";
 export type FontFamilyOption = "outfit" | "inter" | "poppins" | "playfair_display" | "roboto";
+/** Admin-panel corner rounding preset — maps to `--radius`. */
+export type AdminCornerStyle = "sharp" | "soft" | "round";
 
 export interface SiteThemeOut {
   id: string;
@@ -748,6 +750,12 @@ export interface SiteThemeOut {
   paragraph_font_size: FontSizeOption;
   font_family: FontFamilyOption;
   logo_url?: string | null;
+  /** Admin-panel colour overrides (#RRGGBB); null = built-in default. */
+  admin_sidebar_color?: string | null;
+  admin_sidebar_text_color?: string | null;
+  admin_primary_color?: string | null;
+  admin_accent_color?: string | null;
+  admin_corner_style?: AdminCornerStyle | null;
   created_at: string;
   updated_at: string;
 }
@@ -758,6 +766,11 @@ export interface SiteThemeUpdate {
   heading_font_size?: FontSizeOption;
   paragraph_font_size?: FontSizeOption;
   font_family?: FontFamilyOption;
+  admin_sidebar_color?: string | null;
+  admin_sidebar_text_color?: string | null;
+  admin_primary_color?: string | null;
+  admin_accent_color?: string | null;
+  admin_corner_style?: AdminCornerStyle | null;
 }
 
 // ---- Stays Config ---------------------------------------------------------
