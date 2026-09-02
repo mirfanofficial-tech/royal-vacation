@@ -3,19 +3,26 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Bed, Home, Maximize, Eye, Users, ChevronDown, Check, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { RoomOption } from "@/lib/property-detail-mock-data";
 
 export function RoomRateCard({
   room,
   currency,
   defaultDetailsOpen = false,
+  selectedPlanId,
+  selectedQty,
+  onSelect,
 }: {
   room: RoomOption;
   currency: string;
   defaultDetailsOpen?: boolean;
+  /** The rate plan currently selected across the whole availability list, if any. */
+  selectedPlanId: string | null;
+  selectedQty: number;
+  onSelect: (roomId: string, planId: string, qty: number) => void;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(defaultDetailsOpen);
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-white">
@@ -163,22 +170,40 @@ export function RoomRateCard({
               )}
             </ul>
 
-            <div className="lg:justify-self-end">
-              <select
-                value={quantities[plan.id] ?? 0}
-                onChange={(event) =>
-                  setQuantities((prev) => ({ ...prev, [plan.id]: Number(event.target.value) }))
-                }
-                aria-label={`Select amount for ${room.name}`}
-                className="w-full rounded-lg border border-border bg-white px-2.5 py-2 text-sm font-medium text-foreground lg:w-24"
-              >
-                {Array.from({ length: 6 }, (_, i) => i).map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {(() => {
+              const isSelected = selectedPlanId === plan.id;
+              const qty = isSelected ? selectedQty : 0;
+              return (
+                <div className="flex flex-col items-stretch gap-2 lg:justify-self-end">
+                  <select
+                    value={qty}
+                    onChange={(event) =>
+                      onSelect(room.id, plan.id, Number(event.target.value))
+                    }
+                    aria-label={`Number of ${room.name} rooms`}
+                    className="w-full rounded-lg border border-border bg-white px-2.5 py-2 text-sm font-medium text-foreground lg:w-24"
+                  >
+                    {Array.from({ length: 6 }, (_, i) => i).map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(room.id, plan.id, isSelected ? 0 : 1)}
+                    className={cn(
+                      "rounded-lg px-3 py-2 text-center text-sm font-semibold lg:w-24",
+                      isSelected
+                        ? "border border-navy bg-navy/5 text-navy"
+                        : "bg-navy text-white hover:bg-navy-light",
+                    )}
+                  >
+                    {isSelected ? "Selected" : "Select"}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         ))}
       </div>

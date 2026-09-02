@@ -1,8 +1,13 @@
+"use client";
+
 import { Check, Lock, ArrowUpRight } from "lucide-react";
 
-import { geniusLevels, geniusMember } from "@/lib/genius-mock-data";
+import { geniusLevels } from "@/lib/genius-mock-data";
+import { useGenius } from "@/components/genius/genius-context";
 
 export function TierComparison() {
+  const { view } = useGenius();
+
   return (
     <div>
       <div className="mb-6 flex items-end justify-between">
@@ -25,9 +30,9 @@ export function TierComparison() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {geniusLevels.map((level, index) => {
-          const isCurrent = index === geniusMember.levelIndex;
-          const isUnlocked = index < geniusMember.levelIndex;
-          const staysToGo = Math.max(0, level.staysRequired - geniusMember.qualifyingStays);
+          const isCurrent = view.enrolled && index === view.levelIndex;
+          const isUnlocked = view.enrolled && index < view.levelIndex;
+          const staysToGo = Math.max(0, level.staysRequired - view.qualifyingStays);
 
           return (
             <div

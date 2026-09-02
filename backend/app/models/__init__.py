@@ -1,6 +1,8 @@
 from app.models.base import Base
 from app.models.blog import BlogCategory, BlogComment, BlogPost, BlogPostTranslation
+from app.models.booking import BookableRate, Booking, BookingExtra
 from app.models.contact import ContactMessage
+from app.models.genius import GeniusLevel, GeniusLevelBenefit
 from app.models.hotel import Hotel, RawSupplierHotel, SupplierHotelLink
 from app.models.cms import (
     CmsBlock,
@@ -15,7 +17,8 @@ from app.models.cms import (
     CmsTranslationTask,
 )
 from app.models.module import ThirdPartyModule
-from app.models.payment import PaymentGateway
+from app.models.otp import EmailOtp
+from app.models.payment import Payment, PaymentGateway, Refund
 from app.models.property_type import PropertyType
 from app.models.rbac import Permission, Role, RolePermission
 from app.models.reference import Country, Currency, Language
@@ -37,6 +40,9 @@ __all__ = [
     "BlogComment",
     "BlogPost",
     "BlogPostTranslation",
+    "BookableRate",
+    "Booking",
+    "BookingExtra",
     "CmsBlock",
     "CmsContentRevision",
     "CmsMediaAsset",
@@ -50,11 +56,16 @@ __all__ = [
     "ContactMessage",
     "Country",
     "Currency",
+    "EmailOtp",
+    "GeniusLevel",
+    "GeniusLevelBenefit",
     "Hotel",
     "Language",
     "PartnerProfile",
+    "Payment",
     "PaymentGateway",
     "Permission",
+    "Refund",
     "PropertyType",
     "RawSupplierHotel",
     "Role",

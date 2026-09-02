@@ -13,3 +13,5 @@ asyncpg==0.30.0
 alembic==1.14.0
 httpx==0.28.1
 jsonpath-ng==1.6.1
+stripe==11.4.1
+aiosmtplib==3.0.2

@@ -55,6 +55,29 @@ async def get_current_user(
     return user
 
 
+async def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    """Like `get_current_user` but returns None instead of raising when there's
+    no / an invalid token — for endpoints that work for guests but personalise
+    for signed-in users (e.g. guest checkout)."""
+    if credentials is None:
+        return None
+    payload = decode_access_token(credentials.credentials)
+    if payload is None:
+        return None
+    try:
+        user_id = UUID(payload.get("sub"))
+    except (TypeError, ValueError):
+        return None
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None or user.deleted_at is not None or user.status in ("suspended", "deleted"):
+        return None
+    return user
+
+
 async def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.account_type != "admin":
         raise HTTPException(

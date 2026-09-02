@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,7 +28,17 @@ export function SearchBar() {
   const [dateOpen, setDateOpen] = useState(false);
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
+  const [childAges, setChildAges] = useState<number[]>([]);
   const [rooms, setRooms] = useState(1);
+
+  useEffect(() => {
+    setChildAges((prev) => {
+      if (prev.length === children) return prev;
+      const next = prev.slice(0, children);
+      while (next.length < children) next.push(8);
+      return next;
+    });
+  }, [children]);
 
   const {
     control,
@@ -45,6 +55,7 @@ export function SearchBar() {
     if (checkOut) params.set("checkOut", checkOut.toISOString());
     params.set("adults", String(adults));
     params.set("children", String(children));
+    if (children > 0) params.set("childAges", childAges.join(","));
     params.set("rooms", String(rooms));
     router.push(`/search?${params.toString()}`);
   });
@@ -136,13 +147,39 @@ export function SearchBar() {
               <span className="w-4 text-center text-sm">{children}</span>
               <button
                 type="button"
-                onClick={() => setChildren((v) => v + 1)}
+                onClick={() => setChildren((v) => Math.min(10, v + 1))}
                 className="flex h-7 w-7 items-center justify-center rounded-full border border-border hover:bg-muted"
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
+
+          {children > 0 && (
+            <div className="grid grid-cols-2 gap-2">
+              {childAges.map((age, i) => (
+                <label key={i} className="flex flex-col gap-1 text-xs text-muted-foreground">
+                  Child {i + 1} age
+                  <select
+                    value={age}
+                    onChange={(e) =>
+                      setChildAges((prev) =>
+                        prev.map((a, idx) => (idx === i ? Number(e.target.value) : a)),
+                      )
+                    }
+                    className="h-8 rounded-lg border border-border bg-white px-2 text-sm text-foreground outline-none focus-visible:border-navy"
+                  >
+                    {Array.from({ length: 18 }, (_, n) => (
+                      <option key={n} value={n}>
+                        {n === 0 ? "< 1 year" : `${n} year${n > 1 ? "s" : ""} old`}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Rooms</span>
             <div className="flex items-center gap-3">

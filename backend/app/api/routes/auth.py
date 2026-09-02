@@ -6,6 +6,9 @@ verification, and password reset. Everything here is DB-backed against the
 for the bearer-token identity check used by the other modules.
 """
 
+import hashlib
+import hmac
+import secrets
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -17,6 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.api.routes.common import load_user_with_roles, to_user_out
 from app.core.config import settings
+from app.core.email import send_otp_email, send_welcome_email
+from app.models.otp import EmailOtp
 from app.core.security import (
     create_access_token,
     create_purpose_token,
@@ -35,6 +40,9 @@ from app.schemas.auth import (
     LoginRequest,
     LogoutRequest,
     MessageResponse,
+    OtpRequestIn,
+    OtpRequestOut,
+    OtpVerifyIn,
     PasswordResetRequest,
     PasswordResetRequestOut,
     RefreshTokenRequest,
@@ -466,3 +474,135 @@ async def me(
 ) -> UserOut:
     user = await load_user_with_roles(db, current_user.id)
     return to_user_out(user)
+
+
+# ---- Email OTP (checkout verification + passwordless sign-in) -------------
+
+_OTP_TTL_MINUTES = 10
+_OTP_MAX_ATTEMPTS = 5
+
+
+def _hash_otp(code: str) -> str:
+    return hmac.new(
+        settings.secret_key.encode(), code.strip().encode(), hashlib.sha256
+    ).hexdigest()
+
+
+@router.post("/otp/request", response_model=OtpRequestOut)
+async def request_otp(
+    payload: OtpRequestIn, db: AsyncSession = Depends(get_db)
+) -> OtpRequestOut:
+    email = payload.email.strip().lower()
+    now = datetime.now(timezone.utc)
+
+    # Retire any still-live code for this address.
+    await db.execute(
+        update(EmailOtp)
+        .where(EmailOtp.email == email, EmailOtp.consumed_at.is_(None))
+        .values(consumed_at=now)
+    )
+
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    db.add(
+        EmailOtp(
+            email=email,
+            code_hash=_hash_otp(code),
+            expires_at=now + timedelta(minutes=_OTP_TTL_MINUTES),
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            phone=payload.phone,
+            country=payload.country,
+        )
+    )
+    await db.commit()
+
+    sent = await send_otp_email(email, code)
+    return OtpRequestOut(sent=sent, dev_code=None if sent else code)
+
+
+@router.post("/otp/verify", response_model=AuthResponse)
+async def verify_otp(
+    payload: OtpVerifyIn, request: Request, db: AsyncSession = Depends(get_db)
+) -> AuthResponse:
+    email = payload.email.strip().lower()
+    now = datetime.now(timezone.utc)
+
+    otp = (
+        await db.execute(
+            select(EmailOtp)
+            .where(
+                EmailOtp.email == email,
+                EmailOtp.consumed_at.is_(None),
+                EmailOtp.expires_at > now,
+            )
+            .order_by(EmailOtp.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    if otp is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="That code has expired or is invalid. Request a new one.",
+        )
+    if otp.attempts >= _OTP_MAX_ATTEMPTS:
+        otp.consumed_at = now
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Too many attempts. Request a new code.",
+        )
+    if not hmac.compare_digest(otp.code_hash, _hash_otp(payload.code)):
+        otp.attempts += 1
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect code."
+        )
+
+    otp.consumed_at = now
+
+    user = (
+        await db.execute(select(User).where(User.email == email))
+    ).scalar_one_or_none()
+    created = False
+
+    if user is None:
+        user = User(
+            email=email,
+            password_hash=hash_password(secrets.token_urlsafe(24)),
+            first_name=otp.first_name,
+            last_name=otp.last_name,
+            display_name=otp.first_name or None,
+            phone=otp.phone,
+            country=otp.country,
+            account_type="traveler",
+            status="active",
+            email_verified_at=now,
+        )
+        db.add(user)
+        await db.flush()
+        created = True
+    elif user.deleted_at is not None or user.status in ("suspended", "deleted"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account is no longer active",
+        )
+    else:
+        if user.email_verified_at is None:
+            user.email_verified_at = now
+        if user.status == "pending":
+            user.status = "active"
+
+    user.last_login_at = now
+    tokens = await _issue_session(db, user, request)
+    _record_login(
+        db, email=user.email, user_id=user.id, status_="success",
+        request=request, login_type="token",
+    )
+    await db.commit()
+
+    if created:
+        await send_welcome_email(user.email, user.first_name)
+
+    user = await load_user_with_roles(db, user.id)
+    return AuthResponse(**tokens.model_dump(), user=to_user_out(user))

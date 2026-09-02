@@ -1,6 +1,10 @@
 import { ApiClient } from "./http.js";
 import type {
+  AdminBookingRefundRequest,
   AuthResponse,
+  BookingCreate,
+  BookingCreateResult,
+  BookingOut,
   BlogCategoryCreate,
   BlogCategoryOut,
   BlogCategoryUpdate,
@@ -38,6 +42,10 @@ import type {
   CurrencyOut,
   CurrencyUpdate,
   FacebookAuthRequest,
+  GeniusLevelCreate,
+  GeniusLevelOut,
+  GeniusLevelPublicOut,
+  GeniusLevelUpdate,
   GoogleAuthRequest,
   HealthResponse,
   LanguageCreate,
@@ -52,6 +60,9 @@ import type {
   MediaFolderOut,
   MediaFolderUpdate,
   MessageResponse,
+  OtpRequestInput,
+  OtpRequestResult,
+  OtpVerifyInput,
   PartnerListParams,
   PartnerProfileOut,
   PartnerProfileSelfUpdate,
@@ -132,6 +143,10 @@ export class RoyalVacationApi extends ApiClient {
       this.post<PasswordResetRequestOut>("/api/v1/auth/reset-password", body),
     confirmReset: (body: ConfirmResetRequest) =>
       this.post<MessageResponse>("/api/v1/auth/confirm-reset", body),
+    otpRequest: (body: OtpRequestInput) =>
+      this.post<OtpRequestResult>("/api/v1/auth/otp/request", body),
+    otpVerify: (body: OtpVerifyInput) =>
+      this.post<AuthResponse>("/api/v1/auth/otp/verify", body),
     me: () => this.get<UserOut>("/api/v1/auth/me"),
   };
 
@@ -169,6 +184,15 @@ export class RoyalVacationApi extends ApiClient {
         }),
       verify: (userId: string) =>
         this.post<PartnerProfileOut>(`/api/v1/admin/partners/${userId}/verify`),
+    },
+    bookings: {
+      list: (params: { status?: string; limit?: number; offset?: number } = {}) =>
+        this.get<BookingOut[]>("/api/v1/admin/bookings", { query: params }),
+      get: (id: string) => this.get<BookingOut>(`/api/v1/admin/bookings/${id}`),
+      capture: (id: string) =>
+        this.post<BookingOut>(`/api/v1/admin/bookings/${id}/capture`),
+      refund: (id: string, body: AdminBookingRefundRequest = {}) =>
+        this.post<BookingOut>(`/api/v1/admin/bookings/${id}/refund`, body),
     },
     roles: {
       list: () => this.get<RoleOut[]>("/api/v1/admin/roles"),
@@ -235,6 +259,17 @@ export class RoyalVacationApi extends ApiClient {
         remove: (id: string) =>
           this.delete<void>(`/api/v1/admin/reference/countries/${id}`),
       },
+    },
+    genius: {
+      list: () => this.get<GeniusLevelOut[]>("/api/v1/admin/genius/levels"),
+      get: (id: string) =>
+        this.get<GeniusLevelOut>(`/api/v1/admin/genius/levels/${id}`),
+      create: (body: GeniusLevelCreate) =>
+        this.post<GeniusLevelOut>("/api/v1/admin/genius/levels", body),
+      update: (id: string, body: GeniusLevelUpdate) =>
+        this.patch<GeniusLevelOut>(`/api/v1/admin/genius/levels/${id}`, body),
+      remove: (id: string) =>
+        this.delete<void>(`/api/v1/admin/genius/levels/${id}`),
     },
     paymentGateways: {
       list: () => this.get<PaymentGatewayOut[]>("/api/v1/admin/payment-gateways"),
@@ -479,6 +514,12 @@ export class RoyalVacationApi extends ApiClient {
     countries: () => this.get<CountryOut[]>("/api/v1/reference/countries"),
   };
 
+  // ---- Public Genius loyalty config -------------------------------------
+
+  genius = {
+    levels: () => this.get<GeniusLevelPublicOut[]>("/api/v1/genius/levels"),
+  };
+
   // ---- Public site theme --------------------------------------------------
 
   theme = {
@@ -558,6 +599,21 @@ export class RoyalVacationApi extends ApiClient {
       this.patch<Property>(`/api/v1/properties/${id}`, body),
     remove: (id: string) =>
       this.delete<{ ok: boolean }>(`/api/v1/properties/${id}`),
+  };
+
+  // ---- Bookings + payment (guest checkout, Stripe) ----------------------
+
+  bookings = {
+    create: (body: BookingCreate) =>
+      this.post<BookingCreateResult>("/api/v1/bookings", body),
+    /** `token` is the guest access token from `create`; omit when signed in. */
+    get: (id: string, token?: string) =>
+      this.get<BookingOut>(`/api/v1/bookings/${id}`, { query: { token } }),
+    sync: (id: string, token?: string) =>
+      this.post<BookingOut>(`/api/v1/bookings/${id}/sync`, undefined, {
+        query: { token },
+      }),
+    list: () => this.get<BookingOut[]>("/api/v1/bookings"),
   };
 }
 

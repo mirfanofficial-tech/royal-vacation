@@ -70,7 +70,16 @@ export function ExploreMapSection({
       </div>
 
       <div className="relative h-[380px]">
-        <Mapbox3DMap lat={lat} lng={lng} name={name} className="h-full w-full" />
+        {/* Remount on tab change — a fresh maplibre instance with the right
+            style/camera is far more reliable than live setStyle swapping. */}
+        <Mapbox3DMap
+          key={viewMode}
+          lat={lat}
+          lng={lng}
+          name={name}
+          viewMode={viewMode}
+          className="h-full w-full"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 p-5 sm:grid-cols-2">

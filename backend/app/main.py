@@ -5,8 +5,10 @@ from fastapi.staticfiles import StaticFiles
 from app.api.routes import (
     auth,
     blog,
+    bookings,
     cms,
     contact,
+    genius,
     health,
     hotels,
     partner,
@@ -48,6 +50,8 @@ def create_app() -> FastAPI:
     # User profile — self-service for any authenticated account.
     app.include_router(profile.router, prefix=f"{prefix}/profile", tags=["profile"])
     app.include_router(properties.router, prefix=prefix, tags=["properties"])
+    # Public booking + payment flow (guest checkout, Stripe) + the Stripe webhook.
+    app.include_router(bookings.router, prefix=prefix, tags=["bookings"])
     app.include_router(reference.router, prefix=f"{prefix}/reference", tags=["reference"])
     app.include_router(theme.router, prefix=f"{prefix}/theme", tags=["theme"])
     app.include_router(
@@ -57,6 +61,8 @@ def create_app() -> FastAPI:
     app.include_router(blog.router, prefix=f"{prefix}/blog", tags=["blog"])
     app.include_router(cms.router, prefix=f"{prefix}/cms", tags=["cms"])
     app.include_router(contact.router, prefix=f"{prefix}/contact", tags=["contact"])
+    # Public Genius loyalty config (active tiers + benefits).
+    app.include_router(genius.router, prefix=f"{prefix}/genius", tags=["genius"])
 
     app.mount("/static", StaticFiles(directory="static"), name="static")
 

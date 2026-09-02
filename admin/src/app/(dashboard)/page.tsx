@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { format } from "date-fns";
 import {
   ArrowRight,
   ArrowUpDown,
@@ -23,7 +24,6 @@ import {
   bookingChannels,
   dashboardKpis,
   dashboardSecondaryMetrics,
-  mockBookings,
   mockProperties,
   recentGuestReviews,
   requiresAttentionMock,
@@ -34,6 +34,7 @@ import {
   type DashboardAccent,
 } from "@/lib/mock-data";
 import { useBlogCommentsQuery } from "@/lib/blog";
+import { useAdminBookings } from "@/lib/bookings";
 import {
   Card,
   CardContent,
@@ -89,6 +90,9 @@ export default function DashboardPage() {
   const { data: pendingComments } = useBlogCommentsQuery({ status: "pending" });
   const pendingCommentCount = pendingComments?.length ?? 0;
 
+  const { bookings: liveBookings, summary: bookingSummary, isLoading: bookingsLoading } =
+    useAdminBookings({ limit: 200 });
+
   const attentionItems = useMemo(() => {
     const items = [...requiresAttentionMock];
     if (pendingCommentCount > 0) {
@@ -105,12 +109,12 @@ export default function DashboardPage() {
 
   const sortedBookings = useMemo(
     () =>
-      [...mockBookings].sort((a, b) =>
+      [...liveBookings].sort((a, b) =>
         bookingSortDesc
-          ? b.checkIn.localeCompare(a.checkIn)
-          : a.checkIn.localeCompare(b.checkIn)
+          ? b.check_in.localeCompare(a.check_in)
+          : a.check_in.localeCompare(b.check_in)
       ),
-    [bookingSortDesc]
+    [liveBookings, bookingSortDesc]
   );
 
   const peakMonth = useMemo(
@@ -173,8 +177,8 @@ export default function DashboardPage() {
       <div className="flex items-center gap-2 rounded-lg border border-border bg-white px-4 py-2.5 text-xs text-muted-foreground">
         <CircleCheck className="size-4 shrink-0 text-rating" />
         <span>
-          <span className="font-medium text-foreground">Demo data</span> — every figure below is
-          mock. No bookings, revenue or review data exists in the backend yet.
+          <span className="font-medium text-foreground">Bookings, booking value and cancellation
+          rate are live</span> — revenue charts, channels, occupancy and reviews are still demo data.
         </span>
       </div>
 
@@ -182,6 +186,16 @@ export default function DashboardPage() {
         {dashboardKpis.map((kpi) => {
           const Icon = kpiIcons[kpi.id];
           const isUp = kpi.trendDirection === "up";
+          // Bookings-related tiles run on live data; the rest stay demo figures.
+          const liveValue =
+            kpi.id === "bookings"
+              ? bookingSummary.confirmed.toLocaleString()
+              : kpi.id === "gbv"
+                ? `${bookingSummary.currency} ${bookingSummary.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                : kpi.id === "cancellation"
+                  ? `${bookingSummary.cancellationRate.toFixed(1)}%`
+                  : null;
+          const value = liveValue ?? kpi.value;
           return (
             <Card key={kpi.id}>
               <CardContent className="space-y-3 pt-1">
@@ -200,9 +214,13 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <div>
-                  <p className="text-2xl font-semibold text-foreground">{kpi.value}</p>
+                  <p className="text-2xl font-semibold text-foreground">
+                    {bookingsLoading && liveValue !== null ? "—" : value}
+                  </p>
                   <p className="text-sm text-muted-foreground">{kpi.label}</p>
-                  <p className="text-xs text-muted-foreground">vs last month</p>
+                  <p className="text-xs text-muted-foreground">
+                    {liveValue !== null ? "live" : "vs last month"}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -355,7 +373,9 @@ export default function DashboardPage() {
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
           <div>
             <CardTitle>Recent bookings</CardTitle>
-            <CardDescription>Latest {mockBookings.length} reservations across all channels</CardDescription>
+            <CardDescription>
+              {bookingSummary.total} live reservation{bookingSummary.total === 1 ? "" : "s"} from the booking flow
+            </CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm">
@@ -381,41 +401,70 @@ export default function DashboardPage() {
                   <th className="px-6 py-3 font-medium">Guest</th>
                   <th className="px-6 py-3 font-medium">Property</th>
                   <th className="px-6 py-3 font-medium">Dates</th>
-                  <th className="px-6 py-3 font-medium">Channel</th>
+                  <th className="px-6 py-3 font-medium">Booked</th>
                   <th className="px-6 py-3 font-medium">Amount</th>
                   <th className="px-6 py-3 font-medium">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {sortedBookings.map((booking) => (
-                  <tr key={booking.id} className="hover:bg-muted/40">
-                    <td className="px-6 py-3 font-medium text-navy">#{booking.id}</td>
-                    <td className="px-6 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar size="sm">
-                          <AvatarFallback className="bg-navy/10 text-xs font-semibold text-navy">
-                            {initials(booking.guest)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-foreground">{booking.guest}</p>
-                          <p className="truncate text-xs text-muted-foreground">{booking.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-3 text-muted-foreground">{booking.property}</td>
-                    <td className="px-6 py-3 text-muted-foreground">
-                      {booking.checkIn} &rarr; {booking.checkOut} &middot; {booking.nights}n
-                    </td>
-                    <td className="px-6 py-3 text-muted-foreground">{booking.channel}</td>
-                    <td className="px-6 py-3 font-semibold text-foreground">
-                      {booking.currency} {booking.total.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-3">
-                      <Badge variant={statusVariant[booking.status]}>{booking.status}</Badge>
+                {bookingsLoading && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-10 text-center text-muted-foreground">
+                      Loading…
                     </td>
                   </tr>
-                ))}
+                )}
+                {!bookingsLoading && sortedBookings.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-10 text-center text-sm text-muted-foreground">
+                      No bookings yet.
+                    </td>
+                  </tr>
+                )}
+                {sortedBookings.slice(0, 8).map((booking) => {
+                  const guest =
+                    [booking.guest_first_name, booking.guest_last_name].filter(Boolean).join(" ") ||
+                    booking.guest_email;
+                  return (
+                    <tr key={booking.id} className="hover:bg-muted/40">
+                      <td className="px-6 py-3 font-medium text-navy">{booking.reference}</td>
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar size="sm">
+                            <AvatarFallback className="bg-navy/10 text-xs font-semibold text-navy">
+                              {initials(guest)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-foreground">{guest}</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {booking.guest_email}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-muted-foreground">{booking.property_name}</td>
+                      <td className="px-6 py-3 text-muted-foreground">
+                        {format(new Date(booking.check_in), "d MMM")} &rarr;{" "}
+                        {format(new Date(booking.check_out), "d MMM")} &middot; {booking.nights}n
+                      </td>
+                      <td className="px-6 py-3 text-muted-foreground">
+                        {format(new Date(booking.created_at), "d MMM yyyy")}
+                      </td>
+                      <td className="px-6 py-3 font-semibold text-foreground">
+                        {booking.currency} {Number(booking.total_amount).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-3">
+                        <Badge
+                          variant={statusVariant[booking.status as BookingStatus] ?? "secondary"}
+                          className="capitalize"
+                        >
+                          {booking.status.replace(/_/g, " ")}
+                        </Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

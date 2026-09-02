@@ -12,8 +12,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { FacebookSignInButton } from "@/components/auth/facebook-sign-in-button";
-import { ApiError, login } from "@/lib/api";
+import { ApiError, login, requestOtp } from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
+import { OtpModal } from "@/components/checkout/otp-modal";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email("Enter a valid email address"),
@@ -27,6 +28,10 @@ export function LoginForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpDevCode, setOtpDevCode] = useState<string | null>(null);
+  const [otpBusy, setOtpBusy] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated()) router.replace("/");
@@ -35,12 +40,35 @@ export function LoginForm() {
   const {
     register,
     control,
+    watch,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "", rememberMe: true },
   });
+
+  async function handleCodeSignIn() {
+    const email = watch("email").trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setSubmitError("Enter your email address first.");
+      return;
+    }
+    setSubmitError(null);
+    setOtpBusy(true);
+    try {
+      const r = await requestOtp({ email });
+      setOtpEmail(email);
+      setOtpDevCode(r.dev_code ?? null);
+      setOtpOpen(true);
+    } catch (error) {
+      setSubmitError(
+        error instanceof ApiError ? error.message : "Couldn't send a code. Try again.",
+      );
+    } finally {
+      setOtpBusy(false);
+    }
+  }
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null);
@@ -169,6 +197,15 @@ export function LoginForm() {
           {!isSubmitting && <ArrowRight className="h-4 w-4" />}
         </Button>
 
+        <button
+          type="button"
+          onClick={handleCodeSignIn}
+          disabled={otpBusy}
+          className="text-center text-sm font-medium text-navy hover:underline disabled:text-muted-foreground"
+        >
+          {otpBusy ? "Sending code…" : "Email me a sign-in code instead"}
+        </button>
+
         <div className="flex items-start gap-3 rounded-lg bg-navy/5 p-4">
           <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-navy" />
           <div>
@@ -186,6 +223,21 @@ export function LoginForm() {
           </Link>
         </p>
       </form>
+
+      <OtpModal
+        open={otpOpen}
+        email={otpEmail}
+        devCode={otpDevCode}
+        onClose={() => setOtpOpen(false)}
+        onResend={async () => {
+          const r = await requestOtp({ email: otpEmail });
+          return r.dev_code ?? null;
+        }}
+        onVerified={() => {
+          setOtpOpen(false);
+          router.push("/account");
+        }}
+      />
     </div>
   );
 }

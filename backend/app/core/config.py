@@ -34,6 +34,20 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://postgres:postgres@localhost:5432/royal_vacation"
     )
 
+    # Outbound email (OTP + welcome). When unset, email is skipped and the OTP
+    # request endpoint returns the code in `dev_code` instead.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+    smtp_from_name: str = "Royal Vacation"
+    public_web_url: str = "http://localhost:3000"
+
+    @property
+    def email_enabled(self) -> bool:
+        return bool(self.smtp_host and self.smtp_from)
+
 
 @lru_cache
 def get_settings() -> Settings:

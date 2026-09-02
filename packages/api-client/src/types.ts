@@ -103,6 +103,27 @@ export interface MessageResponse {
   message: string;
 }
 
+// ---- Email OTP ---------------------------------------------------------------
+
+export interface OtpRequestInput {
+  email: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  phone?: string | null;
+  country?: string | null;
+}
+
+export interface OtpRequestResult {
+  sent: boolean;
+  /** Present only when SMTP isn't configured on the backend. */
+  dev_code?: string | null;
+}
+
+export interface OtpVerifyInput {
+  email: string;
+  code: string;
+}
+
 // ---- Users ---------------------------------------------------------------
 
 export interface UserOut {
@@ -690,6 +711,85 @@ export interface CountryUpdate {
   is_active?: boolean;
 }
 
+// ---- Genius loyalty (admin config + public read) ----------------------
+
+export interface GeniusBenefitOut {
+  id: string;
+  level_id: string;
+  label: string;
+  description?: string | null;
+  icon?: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A benefit inside a level create/update payload — `id` set = keep/update, unset = new. */
+export interface GeniusBenefitInput {
+  id?: string;
+  label: string;
+  description?: string | null;
+  icon?: string | null;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface GeniusLevelOut {
+  id: string;
+  tier: number;
+  slug: string;
+  name: string;
+  stays_required: number;
+  /** Decimal serialised as a string, e.g. "10.00". */
+  discount_percent: string;
+  description?: string | null;
+  is_active: boolean;
+  benefits: GeniusBenefitOut[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GeniusLevelCreate {
+  tier: number;
+  name: string;
+  slug?: string;
+  stays_required?: number;
+  discount_percent?: number | string;
+  description?: string | null;
+  is_active?: boolean;
+  benefits?: GeniusBenefitInput[];
+}
+
+export interface GeniusLevelUpdate {
+  tier?: number;
+  name?: string;
+  slug?: string;
+  stays_required?: number;
+  discount_percent?: number | string;
+  description?: string | null;
+  is_active?: boolean;
+  /** When provided, fully replaces the level's benefit list. */
+  benefits?: GeniusBenefitInput[];
+}
+
+export interface GeniusBenefitPublicOut {
+  label: string;
+  description?: string | null;
+  icon?: string | null;
+}
+
+export interface GeniusLevelPublicOut {
+  id: string;
+  slug: string;
+  tier: number;
+  name: string;
+  stays_required: number;
+  discount_percent: string;
+  description?: string | null;
+  benefits: GeniusBenefitPublicOut[];
+}
+
 // ---- Properties (public catalog) -------------------------------------
 
 export interface Property {
@@ -771,6 +871,159 @@ export interface SiteThemeUpdate {
   admin_primary_color?: string | null;
   admin_accent_color?: string | null;
   admin_corner_style?: AdminCornerStyle | null;
+}
+
+// ---- Bookings & payments ------------------------------------------------
+// Money fields are decimal strings (e.g. "61605.10") — Number() before doing math.
+
+export type BookingStatus =
+  | "pending"
+  | "confirmed"
+  | "cancelled"
+  | "completed"
+  | "no_show";
+
+export type PaymentTiming = "pay_now" | "pay_later";
+
+export type BookingPaymentStatus =
+  | "requires_payment_method"
+  | "requires_confirmation"
+  | "requires_action"
+  | "processing"
+  | "requires_capture"
+  | "succeeded"
+  | "failed"
+  | "canceled"
+  | "refunded"
+  | "partially_refunded";
+
+export interface BookingGuestInput {
+  first_name: string;
+  last_name?: string | null;
+  email: string;
+  dial_code?: string | null;
+  phone?: string | null;
+  country?: string | null;
+  booking_for?: "main_guest" | "someone_else";
+  arrival_time?: string | null;
+  special_requests?: string | null;
+}
+
+export interface RateSnapshot {
+  property_name: string;
+  room_id: string;
+  room_name: string;
+  room_image?: string | null;
+  currency: string;
+  price: number | string;
+  taxes_fees?: number | string;
+  refundable?: boolean;
+  max_adults?: number;
+}
+
+export interface BookingCreate {
+  property_id: string;
+  rate_plan_id: string;
+  check_in: string; // YYYY-MM-DD
+  check_out: string; // YYYY-MM-DD
+  adults?: number;
+  children?: number;
+  child_ages?: number[];
+  rooms?: number;
+  extra_ids?: string[];
+  promo_code?: string | null;
+  /** Fallback rate details for demo listings not yet in the rates table. */
+  rate_snapshot?: RateSnapshot | null;
+  guest: BookingGuestInput;
+}
+
+export interface BookingTotals {
+  currency: string;
+  nights: number;
+  nights_subtotal: string;
+  extras_total: string;
+  taxes_fees: string;
+  service_fee: string;
+  promo_code?: string | null;
+  promo_discount: string;
+  total_amount: string;
+}
+
+export interface BookingCreateResult {
+  booking_id: string;
+  reference: string;
+  access_token: string;
+  payment_timing: PaymentTiming;
+  client_secret: string;
+  publishable_key: string | null;
+  totals: BookingTotals;
+}
+
+export interface BookingExtraOut {
+  extra_id: string;
+  title: string;
+  price: string;
+}
+
+export interface BookingPaymentOut {
+  status: BookingPaymentStatus;
+  capture_method: "automatic" | "manual";
+  amount: string;
+  amount_captured: string;
+  amount_refunded: string;
+  currency: string;
+  card_brand?: string | null;
+  card_last4?: string | null;
+  error_message?: string | null;
+  authorized_at?: string | null;
+  captured_at?: string | null;
+}
+
+export interface BookingOut {
+  id: string;
+  reference: string;
+  status: BookingStatus;
+  payment_timing: PaymentTiming;
+  property_id: string;
+  property_name: string;
+  room_id: string;
+  room_name: string;
+  room_image?: string | null;
+  location?: string | null;
+  currency: string;
+  check_in: string;
+  check_out: string;
+  nights: number;
+  adults: number;
+  children: number;
+  child_ages: number[];
+  rooms: number;
+  guest_first_name: string;
+  guest_last_name?: string | null;
+  guest_email: string;
+  guest_dial_code?: string | null;
+  guest_phone?: string | null;
+  guest_country?: string | null;
+  booking_for: string;
+  arrival_time?: string | null;
+  special_requests?: string | null;
+  nights_subtotal: string;
+  extras_total: string;
+  taxes_fees: string;
+  service_fee: string;
+  promo_code?: string | null;
+  promo_discount: string;
+  total_amount: string;
+  created_at: string;
+  confirmed_at?: string | null;
+  cancelled_at?: string | null;
+  extras: BookingExtraOut[];
+  payment?: BookingPaymentOut | null;
+}
+
+export interface AdminBookingRefundRequest {
+  amount?: string | number | null;
+  reason?: string | null;
 }
 
 // ---- Stays Config ---------------------------------------------------------

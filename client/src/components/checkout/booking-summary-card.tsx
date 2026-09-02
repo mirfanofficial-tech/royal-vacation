@@ -12,7 +12,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { extraOptions } from "@/lib/checkout-mock-data";
+import { computeTotals, type BookingTotals } from "@/lib/booking-pricing";
 
 const trustBadges = [
   { id: "cancellation", icon: RotateCcw, title: "Free Cancellation", description: "Up to 24 hours before check-in" },
@@ -36,8 +36,12 @@ export function BookingSummaryCard({
   nights,
   roomPrice,
   selectedExtraIds,
+  promoCode = "ROYAL10",
+  totals: totalsProp,
   onConfirm,
   confirmDisabled,
+  confirmLabel = "Review & Confirm Booking",
+  confirmHint = "Please complete the guest information above to continue.",
 }: {
   propertyName: string;
   propertyImage: string;
@@ -54,17 +58,24 @@ export function BookingSummaryCard({
   nights: number;
   roomPrice: number;
   selectedExtraIds: string[];
+  promoCode?: string | null;
+  /** Server-authoritative totals once the booking is created; falls back to a local estimate. */
+  totals?: BookingTotals;
   onConfirm?: () => void;
   confirmDisabled?: boolean;
+  confirmLabel?: string;
+  confirmHint?: string;
 }) {
-  const nightsSubtotal = roomPrice * nights;
-  const extrasTotal = extraOptions
-    .filter((extra) => selectedExtraIds.includes(extra.id))
-    .reduce((sum, extra) => sum + extra.price, 0);
-  const taxesAndFees = Math.round((nightsSubtotal + extrasTotal) * 0.15);
-  const serviceFee = 2750;
-  const promoDiscount = 10000;
-  const total = nightsSubtotal + extrasTotal + taxesAndFees + serviceFee - promoDiscount;
+  const totals =
+    totalsProp ?? computeTotals({ roomPrice, nights, selectedExtraIds, promoCode });
+  const {
+    nightsSubtotal,
+    extrasTotal,
+    taxesAndFees,
+    serviceFee,
+    promoDiscount,
+    total,
+  } = totals;
 
   return (
     <div className="flex flex-col gap-5 rounded-xl border border-border bg-white p-5">
@@ -150,13 +161,15 @@ export function BookingSummaryCard({
           </span>
         </div>
 
-        <div className="flex items-center justify-between rounded-lg bg-rating/10 px-3 py-2 text-rating">
-          <span className="flex items-center gap-1.5 font-semibold">
-            <Tag className="h-3.5 w-3.5" />
-            Promo Code Applied
-          </span>
-          <span className="font-semibold">- {currency} {promoDiscount.toLocaleString()}</span>
-        </div>
+        {promoDiscount > 0 && (
+          <div className="flex items-center justify-between rounded-lg bg-rating/10 px-3 py-2 text-rating">
+            <span className="flex items-center gap-1.5 font-semibold">
+              <Tag className="h-3.5 w-3.5" />
+              Promo Code Applied
+            </span>
+            <span className="font-semibold">- {currency} {promoDiscount.toLocaleString()}</span>
+          </div>
+        )}
       </div>
 
       <div className="border-t border-border pt-4">
@@ -187,18 +200,20 @@ export function BookingSummaryCard({
         ))}
       </div>
 
-      <Button
-        onClick={onConfirm}
-        disabled={confirmDisabled}
-        className="w-full gap-2 rounded-lg bg-gold text-navy-dark hover:bg-gold-light disabled:opacity-60"
-      >
-        Review &amp; Confirm Booking
-        <ArrowRight className="h-4 w-4" />
-      </Button>
-      {confirmDisabled && (
-        <p className="-mt-3 text-center text-xs text-destructive">
-          Please complete the guest information above to continue.
-        </p>
+      {onConfirm && (
+        <>
+          <Button
+            onClick={onConfirm}
+            disabled={confirmDisabled}
+            className="w-full gap-2 rounded-lg bg-gold text-navy-dark hover:bg-gold-light disabled:opacity-60"
+          >
+            {confirmLabel}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+          {confirmDisabled && (
+            <p className="-mt-3 text-center text-xs text-destructive">{confirmHint}</p>
+          )}
+        </>
       )}
 
       <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">

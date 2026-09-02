@@ -103,6 +103,7 @@ export function PropertyDetailContent({ property }: { property: PropertyDetail }
         </ScrollReveal>
         <ScrollReveal>
           <AvailabilitySection
+            propertyId={property.id}
             rooms={property.rooms}
             currency={property.currency}
             demandNote={property.demandNote}

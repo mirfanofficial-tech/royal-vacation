@@ -8,6 +8,7 @@ import { TierComparison } from "@/components/genius/tier-comparison";
 import { QualifyingStays } from "@/components/genius/qualifying-stays";
 import { GeniusPropertyGrid } from "@/components/genius/genius-property-grid";
 import { HowGeniusWorks } from "@/components/genius/how-genius-works";
+import { GeniusProvider } from "@/components/genius/genius-context";
 import { ScrollReveal } from "@/components/shared/scroll-reveal";
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default function GeniusPage() {
     <>
       <Header />
       <main className="flex-1">
+       <GeniusProvider>
         <div className="bg-white">
           <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
             <GeniusWelcomeBanner />
@@ -66,6 +68,7 @@ export default function GeniusPage() {
             </div>
           </div>
         </ScrollReveal>
+       </GeniusProvider>
       </main>
       <Footer />
     </>

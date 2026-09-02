@@ -11,12 +11,14 @@ from app.api.routes.admin import (
     blog_categories,
     blog_comments,
     blog_posts,
+    bookings,
     cms_blocks,
     cms_media,
     cms_menus,
     cms_pages,
     cms_translations,
     contact,
+    genius,
     hotels,
     modules,
     partners,
@@ -32,6 +34,7 @@ from app.api.routes.admin import (
 
 router = APIRouter()
 router.include_router(users.router, prefix="/users", tags=["admin:users"])
+router.include_router(bookings.router, prefix="/bookings", tags=["admin:bookings"])
 router.include_router(partners.router, prefix="/partners", tags=["admin:partners"])
 router.include_router(roles.router, prefix="/roles", tags=["admin:roles"])
 router.include_router(profiles.router, prefix="/profiles", tags=["admin:profiles"])
@@ -65,5 +68,6 @@ router.include_router(
     cms_translations.router, prefix="/cms/translations", tags=["admin:cms"]
 )
 router.include_router(contact.router, prefix="/contact", tags=["admin:contact"])
+router.include_router(genius.router, prefix="/genius", tags=["admin:genius"])
 
 __all__ = ["router"]

@@ -1,5 +1,10 @@
 import { ApiError, RoyalVacationApi } from "@royal-vacation/api-client";
-import type { RegisterRequest } from "@royal-vacation/api-client";
+import type {
+  BookingCreate,
+  OtpRequestInput,
+  OtpVerifyInput,
+  RegisterRequest,
+} from "@royal-vacation/api-client";
 
 import {
   clearSession,
@@ -102,4 +107,37 @@ export async function callApi<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-export { ApiError, login, register, loginWithGoogle, loginWithFacebook, logout };
+// ---- Bookings (guest checkout, Stripe) ---------------------------------
+
+const bookings = {
+  create: (body: BookingCreate) => callApi(() => api.bookings.create(body)),
+  get: (id: string, token?: string) => callApi(() => api.bookings.get(id, token)),
+  sync: (id: string, token?: string) => callApi(() => api.bookings.sync(id, token)),
+  list: () => callApi(() => api.bookings.list()),
+};
+
+// ---- Email OTP (checkout verification / passwordless sign-in) -----------
+
+async function requestOtp(body: OtpRequestInput) {
+  return callApi(() => api.auth.otpRequest(body));
+}
+
+/** Verifies the code, then stores the returned session. */
+async function verifyOtp(body: OtpVerifyInput) {
+  const res = await api.auth.otpVerify(body);
+  setTokens(res.access_token, res.refresh_token);
+  setSession(userToSession(res.user));
+  return res;
+}
+
+export {
+  ApiError,
+  login,
+  register,
+  loginWithGoogle,
+  loginWithFacebook,
+  logout,
+  bookings,
+  requestOtp,
+  verifyOtp,
+};

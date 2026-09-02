@@ -169,6 +169,15 @@
   z-index: 0;
 }
 
+/* Keep map controls (leaflet gives these z-index 1000) below the checkout
+   sticky bar at z-[2000]. Only the control wrappers — not .leaflet-pane,
+   whose internal layering must stay intact. */
+.leaflet-top,
+.leaflet-bottom,
+.maplibregl-ctrl {
+  z-index: 400 !important;
+}
+
 .rv-map-pin {
   display: flex;
   align-items: center;

@@ -81,5 +81,25 @@ class ConfirmResetRequest(BaseModel):
     new_password: str = Field(min_length=8)
 
 
+class OtpRequestIn(BaseModel):
+    email: EmailStr
+    first_name: str | None = Field(default=None, max_length=120)
+    last_name: str | None = Field(default=None, max_length=120)
+    phone: str | None = Field(default=None, max_length=40)
+    country: str | None = Field(default=None, max_length=2)
+
+
+class OtpRequestOut(BaseModel):
+    sent: bool
+    # Populated only when SMTP is not configured — lets the flow be exercised
+    # without email delivery. Drop once email is always on in production.
+    dev_code: str | None = None
+
+
+class OtpVerifyIn(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=4, max_length=8)
+
+
 class MessageResponse(BaseModel):
     message: str

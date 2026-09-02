@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Coffee, Car, Shield } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,12 +27,18 @@ export function ExtrasSection({
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  // Notify the parent after commit — never from inside the setState updater
+  // (that runs during render).
+  useEffect(() => {
+    onSelectionChange?.([...selected]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
+
   const toggle = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      onSelectionChange?.([...next]);
       return next;
     });
   };
