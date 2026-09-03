@@ -9,6 +9,7 @@ import type { RoomOption } from "@/lib/property-detail-mock-data";
 export function RoomRateCard({
   room,
   currency,
+  nights = 1,
   defaultDetailsOpen = false,
   selectedPlanId,
   selectedQty,
@@ -16,6 +17,8 @@ export function RoomRateCard({
 }: {
   room: RoomOption;
   currency: string;
+  /** Nights from the availability search — drives the "total for N nights" line. */
+  nights?: number;
   defaultDetailsOpen?: boolean;
   /** The rate plan currently selected across the whole availability list, if any. */
   selectedPlanId: string | null;
@@ -124,10 +127,16 @@ export function RoomRateCard({
               )}
               <span className="text-lg font-bold text-foreground">
                 {currency} {plan.price.toLocaleString()}
+                <span className="text-xs font-normal text-muted-foreground"> / night</span>
               </span>
               <span className="block text-xs text-muted-foreground">
                 +{currency} {plan.taxesFees.toLocaleString()} taxes and fees
               </span>
+              {nights > 1 && (
+                <span className="mt-0.5 block text-xs font-semibold text-navy">
+                  {currency} {(plan.price * nights).toLocaleString()} for {nights} nights
+                </span>
+              )}
               <div className="mt-1 flex flex-wrap gap-1">
                 {plan.discountPercent && (
                   <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[11px] font-bold text-white">

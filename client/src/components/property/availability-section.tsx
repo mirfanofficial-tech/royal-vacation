@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Flame, Lock, Users, Minus, Plus, Search, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,23 +25,53 @@ const roomTypeFilters: { id: RoomOption["roomType"]; label: string }[] = [
   { id: "apartments", label: "Apartments" },
 ];
 
+function addDays(base: Date, days: number) {
+  const d = new Date(base);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
 export function AvailabilitySection({
   propertyId,
   rooms,
   currency,
   demandNote,
+  searchDestination,
+  initialCheckIn,
+  initialCheckOut,
+  initialAdults = 2,
+  initialChildCount = 0,
+  initialChildAges = [],
+  initialRoomsCount = 1,
 }: {
   propertyId: string;
   rooms: RoomOption[];
   currency: string;
   demandNote: string;
+  /** Destination string ("City, Country") carried into the /search page. */
+  searchDestination?: string;
+  initialCheckIn?: Date;
+  initialCheckOut?: Date;
+  initialAdults?: number;
+  initialChildCount?: number;
+  initialChildAges?: number[];
+  initialRoomsCount?: number;
 }) {
-  const [checkIn, setCheckIn] = useState<Date | undefined>(new Date(2026, 7, 11));
-  const [checkOut, setCheckOut] = useState<Date | undefined>(new Date(2026, 7, 12));
-  const [adults, setAdults] = useState(2);
-  const [childCount, setChildCount] = useState(0);
-  const [childAges, setChildAges] = useState<number[]>([]);
-  const [roomsCount, setRoomsCount] = useState(1);
+  const router = useRouter();
+
+  const [checkIn, setCheckIn] = useState<Date | undefined>(
+    initialCheckIn ?? addDays(new Date(), 1),
+  );
+  const [checkOut, setCheckOut] = useState<Date | undefined>(
+    initialCheckOut ?? addDays(new Date(), 2),
+  );
+  const [adults, setAdults] = useState(initialAdults);
+  const [childCount, setChildCount] = useState(initialChildCount);
+  const [childAges, setChildAges] = useState<number[]>(
+    initialChildAges.slice(0, initialChildCount),
+  );
+  const [roomsCount, setRoomsCount] = useState(initialRoomsCount);
 
   useEffect(() => {
     setChildAges((prev) => {
@@ -84,6 +115,19 @@ export function AvailabilitySection({
       document.body.style.paddingBottom = prev;
     };
   }, [selection]);
+
+  // Re-run the search on the /search page — same behaviour as the home search bar.
+  const runSearch = () => {
+    const params = new URLSearchParams();
+    if (searchDestination) params.set("destination", searchDestination);
+    if (checkIn) params.set("checkIn", checkIn.toISOString());
+    if (checkOut) params.set("checkOut", checkOut.toISOString());
+    params.set("adults", String(adults));
+    params.set("children", String(childCount));
+    if (childCount > 0) params.set("childAges", childAges.join(","));
+    params.set("rooms", String(roomsCount));
+    router.push(`/search?${params.toString()}`);
+  };
 
   const handleSelect = (roomId: string, planId: string, qty: number) => {
     setSelection((prev) => {
@@ -249,7 +293,11 @@ export function AvailabilitySection({
           </Popover>
         </div>
 
-        <Button className="rounded-lg bg-navy text-white hover:bg-navy-light">
+        <Button
+          type="button"
+          onClick={runSearch}
+          className="rounded-lg bg-navy text-white hover:bg-navy-light"
+        >
           <Search className="h-4 w-4" data-icon="inline-start" />
           Change search
         </Button>
@@ -276,6 +324,7 @@ export function AvailabilitySection({
             key={room.id}
             room={room}
             currency={currency}
+            nights={nights}
             defaultDetailsOpen={index === 0}
             selectedPlanId={selection?.planId ?? null}
             selectedQty={selection?.qty ?? 0}

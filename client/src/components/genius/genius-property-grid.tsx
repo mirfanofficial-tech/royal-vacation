@@ -5,13 +5,13 @@ import Link from "next/link";
 import { Heart, Sparkles } from "lucide-react";
 
 import { useFavorites } from "@/components/providers/favorites-provider";
-import { geniusLevels, geniusProperties } from "@/lib/genius-mock-data";
+import { geniusProperties } from "@/lib/genius-mock-data";
 import { useGenius } from "@/components/genius/genius-context";
 
 export function GeniusPropertyGrid() {
   const { isFavorite, toggleFavorite } = useFavorites();
-  const { view } = useGenius();
-  const currentLevel = geniusLevels[view.enrolled ? view.levelIndex : 0]!;
+  const { view, tiers } = useGenius();
+  const currentLevel = tiers[view.enrolled ? view.levelIndex : 0] ?? tiers[0]!;
 
   return (
     <div>

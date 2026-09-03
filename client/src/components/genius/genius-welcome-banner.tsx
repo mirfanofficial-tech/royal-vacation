@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { Crown, Loader2 } from "lucide-react";
 
-import { geniusLevels } from "@/lib/genius-mock-data";
 import { useGenius } from "@/components/genius/genius-context";
 
 function money(currency: string, n: number) {
@@ -11,12 +10,10 @@ function money(currency: string, n: number) {
 }
 
 export function GeniusWelcomeBanner() {
-  const { view, loading } = useGenius();
+  const { view, loading, tiers } = useGenius();
 
-  const currentLevel = geniusLevels[view.levelIndex]!;
-  const nextLevel = view.enrolled
-    ? geniusLevels[view.levelIndex + 1]
-    : geniusLevels[0];
+  const currentLevel = tiers[view.levelIndex] ?? tiers[0]!;
+  const nextLevel = view.enrolled ? tiers[view.levelIndex + 1] : tiers[0];
   const target = nextLevel?.staysRequired ?? 0;
   const staysToGo = nextLevel ? Math.max(0, target - view.qualifyingStays) : 0;
   const progressPercent = nextLevel
@@ -24,10 +21,10 @@ export function GeniusWelcomeBanner() {
     : 100;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-navy-dark">
+    <div className="relative w-full overflow-hidden bg-navy-dark">
       <div className="absolute inset-0">
         <Image
-          src="https://picsum.photos/seed/royal-genius-hero-banner/1400/500"
+          src="https://picsum.photos/seed/royal-genius-hero-banner/1920/600"
           alt=""
           fill
           className="object-cover opacity-30"
@@ -42,7 +39,7 @@ export function GeniusWelcomeBanner() {
         </span>
       )}
 
-      <div className="relative flex flex-col gap-8 p-8 sm:p-10 lg:flex-row lg:items-start lg:justify-between">
+      <div className="relative mx-auto flex max-w-[1400px] flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12 lg:flex-row lg:items-start lg:justify-between lg:px-24">
         <div className="max-w-xl">
           <span className="mb-4 flex w-fit items-center gap-1.5 rounded-full border border-gold-light/40 bg-white/5 px-3 py-1 text-xs font-semibold text-gold-light">
             <Crown className="h-3.5 w-3.5" />

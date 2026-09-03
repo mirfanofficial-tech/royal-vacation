@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { MapPin, Users, Search, Loader2, Minus, Plus, X } from "lucide-react";
@@ -39,17 +39,53 @@ function GuestStepper({ label, value, onChange, min = 0 }: { label: string; valu
   );
 }
 
+function ChildAges({
+  ages,
+  onChange,
+}: {
+  ages: number[];
+  onChange: (next: number[]) => void;
+}) {
+  if (ages.length === 0) return null;
+  return (
+    <div className="grid grid-cols-2 gap-2 border-t border-border pt-3">
+      {ages.map((age, i) => (
+        <label key={i} className="flex flex-col gap-1 text-xs text-muted-foreground">
+          Child {i + 1} age
+          <select
+            value={age}
+            onChange={(e) =>
+              onChange(ages.map((a, idx) => (idx === i ? Number(e.target.value) : a)))
+            }
+            className="h-8 rounded-lg border border-border bg-white px-2 text-sm text-foreground outline-none focus-visible:border-navy"
+          >
+            {Array.from({ length: 18 }, (_, n) => (
+              <option key={n} value={n}>
+                {n === 0 ? "< 1 year" : `${n} year${n > 1 ? "s" : ""} old`}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+    </div>
+  );
+}
+
 export function SearchResultsBar({
   defaultDestination = "Dubai, United Arab Emirates",
   defaultCheckIn,
   defaultCheckOut,
   defaultAdults = 2,
+  defaultChildren = 0,
+  defaultChildAges = [],
   defaultRooms = 1,
 }: {
   defaultDestination?: string;
   defaultCheckIn?: Date;
   defaultCheckOut?: Date;
   defaultAdults?: number;
+  defaultChildren?: number;
+  defaultChildAges?: number[];
   defaultRooms?: number;
 }) {
   const [destination, setDestination] = useState(defaultDestination);
@@ -60,8 +96,20 @@ export function SearchResultsBar({
     defaultCheckOut ?? new Date(2026, 0, 23)
   );
   const [adults, setAdults] = useState(defaultAdults);
-  const [children, setChildren] = useState(0);
+  const [children, setChildren] = useState(defaultChildren);
+  const [childAges, setChildAges] = useState<number[]>(
+    defaultChildAges.slice(0, defaultChildren),
+  );
   const [rooms, setRooms] = useState(defaultRooms);
+
+  useEffect(() => {
+    setChildAges((prev) => {
+      if (prev.length === children) return prev;
+      const next = prev.slice(0, children);
+      while (next.length < children) next.push(8);
+      return next;
+    });
+  }, [children]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileDateOpen, setMobileDateOpen] = useState(false);
   const [desktopDateOpen, setDesktopDateOpen] = useState(false);
@@ -74,6 +122,8 @@ export function SearchResultsBar({
     if (checkIn) params.set("checkIn", checkIn.toISOString());
     if (checkOut) params.set("checkOut", checkOut.toISOString());
     params.set("adults", String(adults));
+    params.set("children", String(children));
+    if (children > 0) params.set("childAges", childAges.join(","));
     params.set("rooms", String(rooms));
 
     startTransition(() => {
@@ -133,6 +183,7 @@ export function SearchResultsBar({
                 <div className="space-y-4 rounded-lg border border-border p-3">
                   <GuestStepper label="Adults" value={adults} onChange={setAdults} min={1} />
                   <GuestStepper label="Children" value={children} onChange={setChildren} min={0} />
+                  <ChildAges ages={childAges} onChange={setChildAges} />
                   <GuestStepper label="Rooms" value={rooms} onChange={setRooms} min={1} />
                 </div>
 
@@ -218,6 +269,7 @@ export function SearchResultsBar({
             <PopoverContent className="w-64 space-y-4" align="start">
               <GuestStepper label="Adults" value={adults} onChange={setAdults} min={1} />
               <GuestStepper label="Children" value={children} onChange={setChildren} min={0} />
+              <ChildAges ages={childAges} onChange={setChildAges} />
               <GuestStepper label="Rooms" value={rooms} onChange={setRooms} min={1} />
             </PopoverContent>
           </Popover>

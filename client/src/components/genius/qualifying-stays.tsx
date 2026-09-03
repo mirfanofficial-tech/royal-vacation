@@ -12,7 +12,6 @@ import {
   Wallet2,
 } from "lucide-react";
 
-import { geniusLevels } from "@/lib/genius-mock-data";
 import { useGenius } from "@/components/genius/genius-context";
 
 function money(currency: string, n: number) {
@@ -20,13 +19,12 @@ function money(currency: string, n: number) {
 }
 
 export function QualifyingStays() {
-  const { view, loading } = useGenius();
+  const { view, loading, tiers } = useGenius();
 
-  const currentDiscount = view.enrolled
-    ? geniusLevels[view.levelIndex]!.discountPercent
-    : 0;
-  const nextLevel = view.enrolled ? geniusLevels[view.levelIndex + 1] : geniusLevels[0];
+  const currentDiscount = view.enrolled ? (tiers[view.levelIndex]?.discountPercent ?? 0) : 0;
+  const nextLevel = view.enrolled ? tiers[view.levelIndex + 1] : tiers[0];
   const target = nextLevel?.staysRequired ?? 0;
+  const topTierName = tiers[tiers.length - 1]?.name ?? "the top level";
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
@@ -141,8 +139,8 @@ export function QualifyingStays() {
           <div className="flex items-start gap-2.5 rounded-xl bg-navy/5 px-4 py-3.5 text-xs text-navy">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-navy" />
             <p>
-              Levels are permanent. Once you reach {geniusLevels[geniusLevels.length - 1]!.name},
-              you keep it — even if you don&apos;t travel for a year.
+              Levels are permanent. Once you reach {topTierName}, you keep it — even if you
+              don&apos;t travel for a year.
             </p>
           </div>
         </div>

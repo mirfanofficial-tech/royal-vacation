@@ -23,11 +23,7 @@ export default function GeniusPage() {
       <Header />
       <main className="flex-1">
        <GeniusProvider>
-        <div className="bg-white">
-          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 lg:px-24">
-            <GeniusWelcomeBanner />
-          </div>
-        </div>
+        <GeniusWelcomeBanner />
 
         <ScrollReveal>
           <div className="bg-white">

@@ -71,6 +71,8 @@ export function ReviewsSection({ property }: { property: PropertyDetail }) {
         rating={property.rating}
         ratingLabel={property.ratingLabel}
         propertyName={property.name}
+        location={property.location}
+        categories={property.reviewCategories}
       />
     </section>
   );

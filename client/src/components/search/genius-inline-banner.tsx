@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -15,7 +16,11 @@ export function GeniusInlineBanner() {
           Sign in and save up to 20% on selected properties in Dubai
         </p>
       </div>
-      <Button className="w-full shrink-0 rounded-lg bg-navy text-white hover:bg-navy-light sm:w-auto">
+      <Button
+        render={<Link href="/login" />}
+        nativeButton={false}
+        className="w-full shrink-0 rounded-lg bg-navy text-white hover:bg-navy-light sm:w-auto"
+      >
         Sign in / Register
       </Button>
     </div>

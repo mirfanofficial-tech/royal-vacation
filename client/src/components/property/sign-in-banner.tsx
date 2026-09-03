@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -15,7 +16,11 @@ export function SignInBanner({ propertyName }: { propertyName: string }) {
           </p>
         </div>
       </div>
-      <Button className="shrink-0 rounded-lg bg-navy text-white hover:bg-navy-light">
+      <Button
+        render={<Link href="/login" />}
+        nativeButton={false}
+        className="shrink-0 rounded-lg bg-navy text-white hover:bg-navy-light"
+      >
         Sign in
       </Button>
     </div>

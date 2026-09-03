@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Trips and bookings | Royal Vacation"
 
 export default function TripsPage() {
   return (
-    <AccountPage title="Trips and bookings" crumbs={[{ label: "Trips and bookings" }]}>
+    <AccountPage title="Trips and bookings" wide crumbs={[{ label: "Trips and bookings" }]}>
       <TripsList />
     </AccountPage>
   );

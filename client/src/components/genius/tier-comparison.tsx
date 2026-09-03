@@ -2,11 +2,10 @@
 
 import { Check, Lock, ArrowUpRight } from "lucide-react";
 
-import { geniusLevels } from "@/lib/genius-mock-data";
 import { useGenius } from "@/components/genius/genius-context";
 
 export function TierComparison() {
-  const { view } = useGenius();
+  const { view, tiers } = useGenius();
 
   return (
     <div>
@@ -29,7 +28,7 @@ export function TierComparison() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {geniusLevels.map((level, index) => {
+        {tiers.map((level, index) => {
           const isCurrent = view.enrolled && index === view.levelIndex;
           const isUnlocked = view.enrolled && index < view.levelIndex;
           const staysToGo = Math.max(0, level.staysRequired - view.qualifyingStays);

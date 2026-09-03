@@ -6,7 +6,14 @@ import { Heart, MapPin } from "lucide-react";
 import { useFavorites } from "@/components/providers/favorites-provider";
 import type { Property } from "@/lib/mock-data";
 
-export function PropertyCard({ property }: { property: Property }) {
+export function PropertyCard({
+  property,
+  showMap = false,
+}: {
+  property: Property;
+  /** Show the "Show on map" action under the location. Off by default. */
+  showMap?: boolean;
+}) {
   const { isFavorite, toggleFavorite } = useFavorites();
   const favorited = isFavorite(property.id);
 
@@ -54,16 +61,20 @@ export function PropertyCard({ property }: { property: Property }) {
         <h3 className="line-clamp-1 font-heading text-base font-semibold text-navy hover:underline">
           <Link href={`/property/${property.id}`}>{property.name}</Link>
         </h3>
-        <div className="flex items-center justify-between gap-2">
+        {showMap ? (
+          <div className="flex items-center justify-between gap-2">
+            <p className="truncate text-sm text-muted-foreground">{property.location}</p>
+            <button
+              type="button"
+              className="flex shrink-0 items-center gap-1 text-xs font-medium text-navy hover:underline"
+            >
+              <MapPin className="h-3 w-3" />
+              Show on map
+            </button>
+          </div>
+        ) : (
           <p className="truncate text-sm text-muted-foreground">{property.location}</p>
-          <button
-            type="button"
-            className="flex shrink-0 items-center gap-1 text-xs font-medium text-navy hover:underline"
-          >
-            <MapPin className="h-3 w-3" />
-            Show on map
-          </button>
-        </div>
+        )}
 
         <div className="mt-auto pt-2 text-sm">
           <span className="text-muted-foreground">From </span>

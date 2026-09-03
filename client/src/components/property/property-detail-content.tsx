@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Breadcrumb } from "@/components/shared/breadcrumb";
 import { PropertyGallery } from "@/components/property/property-gallery";
 import { PropertySummary } from "@/components/property/property-summary";
@@ -27,8 +28,33 @@ const allNearbyCandidates = [...featuredProperties, ...homesGuestsLove];
 // `isLoading` from the fetch once a real property endpoint exists.
 const SIMULATED_LOAD_DELAY_MS = 1800;
 
+function parseYmd(value: string | null): Date | undefined {
+  if (!value) return undefined;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
 export function PropertyDetailContent({ property }: { property: PropertyDetail }) {
   const [isLoading, setIsLoading] = useState(true);
+  const searchParams = useSearchParams();
+
+  const search = useMemo(() => {
+    const children = Math.max(0, Number(searchParams.get("children")) || 0);
+    const childAges = (searchParams.get("childAges") ?? "")
+      .split(",")
+      .map((v) => Number(v))
+      .filter((n) => Number.isFinite(n))
+      .map((n) => Math.min(17, Math.max(0, n)))
+      .slice(0, children);
+    return {
+      checkIn: parseYmd(searchParams.get("checkIn")),
+      checkOut: parseYmd(searchParams.get("checkOut")),
+      adults: Math.max(1, Number(searchParams.get("adults")) || 2),
+      children,
+      childAges,
+      rooms: Math.max(1, Number(searchParams.get("rooms")) || 1),
+    };
+  }, [searchParams]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -107,6 +133,13 @@ export function PropertyDetailContent({ property }: { property: PropertyDetail }
             rooms={property.rooms}
             currency={property.currency}
             demandNote={property.demandNote}
+            searchDestination={`${property.city}, ${property.country}`}
+            initialCheckIn={search.checkIn}
+            initialCheckOut={search.checkOut}
+            initialAdults={search.adults}
+            initialChildCount={search.children}
+            initialChildAges={search.childAges}
+            initialRoomsCount={search.rooms}
           />
         </ScrollReveal>
         <ScrollReveal>

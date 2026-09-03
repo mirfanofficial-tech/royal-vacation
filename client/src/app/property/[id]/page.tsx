@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { PropertyDetailContent } from "@/components/property/property-detail-content";
+import { PropertyLoadingSkeleton } from "@/components/property/property-loading-skeleton";
 import { propertyDetails, getPropertyDetail } from "@/lib/property-detail-mock-data";
 import { featuredProperties, homesGuestsLove } from "@/lib/mock-data";
 import { getRouteSeo, mergeRouteSeoMetadata } from "@/lib/cms-seo";
@@ -47,7 +49,9 @@ export default async function PropertyDetailPage({
     <>
       <Header />
       <main className="flex-1 bg-white">
-        <PropertyDetailContent property={property} />
+        <Suspense fallback={<PropertyLoadingSkeleton />}>
+          <PropertyDetailContent property={property} />
+        </Suspense>
       </main>
       <Footer />
     </>

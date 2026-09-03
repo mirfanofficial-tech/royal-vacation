@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import {
-  Briefcase,
   CreditCard,
   FileText,
   MessageSquare,
@@ -59,12 +58,6 @@ const TOPICS: Record<string, Topic> = {
     title: "Content guidelines",
     icon: FileText,
     body: "The rules for reviews, photos and messages on Royal Vacation. Be honest, relevant and respectful.",
-  },
-  business: {
-    title: "Activate business account",
-    icon: Briefcase,
-    body: "Manage company travel, invoices and traveller policies from one place.",
-    cta: { label: "Get started", href: "/register" },
   },
 };
 

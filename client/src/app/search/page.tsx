@@ -59,6 +59,13 @@ export default async function SearchPage({
   const checkIn = parseDate(params.checkIn) ?? new Date(2026, 0, 20);
   const checkOut = parseDate(params.checkOut) ?? new Date(2026, 0, 23);
   const adults = Number(firstParam(params.adults)) || 2;
+  const children = Math.max(0, Number(firstParam(params.children)) || 0);
+  const childAges = (firstParam(params.childAges) ?? "")
+    .split(",")
+    .map((v) => Number(v))
+    .filter((n) => Number.isFinite(n))
+    .map((n) => Math.min(17, Math.max(0, n)))
+    .slice(0, children);
   const rooms = Number(firstParam(params.rooms)) || 1;
   const propertyType = firstParam(params.propertyType);
 
@@ -81,6 +88,8 @@ export default async function SearchPage({
           defaultCheckIn={checkIn}
           defaultCheckOut={checkOut}
           defaultAdults={adults}
+          defaultChildren={children}
+          defaultChildAges={childAges}
           defaultRooms={rooms}
         />
 
