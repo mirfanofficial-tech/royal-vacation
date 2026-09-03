@@ -123,16 +123,16 @@ export function AccountDashboard() {
   return (
     <div className="flex-1 bg-muted/40 pb-12">
       {/* Hero */}
-      <div className="bg-navy pb-20 pt-6 text-white sm:pb-24 sm:pt-8">
+      <div className="bg-navy pb-20 pt-6 text-white sm:pb-24 sm:pt-8 md:pt-10">
         <div className={`${CONTAINER} flex items-center gap-3 sm:gap-4`}>
-          <span className="flex size-12 shrink-0 items-center justify-center rounded-full border-2 border-gold text-white sm:size-14">
-            <UserRound className="size-6 sm:size-7" />
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-gold text-white sm:size-14">
+            <UserRound className="size-5 sm:size-7" />
           </span>
           <div className="min-w-0">
-            <h1 className="truncate font-heading text-xl font-bold sm:text-3xl">
+            <h1 className="font-heading text-2xl font-bold leading-tight break-words sm:text-3xl">
               Welcome{firstName ? `, ${firstName}` : ""}
             </h1>
-            <p className="text-sm font-medium">
+            <p className="text-sm font-medium text-white/90">
               {level === 0 ? (
                 "Book 2 stays to join Genius"
               ) : (
@@ -147,9 +147,9 @@ export function AccountDashboard() {
 
       {/* Rewards row */}
       <div
-        className={`${CONTAINER} -mt-14 grid grid-cols-1 gap-4 sm:-mt-16 lg:grid-cols-[1fr_320px]`}
+        className={`${CONTAINER} -mt-14 grid grid-cols-1 gap-4 sm:-mt-16 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_340px]`}
       >
-        <div className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+        <div className="min-w-0 rounded-2xl border border-border bg-white p-4 shadow-sm sm:p-5">
           <h2 className="font-heading text-lg font-bold text-navy">
             {stayCount === null
               ? "Loading your rewards…"
@@ -202,8 +202,8 @@ export function AccountDashboard() {
           </Link>
         </div>
 
-        <div className="flex flex-col gap-4 sm:flex-row lg:flex-col">
-          <div className="flex-1 rounded-2xl border border-border bg-white p-5 shadow-sm">
+        <div className="flex min-w-0 flex-col gap-4 md:flex-row lg:flex-col">
+          <div className="flex-1 rounded-2xl border border-border bg-white p-4 shadow-sm sm:p-5">
             <p className="text-sm font-semibold text-foreground">
               {level >= 2
                 ? "You've reached the top Genius level"
@@ -216,7 +216,7 @@ export function AccountDashboard() {
               Check your progress
             </Link>
           </div>
-          <div className="flex-1 rounded-2xl border border-border bg-white p-5 shadow-sm">
+          <div className="flex-1 rounded-2xl border border-border bg-white p-4 shadow-sm sm:p-5">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">No Credits or vouchers yet</p>
               <span className="text-lg font-bold text-foreground">0</span>
@@ -232,11 +232,13 @@ export function AccountDashboard() {
       </div>
 
       {/* Sections grid */}
-      <div className={`${CONTAINER} mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3`}>
+      <div
+        className={`${CONTAINER} mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3`}
+      >
         {sections.map((section) => (
           <div
             key={section.title}
-            className="rounded-2xl border border-border bg-white p-5 shadow-sm"
+            className="rounded-2xl border border-border bg-white p-4 shadow-sm sm:p-5"
           >
             <h3 className="font-heading text-base font-bold text-navy">{section.title}</h3>
             <ul className="mt-2 -mx-2">
@@ -246,9 +248,9 @@ export function AccountDashboard() {
                     href={href}
                     className="flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm text-foreground hover:bg-muted"
                   >
-                    <Icon className="size-4 text-muted-foreground" />
-                    <span className="flex-1">{label}</span>
-                    <ChevronRight className="size-4 text-muted-foreground" />
+                    <Icon className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1">{label}</span>
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                   </Link>
                 </li>
               ))}

@@ -203,7 +203,7 @@ export function SearchBar() {
         </PopoverContent>
       </Popover>
 
-      <div className="flex items-stretch md:items-center">
+      <div className="flex items-stretch md:items-center px-4">
         <Button
           type="submit"
           className="h-10 w-full gap-2 rounded-[10px] bg-navy px-6 text-white hover:bg-navy-light md:h-10 md:w-auto"

@@ -1,13 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import {
-  CreditCard,
-  FileText,
-  MessageSquare,
-  ShieldCheck,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+import { CreditCard, FileText, ShieldCheck, Users, type LucideIcon } from "lucide-react";
 
 import { AccountPage } from "@/components/account/account-page";
 import { PlaceholderPanel } from "@/components/account/placeholder-panel";
@@ -35,12 +28,6 @@ const TOPICS: Record<string, Topic> = {
     title: "Payment methods",
     icon: CreditCard,
     body: "Cards you save at checkout will appear here for one-tap payments. Nothing saved yet.",
-  },
-  reviews: {
-    title: "My reviews",
-    icon: MessageSquare,
-    body: "Reviews you leave after a stay show up here. You haven't written any reviews yet.",
-    cta: { label: "View your trips", href: "/bookings" },
   },
   safety: {
     title: "Safety resource centre",

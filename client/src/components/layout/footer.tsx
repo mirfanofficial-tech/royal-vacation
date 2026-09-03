@@ -8,6 +8,7 @@ import {
   LinkedinIcon,
 } from "@/components/icons/social-icons";
 import { Logo } from "@/components/icons/logo";
+import { FlyingPlane } from "@/components/layout/flying-plane";
 import { api } from "@/lib/api";
 
 type FooterLink = { label: string; href: string };
@@ -93,8 +94,9 @@ export async function Footer() {
   });
 
   return (
-    <footer className="mt-10 bg-navy">
-      <div className="mx-auto grid max-w-[1400px] grid-cols-2 gap-10 px-4 sm:px-6 py-12 sm:grid-cols-3 lg:grid-cols-6 lg:px-24">
+    <footer className="group relative mt-10 overflow-hidden bg-navy">
+      <FlyingPlane />
+      <div className="relative z-10 mx-auto grid max-w-[1400px] grid-cols-2 gap-10 px-4 sm:px-6 py-12 sm:grid-cols-3 lg:grid-cols-6 lg:px-24">
         <div className="col-span-2 flex flex-col gap-3 sm:col-span-3 lg:col-span-1">
           <Link href="/" className="flex items-center gap-2">
             <Logo className="h-10 w-auto" />
@@ -147,7 +149,7 @@ export async function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-white/10">
+      <div className="relative z-10 border-t border-white/10">
         <div className="mx-auto flex max-w-[1400px] flex-col-reverse items-center justify-between gap-4 px-4 sm:px-6 py-6 sm:flex-row lg:px-24">
           <p className="text-xs text-white/60">
             © 2026 Royal Vacation. All rights reserved.

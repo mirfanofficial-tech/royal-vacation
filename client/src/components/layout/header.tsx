@@ -22,6 +22,7 @@ import { navLinks } from "@/lib/mock-data";
 import { WishlistLink } from "@/components/layout/wishlist-link";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { HeaderAuth } from "@/components/layout/header-auth";
+import { CursorFollower } from "@/components/layout/cursor-follower";
 import { api } from "@/lib/api";
 
 // CMS menu items have no icon field, so icons are matched by label. Any
@@ -49,7 +50,9 @@ export async function Header() {
     : navLinks.map((link) => ({ id: link.id, label: link.label, href: "#" }));
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background">
+    <>
+      <CursorFollower enabled={false} />
+      <header className="sticky top-0 z-50 border-b border-border bg-background">
       <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:gap-6 lg:px-24">
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <Logo className="h-8 w-auto sm:h-10" />
@@ -195,5 +198,6 @@ export async function Header() {
         </div>
       </div>
     </header>
+    </>
   );
 }
