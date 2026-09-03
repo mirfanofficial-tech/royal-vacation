@@ -11,7 +11,7 @@ WORKDIR /repo
 COPY packages/api-client ./packages/api-client
 RUN npm --prefix packages/api-client ci && npm --prefix packages/api-client run build
 COPY client/package.json client/package-lock.json ./client/
-RUN npm --prefix client ci
+RUN npm --prefix client install --legacy-peer-deps
 
 
 FROM node:22-alpine AS builder
