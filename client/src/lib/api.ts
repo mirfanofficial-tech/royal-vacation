@@ -133,6 +133,16 @@ async function verifyOtp(body: OtpVerifyInput) {
   return res;
 }
 
+// ---- Forgot password (request token + confirm reset) ----------------------
+
+async function requestPasswordReset(email: string) {
+  return callApi(() => api.auth.resetPassword({ email }));
+}
+
+async function confirmPasswordReset(token: string, newPassword: string) {
+  return callApi(() => api.auth.confirmReset({ token, new_password: newPassword }));
+}
+
 export {
   ApiError,
   login,
@@ -143,4 +153,6 @@ export {
   bookings,
   requestOtp,
   verifyOtp,
+  requestPasswordReset,
+  confirmPasswordReset,
 };

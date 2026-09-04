@@ -15,6 +15,7 @@ import { FacebookSignInButton } from "@/components/auth/facebook-sign-in-button"
 import { ApiError, login, requestOtp } from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
 import { OtpModal } from "@/components/checkout/otp-modal";
+import { ForgotPasswordModal } from "@/components/login/forgot-password-modal";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email("Enter a valid email address"),
@@ -32,6 +33,7 @@ export function LoginForm() {
   const [otpEmail, setOtpEmail] = useState("");
   const [otpDevCode, setOtpDevCode] = useState<string | null>(null);
   const [otpBusy, setOtpBusy] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated()) router.replace("/");
@@ -141,9 +143,13 @@ export function LoginForm() {
             <label htmlFor="password" className="text-sm font-medium text-foreground">
               Password
             </label>
-            <Link href="#" className="text-xs font-semibold text-gold hover:underline">
+            <button
+              type="button"
+              onClick={() => setForgotOpen(true)}
+              className="text-xs font-semibold text-gold hover:underline"
+            >
               Forgot password?
-            </Link>
+            </button>
           </div>
           <div className="relative">
             <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -236,6 +242,16 @@ export function LoginForm() {
         onVerified={() => {
           setOtpOpen(false);
           router.push("/account");
+        }}
+      />
+
+      <ForgotPasswordModal
+        open={forgotOpen}
+        initialEmail={watch("email")}
+        onClose={() => setForgotOpen(false)}
+        onDone={() => {
+          setForgotOpen(false);
+          setSubmitError(null);
         }}
       />
     </div>
