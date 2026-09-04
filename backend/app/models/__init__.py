@@ -19,6 +19,7 @@ from app.models.cms import (
 from app.models.module import ThirdPartyModule
 from app.models.otp import EmailOtp
 from app.models.payment import Payment, PaymentGateway, Refund
+from app.models.promo_code import PromoCode
 from app.models.property_type import PropertyType
 from app.models.rbac import Permission, Role, RolePermission
 from app.models.reference import Country, Currency, Language
@@ -66,6 +67,7 @@ __all__ = [
     "PaymentGateway",
     "Permission",
     "Refund",
+    "PromoCode",
     "PropertyType",
     "RawSupplierHotel",
     "Role",

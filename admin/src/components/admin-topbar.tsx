@@ -72,6 +72,12 @@ const quickCreateGroups: QuickCreateGroup[] = [
     ],
   },
   {
+    label: "Payments",
+    items: [
+      { href: "/payments/promo-codes/add", label: "Promo code", icon: Tag, module: "payments" },
+    ],
+  },
+  {
     label: "Content",
     items: [
       { href: "/blogs/new", label: "Blog post", icon: Newspaper, module: "blog" },
@@ -152,6 +158,7 @@ const segmentLabels: Record<string, string> = {
   transactions: "Transactions",
   invoices: "Invoices",
   refunds: "Refunds",
+  "promo-codes": "Promo Codes",
   admin: "Administration",
   users: "Users",
   roles: "Roles & Permissions",

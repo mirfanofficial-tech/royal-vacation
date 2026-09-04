@@ -175,13 +175,21 @@ async def create_booking(
             detail=f"This rate allows at most {rate.max_adults} adult(s)",
         )
 
-    totals, extras = compute_totals(
+    totals, extras, promo = await compute_totals(
+        db,
         rate,
         nights=nights,
         rooms=payload.rooms,
         extra_ids=payload.extra_ids,
         promo_code=payload.promo_code,
     )
+    if promo is not None and promo.max_uses is not None:
+        if promo.used_count >= promo.max_uses:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="This promo code has reached its usage limit",
+            )
+        promo.used_count += 1
 
     payment_timing = "pay_later" if rate.refundable else "pay_now"
     capture_method = "manual" if payment_timing == "pay_later" else "automatic"

@@ -24,6 +24,7 @@ from app.api.routes.admin import (
     partners,
     payment_gateways,
     profiles,
+    promo_codes,
     property_types,
     reference,
     roles,
@@ -69,5 +70,8 @@ router.include_router(
 )
 router.include_router(contact.router, prefix="/contact", tags=["admin:contact"])
 router.include_router(genius.router, prefix="/genius", tags=["admin:genius"])
+router.include_router(
+    promo_codes.router, prefix="/promo-codes", tags=["admin:promo-codes"]
+)
 
 __all__ = ["router"]

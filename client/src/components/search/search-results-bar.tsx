@@ -218,16 +218,16 @@ export function SearchResultsBar({
         <div className="hidden w-full md:grid md:grid-cols-[1.3fr_1fr_1fr_auto] md:gap-0 md:rounded-full md:p-2">
           <div className="flex items-center gap-2 px-4 py-2">
             <div className="flex flex-1 flex-col gap-1">
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-white">
-                <MapPin className="h-3.5 w-3.5 text-gold-light" />
-                Destination
-              </label>
-              <DestinationAutocomplete
-                value={destination}
-                onChange={setDestination}
-                onSelect={() => setDesktopDateOpen(true)}
-                inputClassName="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/50"
-              />
+              <label className="text-xs font-semibold text-white">Destination</label>
+              <div className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-gold-light" />
+                <DestinationAutocomplete
+                  value={destination}
+                  onChange={setDestination}
+                  onSelect={() => setDesktopDateOpen(true)}
+                  inputClassName="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/50"
+                />
+              </div>
             </div>
             {destination && (
               <button
@@ -257,11 +257,9 @@ export function SearchResultsBar({
 
           <Popover>
             <PopoverTrigger className="flex flex-col items-start gap-1 border-l border-white/20 px-4 py-2 text-left">
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-white">
-                <Users className="h-3.5 w-3.5 text-gold-light" />
-                Guests &amp; Rooms
-              </span>
-              <span className="text-sm text-white/80">
+              <span className="text-xs font-semibold text-white">Guests &amp; Rooms</span>
+              <span className="flex items-center gap-1.5 text-sm text-white/80">
+                <Users className="h-3.5 w-3.5 shrink-0 text-gold-light" />
                 {adults} adult{adults > 1 ? "s" : ""} &middot; {children} child
                 {children === 1 ? "" : "ren"} &middot; {rooms} room{rooms > 1 ? "s" : ""}
               </span>

@@ -36,7 +36,7 @@ export function BookingSummaryCard({
   nights,
   roomPrice,
   selectedExtraIds,
-  promoCode = "ROYAL10",
+  promoCode = null,
   totals: totalsProp,
   onConfirm,
   confirmDisabled,

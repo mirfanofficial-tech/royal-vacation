@@ -4,18 +4,19 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Ticket, XCircle } from "lucide-react";
 
 import type { BookingCreateResult } from "@royal-vacation/api-client";
 import { ApiError, bookings, requestOtp } from "@/lib/api";
 import { getSession } from "@/lib/auth";
-import { computeTotals, DEFAULT_PROMO_CODE } from "@/lib/booking-pricing";
+import { computeTotals, PROMO_CODES } from "@/lib/booking-pricing";
 import { GuestInfoForm, type GuestInfoValues } from "@/components/checkout/guest-info-form";
 import { ExtrasSection } from "@/components/checkout/extras-section";
 import { BookingSummaryCard } from "@/components/checkout/booking-summary-card";
 import { StepIndicator } from "@/components/checkout/step-indicator";
 import { StripePaymentSection } from "@/components/checkout/stripe-payment-section";
 import { OtpModal } from "@/components/checkout/otp-modal";
+import { Button } from "@/components/ui/button";
 
 export const LAST_CHECKOUT_KEY = "rv:last-checkout";
 
@@ -91,6 +92,12 @@ export function CheckoutFormSections({
   const [otpOpen, setOtpOpen] = useState(false);
   const [devCode, setDevCode] = useState<string | null>(null);
 
+  const [promoInput, setPromoInput] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
+  const [promoStatus, setPromoStatus] = useState<"idle" | "applied" | "invalid">("idle");
+
+  const promoCodeToUse = appliedPromo?.trim().toUpperCase() || null;
+
   const localTotals = useMemo(
     () =>
       computeTotals({
@@ -98,9 +105,9 @@ export function CheckoutFormSections({
         nights,
         rooms,
         selectedExtraIds,
-        promoCode: DEFAULT_PROMO_CODE,
+        promoCode: promoCodeToUse,
       }),
-    [roomPrice, nights, rooms, selectedExtraIds],
+    [roomPrice, nights, rooms, selectedExtraIds, promoCodeToUse],
   );
 
   const stripePromise = useMemo(
@@ -159,7 +166,7 @@ export function CheckoutFormSections({
         child_ages: guestInfo.childAges,
         rooms,
         extra_ids: selectedExtraIds,
-        promo_code: DEFAULT_PROMO_CODE,
+        promo_code: promoCodeToUse,
         rate_snapshot: {
           property_name: propertyName,
           room_id: roomId,
@@ -204,6 +211,22 @@ export function CheckoutFormSections({
     }
   }
 
+  function handleApplyPromo() {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) {
+      setAppliedPromo(null);
+      setPromoStatus("idle");
+      return;
+    }
+    if (PROMO_CODES[code]) {
+      setAppliedPromo(code);
+      setPromoStatus("applied");
+    } else {
+      setAppliedPromo(null);
+      setPromoStatus("invalid");
+    }
+  }
+
   const summaryTotals = result?.totals
     ? {
         nightsSubtotal: Number(result.totals.nights_subtotal),
@@ -236,6 +259,51 @@ export function CheckoutFormSections({
                 }}
               />
               <ExtrasSection currency={currency} onSelectionChange={setSelectedExtraIds} />
+
+              <div className="rounded-xl border border-border bg-white p-5">
+                <div className="mb-3 flex flex-col gap-1">
+                  <h2 className="text-base font-semibold text-navy">Promo Code</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Have a promo code? Enter it below to apply a discount.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={promoInput}
+                    onChange={(e) => setPromoInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleApplyPromo();
+                      }
+                    }}
+                    placeholder="Enter promo code"
+                    className="h-10 flex-1 rounded-lg border border-border bg-white px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-navy"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleApplyPromo}
+                    className="h-10 shrink-0 rounded-lg bg-navy px-5 text-sm text-white hover:bg-navy-light"
+                  >
+                    Apply
+                  </Button>
+                </div>
+                {promoStatus === "applied" && (
+                  <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-rating">
+                    <Ticket className="h-4 w-4" />
+                    Promo code applied — {currency}{" "}
+                    {localTotals.promoDiscount.toLocaleString()} off
+                  </p>
+                )}
+                {promoStatus === "invalid" && (
+                  <p className="mt-2 flex items-center gap-1.5 text-sm text-destructive">
+                    <XCircle className="h-4 w-4" />
+                    That promo code isn&apos;t valid. Check the code and try again.
+                  </p>
+                )}
+              </div>
+
               {createError && (
                 <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                   {createError}
@@ -311,7 +379,7 @@ export function CheckoutFormSections({
             nights={nights}
             roomPrice={roomPrice}
             selectedExtraIds={selectedExtraIds}
-            promoCode={DEFAULT_PROMO_CODE}
+            promoCode={promoCodeToUse}
             totals={summaryTotals}
             onConfirm={step === 1 ? handleContinueToPayment : undefined}
             confirmDisabled={!guestInfoValid || creating}

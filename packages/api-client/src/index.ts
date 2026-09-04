@@ -78,6 +78,9 @@ import type {
   PermissionOut,
   PreferencesUpdate,
   ProfileUpdate,
+  PromoCodeCreate,
+  PromoCodeOut,
+  PromoCodeUpdate,
   Property,
   PropertyCreate,
   PropertyTypeCreate,
@@ -285,6 +288,17 @@ export class RoyalVacationApi extends ApiClient {
         this.delete<void>(`/api/v1/admin/payment-gateways/${id}`),
       setDefault: (id: string) =>
         this.post<PaymentGatewayOut>(`/api/v1/admin/payment-gateways/${id}/set-default`),
+    },
+    promoCodes: {
+      list: () => this.get<PromoCodeOut[]>("/api/v1/admin/promo-codes"),
+      get: (id: string) =>
+        this.get<PromoCodeOut>(`/api/v1/admin/promo-codes/${id}`),
+      create: (body: PromoCodeCreate) =>
+        this.post<PromoCodeOut>("/api/v1/admin/promo-codes", body),
+      update: (id: string, body: PromoCodeUpdate) =>
+        this.patch<PromoCodeOut>(`/api/v1/admin/promo-codes/${id}`, body),
+      remove: (id: string) =>
+        this.delete<void>(`/api/v1/admin/promo-codes/${id}`),
     },
     modules: {
       list: () => this.get<ThirdPartyModuleOut[]>("/api/v1/admin/modules"),

@@ -16,7 +16,6 @@ EXTRAS: dict[str, dict] = {
 
 SERVICE_FEE = Decimal("2750")
 TAX_RATE = Decimal("0.15")
-PROMO_CODES: dict[str, Decimal] = {"ROYAL10": Decimal("10000")}
 
 
 class GuestInfo(BaseModel):

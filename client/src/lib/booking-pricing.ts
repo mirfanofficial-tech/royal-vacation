@@ -5,7 +5,16 @@ import { extraOptions } from "@/lib/checkout-mock-data";
 // `totals` is what's actually charged.
 export const SERVICE_FEE = 2750;
 const TAX_RATE = 0.15;
-const PROMO_CODES: Record<string, number> = { ROYAL10: 10000 };
+
+// Mirrors the backend promo rules for the step-1 preview. The server is
+// authoritative at booking time; this is only for the client-side summary.
+export interface PromoCodesRecord {
+  [code: string]: { percent: number; maxDiscount?: number };
+}
+export const PROMO_CODES: PromoCodesRecord = {
+  ROYAL10: { percent: 10, maxDiscount: 10000 },
+  WELCOME5: { percent: 5 },
+};
 
 export interface BookingTotals {
   nightsSubtotal: number;
@@ -38,7 +47,20 @@ export function computeTotals({
   const serviceFee = SERVICE_FEE;
 
   const code = (promoCode ?? "").trim().toUpperCase() || null;
-  const promoDiscount = code ? (PROMO_CODES[code] ?? 0) : 0;
+  const rules = code ? PROMO_CODES[code] : undefined;
+  let promoDiscount = 0;
+  if (rules) {
+    promoDiscount = Math.round(
+      (nightsSubtotal + extrasTotal) * (rules.percent / 100),
+    );
+    if (rules.maxDiscount != null) {
+      promoDiscount = Math.min(promoDiscount, rules.maxDiscount);
+    }
+    promoDiscount = Math.min(
+      promoDiscount,
+      nightsSubtotal + extrasTotal + taxesAndFees + serviceFee,
+    );
+  }
   const matchedCode = promoDiscount > 0 ? code : null;
 
   const total = Math.max(

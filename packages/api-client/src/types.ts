@@ -1108,6 +1108,54 @@ export interface PropertyTypeUpdate {
   is_active?: boolean;
 }
 
+// ---- Promo Codes ------------------------------------------------------
+
+export interface PromoCodeOut {
+  id: string;
+  code: string;
+  description?: string | null;
+  discount_percent: number;
+  max_discount_amount?: number | null;
+  max_discount_currency?: string | null;
+  min_spend_amount?: number | null;
+  min_spend_currency?: string | null;
+  max_uses?: number | null;
+  used_count: number;
+  starts_at?: string | null;
+  expires_at?: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PromoCodeCreate {
+  code: string;
+  description?: string;
+  discount_percent: number;
+  max_discount_amount?: number;
+  max_discount_currency?: string;
+  min_spend_amount?: number;
+  min_spend_currency?: string;
+  max_uses?: number;
+  starts_at?: string;
+  expires_at?: string;
+  is_active?: boolean;
+}
+
+export interface PromoCodeUpdate {
+  code?: string;
+  description?: string;
+  discount_percent?: number;
+  max_discount_amount?: number;
+  max_discount_currency?: string;
+  min_spend_amount?: number;
+  min_spend_currency?: string;
+  max_uses?: number;
+  starts_at?: string;
+  expires_at?: string;
+  is_active?: boolean;
+}
+
 // ---- Blog -------------------------------------------------------------
 
 export type BlogPostStatus = "draft" | "in_review" | "published" | "scheduled";

@@ -38,6 +38,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Tag,
   TrendingUp,
   Truck,
   Undo2,
@@ -119,6 +120,7 @@ const navItems: NavItem[] = [
       { href: "/payments/transactions", label: "Transactions", icon: CreditCard, module: "payments" },
       { href: "/payments/invoices", label: "Invoices", icon: ReceiptText, module: "payments" },
       { href: "/payments/refunds", label: "Refunds", icon: Undo2, module: "payments" },
+      { href: "/payments/promo-codes", label: "Promo Codes", icon: Tag, module: "payments" },
     ],
   },
   {
