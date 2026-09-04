@@ -1,5 +1,6 @@
 import { ApiError, RoyalVacationApi } from "@royal-vacation/api-client";
 import type {
+  BookingCancelRequest,
   BookingCreate,
   OtpRequestInput,
   OtpVerifyInput,
@@ -114,6 +115,8 @@ const bookings = {
   get: (id: string, token?: string) => callApi(() => api.bookings.get(id, token)),
   sync: (id: string, token?: string) => callApi(() => api.bookings.sync(id, token)),
   list: () => callApi(() => api.bookings.list()),
+  cancel: (id: string, body: BookingCancelRequest = {}, token?: string) =>
+    callApi(() => api.bookings.cancel(id, body, token)),
 };
 
 // ---- Email OTP (checkout verification / passwordless sign-in) -----------

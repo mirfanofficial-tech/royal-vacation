@@ -4,10 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { format } from "date-fns";
-import { CalendarDays, Loader2, MapPin, Moon, Users } from "lucide-react";
+import { CalendarDays, Loader2, MapPin, Moon, Users, XCircle } from "lucide-react";
 
 import type { BookingOut } from "@royal-vacation/api-client";
 import { ApiError, bookings } from "@/lib/api";
+import { CancelBookingModal } from "@/components/bookings/cancel-booking-modal";
 import { propertyDetails } from "@/lib/property-detail-mock-data";
 
 type FilterKey = "all" | "upcoming" | "completed" | "cancelled";
@@ -20,12 +21,13 @@ const statusPill: Record<string, string> = {
   cancelled: "bg-destructive text-white",
   no_show: "bg-destructive text-white",
 };
+const CANCELLABLE = new Set(["pending", "confirmed"]);
 
 function money(currency: string, n: number) {
   return `${currency} ${n.toLocaleString()}`;
 }
 
-function TripRow({ b }: { b: BookingOut }) {
+function TripRow({ b, onCancel }: { b: BookingOut; onCancel: (b: BookingOut) => void }) {
   const cos = propertyDetails[b.property_id];
   const image = b.room_image ?? cos?.heroImage ?? "";
   const location = b.location ?? cos?.location ?? "";
@@ -110,12 +112,24 @@ function TripRow({ b }: { b: BookingOut }) {
               Total · {b.payment_timing === "pay_later" ? "card held" : "paid"}
             </p>
           </div>
-          <Link
-            href={href}
-            className="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-light"
-          >
-            View details
-          </Link>
+          <div className="flex items-center gap-2">
+            {CANCELLABLE.has(b.status) && (
+              <button
+                type="button"
+                onClick={() => onCancel(b)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 px-4 py-2 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/5"
+              >
+                <XCircle className="h-4 w-4" />
+                Cancel
+              </button>
+            )}
+            <Link
+              href={href}
+              className="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-light"
+            >
+              View details
+            </Link>
+          </div>
         </div>
       </div>
     </li>
@@ -127,6 +141,7 @@ export function TripsList() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [sort, setSort] = useState<SortKey>("recent");
+  const [cancelTarget, setCancelTarget] = useState<BookingOut | null>(null);
 
   useEffect(() => {
     bookings
@@ -272,7 +287,7 @@ export function TripsList() {
         {visible.length > 0 ? (
           <ul className="divide-y divide-border">
             {visible.map((b) => (
-              <TripRow key={b.id} b={b} />
+              <TripRow key={b.id} b={b} onCancel={setCancelTarget} />
             ))}
           </ul>
         ) : (
@@ -281,6 +296,19 @@ export function TripsList() {
           </div>
         )}
       </div>
+
+      <CancelBookingModal
+        booking={cancelTarget!}
+        token={undefined}
+        open={cancelTarget !== null}
+        onClose={() => setCancelTarget(null)}
+        onCancelled={(result) => {
+          setRows((prev) =>
+            prev ? prev.map((r) => (r.id === result.booking.id ? result.booking : r)) : prev,
+          );
+          setCancelTarget(null);
+        }}
+      />
     </div>
   );
 }

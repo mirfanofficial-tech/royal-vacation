@@ -101,6 +101,12 @@ async def retrieve_payment_intent(cfg: StripeConfig, intent_id: str) -> stripe.P
     )
 
 
+async def cancel_payment_intent(cfg: StripeConfig, intent_id: str) -> stripe.PaymentIntent:
+    """Cancel (release) an uncaptured / unfinished PaymentIntent — used when a
+    guest cancels a held (pay-later) or still-pending booking."""
+    return await run_in_threadpool(cfg.client.payment_intents.cancel, intent_id)
+
+
 async def capture_payment_intent(
     cfg: StripeConfig, intent_id: str, *, amount: Decimal | float | None = None
 ) -> stripe.PaymentIntent:

@@ -152,34 +152,6 @@ export function InvoiceSidebar({
           </span>
         </div>
       </div>
-
-      <div className="relative overflow-hidden rounded-xl">
-        <div className="relative aspect-[4/3] w-full">
-          <Image
-            src="https://picsum.photos/seed/invoice-explore-dubai/480/360"
-            alt="Dubai skyline at night"
-            fill
-            className="object-cover"
-            sizes="380px"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-navy-dark/95 via-navy-dark/60 to-navy-dark/20" />
-        </div>
-        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 p-4">
-          <div>
-            <p className="font-heading text-lg font-bold text-white">Explore More Amazing Stays</p>
-            <p className="text-sm text-white/80">
-              Unlock exclusive offers on your next adventure.
-            </p>
-          </div>
-          <Button
-            render={<Link href="/search" />}
-            nativeButton={false}
-            className="w-fit rounded-lg bg-white text-navy hover:bg-white/90"
-          >
-            Browse Hotels
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

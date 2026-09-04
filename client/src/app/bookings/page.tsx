@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { CalendarDays, Loader2 } from "lucide-react";
+import { CalendarDays, Loader2, XCircle } from "lucide-react";
 
 import type { BookingOut } from "@royal-vacation/api-client";
 import { ApiError, bookings } from "@/lib/api";
+import { CancelBookingModal } from "@/components/bookings/cancel-booking-modal";
 
 const statusStyle: Record<string, string> = {
   confirmed: "bg-rating/10 text-rating",
@@ -15,10 +16,12 @@ const statusStyle: Record<string, string> = {
   completed: "bg-navy/10 text-navy",
   no_show: "bg-destructive/10 text-destructive",
 };
+const CANCELLABLE = new Set(["pending", "confirmed"]);
 
 export default function MyBookingsPage() {
   const [rows, setRows] = useState<BookingOut[] | null>(null);
   const [error, setError] = useState("");
+  const [cancelTarget, setCancelTarget] = useState<BookingOut | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,36 +72,65 @@ export default function MyBookingsPage() {
 
         <div className="mt-6 flex flex-col gap-3">
           {rows?.map((b) => (
-            <Link
+            <div
               key={b.id}
-              href={`/booking/${b.id}`}
-              className="flex items-center gap-4 rounded-xl border border-border bg-white p-4 hover:border-navy/40"
+              className="relative flex items-center gap-4 rounded-xl border border-border bg-white p-4 transition-colors hover:border-navy/40"
             >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-navy/5 text-navy">
-                <CalendarDays className="h-5 w-5" />
+              <Link
+                href={`/booking/${b.id}`}
+                className="flex min-w-0 flex-1 items-center gap-4"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-navy/5 text-navy">
+                  <CalendarDays className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold text-navy">{b.property_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(b.check_in), "d MMM")} –{" "}
+                    {format(new Date(b.check_out), "d MMM yyyy")} · {b.reference}
+                  </p>
+                </div>
+              </Link>
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-foreground">
+                    {b.currency} {Number(b.total_amount).toLocaleString()}
+                  </p>
+                  <span
+                    className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${
+                      statusStyle[b.status] ?? "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {b.status.replace("_", " ")}
+                  </span>
+                </div>
+                {CANCELLABLE.has(b.status) && (
+                  <button
+                    type="button"
+                    onClick={() => setCancelTarget(b)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-destructive hover:underline"
+                  >
+                    <XCircle className="h-3.5 w-3.5" />
+                    Cancel booking
+                  </button>
+                )}
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold text-navy">{b.property_name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {format(new Date(b.check_in), "d MMM")} –{" "}
-                  {format(new Date(b.check_out), "d MMM yyyy")} · {b.reference}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-semibold text-foreground">
-                  {b.currency} {Number(b.total_amount).toLocaleString()}
-                </p>
-                <span
-                  className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${
-                    statusStyle[b.status] ?? "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {b.status.replace("_", " ")}
-                </span>
-              </div>
-            </Link>
+            </div>
           ))}
         </div>
+
+        <CancelBookingModal
+          booking={cancelTarget!}
+          token={undefined}
+          open={cancelTarget !== null}
+          onClose={() => setCancelTarget(null)}
+          onCancelled={(result) => {
+            setRows((prev) =>
+              prev ? prev.map((r) => (r.id === result.booking.id ? result.booking : r)) : prev,
+            );
+            setCancelTarget(null);
+          }}
+        />
       </div>
     </main>
   );

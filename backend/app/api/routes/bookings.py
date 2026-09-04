@@ -23,17 +23,21 @@ from app.api.deps import get_current_user, get_optional_user
 from app.db.session import get_db
 from app.integrations.stripe_gateway import (
     StripeNotConfiguredError,
+    cancel_payment_intent,
     card_details,
     create_payment_intent,
     get_or_create_customer,
     get_stripe,
+    refund_payment,
     retrieve_payment_intent,
     verify_webhook,
 )
 from app.models.booking import BookableRate, Booking, BookingExtra
-from app.models.payment import Payment
+from app.models.payment import Payment, Refund
 from app.models.user import User
 from app.schemas.booking import (
+    BookingCancelOut,
+    BookingCancelRequest,
     BookingCreate,
     BookingCreateResult,
     BookingOut,
@@ -61,6 +65,13 @@ _PI_STATUSES = {
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+_CENTS = Decimal("0.01")
+
+
+def _quantise(value: Decimal) -> Decimal:
+    return value.quantize(_CENTS)
 
 
 async def _load_booking(db: AsyncSession, booking_id: UUID) -> Booking:
@@ -316,6 +327,111 @@ async def sync_booking(
     await db.commit()
     await db.refresh(booking)
     return booking
+
+
+async def _cancellation_breakdown(
+    booking: Booking, rate: BookableRate
+) -> tuple[Decimal, Decimal]:
+    """(refund_amount, kept_amount) for a cancellation, per rate policy.
+
+    Refundable rates cancel for free. Non-refundable rates keep the first
+    night(+service fee) and refund the rest — a Booking.com-style penalty.
+    """
+    total = Decimal(booking.total_amount)
+    if not rate.refundable:
+        first_night = (Decimal(booking.nights_subtotal) / max(Decimal(booking.nights), Decimal(1)))
+        kept = first_night + Decimal(booking.service_fee)
+        refund = total - kept
+        if refund < Decimal("0"):
+            refund = Decimal("0")
+        return _quantise(refund), _quantise(kept)
+    return Decimal(booking.total_amount), Decimal("0")
+
+
+@router.post("/bookings/{booking_id}/cancel", response_model=BookingCancelOut)
+async def cancel_booking(
+    booking_id: UUID,
+    payload: BookingCancelRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User | None = Depends(get_optional_user),
+    token: str | None = Query(default=None),
+) -> BookingCancelOut:
+    booking = await _load_booking(db, booking_id)
+    _authorise(booking, user, token)
+
+    if booking.status in ("cancelled", "completed", "no_show"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This booking can no longer be cancelled",
+        )
+
+    rate = await db.get(BookableRate, booking.rate_plan_id)
+    refundable = rate.refundable if rate is not None else True
+    held_to_pay = booking.payment_timing == "pay_later"
+    total = Decimal(booking.total_amount)
+    refund_amount, kept_amount = _cancellation_breakdown(booking, rate)
+
+    if booking.payment is not None:
+        pay = booking.payment
+        if pay.amount_captured and refund_amount > Decimal("0"):
+            cfg = await get_stripe(db)
+            try:
+                sref = await refund_payment(
+                    cfg,
+                    intent_id=pay.stripe_payment_intent_id,
+                    amount=refund_amount,
+                    reason="requested_by_customer",
+                )
+            except StripeNotConfiguredError as exc:
+                raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
+            except stripe.StripeError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=exc.user_message or "Refund failed",
+                )
+            db.add(
+                Refund(
+                    id=uuid4(),
+                    payment_id=pay.id,
+                    booking_id=booking.id,
+                    stripe_refund_id=sref.id,
+                    amount=refund_amount,
+                    currency=booking.currency,
+                    reason=payload.reason or "requested_by_customer",
+                    status=sref.status or "pending",
+                )
+            )
+            pay.amount_refunded = (pay.amount_refunded or Decimal("0")) + refund_amount
+            pay.status = (
+                "refunded"
+                if pay.amount_refunded >= (pay.amount_captured or Decimal("0"))
+                else "partially_refunded"
+            )
+        elif pay.status in ("requires_capture", "requires_confirmation", "processing", "requires_action"):
+            # Authorised/hold but not yet captured — release the hold, no refund.
+            try:
+                cfg = await get_stripe(db)
+                await cancel_payment_intent(cfg, pay.stripe_payment_intent_id)
+                pay.status = "canceled"
+            except (StripeNotConfiguredError, stripe.StripeError):
+                pass
+
+    booking.status = "cancelled"
+    booking.cancelled_at = _now()
+    await db.commit()
+    await db.refresh(booking)
+
+    return BookingCancelOut(
+        booking=BookingOut.model_validate(booking),
+        status="cancelled",
+        refundable=refundable,
+        refund_amount=refund_amount,
+        refund_currency=booking.currency,
+        original_total=total,
+        kept_amount=kept_amount,
+        held_to_pay=held_to_pay,
+        cancelled_at=booking.cancelled_at,
+    )
 
 
 @router.post("/payments/webhook", include_in_schema=False)

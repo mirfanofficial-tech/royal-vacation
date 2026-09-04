@@ -2,6 +2,8 @@ import { ApiClient } from "./http.js";
 import type {
   AdminBookingRefundRequest,
   AuthResponse,
+  BookingCancelOut,
+  BookingCancelRequest,
   BookingCreate,
   BookingCreateResult,
   BookingOut,
@@ -613,8 +615,13 @@ export class RoyalVacationApi extends ApiClient {
       this.post<BookingOut>(`/api/v1/bookings/${id}/sync`, undefined, {
         query: { token },
       }),
-    list: () => this.get<BookingOut[]>("/api/v1/bookings"),
-  };
+      list: () => this.get<BookingOut[]>("/api/v1/bookings"),
+      /** Guest-initiated cancellation + refund. Auth via signed-in user or `token`. */
+      cancel: (id: string, body: BookingCancelRequest = {}, token?: string) =>
+        this.post<BookingCancelOut>(`/api/v1/bookings/${id}/cancel`, body, {
+          query: { token },
+        }),
+    };
 }
 
 export * from "./http.js";

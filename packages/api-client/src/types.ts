@@ -1021,10 +1021,26 @@ export interface BookingOut {
   payment?: BookingPaymentOut | null;
 }
 
-export interface AdminBookingRefundRequest {
-  amount?: string | number | null;
-  reason?: string | null;
-}
+  export interface AdminBookingRefundRequest {
+    amount?: string | number | null;
+    reason?: string | null;
+  }
+
+  export interface BookingCancelRequest {
+    reason?: string | null;
+  }
+
+  export interface BookingCancelOut {
+    booking: BookingOut;
+    status: string;
+    refundable: boolean;
+    refund_amount: string;
+    refund_currency: string;
+    original_total: string;
+    kept_amount: string;
+    held_to_pay: boolean;
+    cancelled_at?: string | null;
+  }
 
 // ---- Stays Config ---------------------------------------------------------
 

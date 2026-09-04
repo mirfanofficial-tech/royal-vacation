@@ -4,13 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
-import { CheckCircle2, Clock, FileText, Home, Loader2 } from "lucide-react";
+import { CheckCircle2, Clock, FileText, Home, Loader2, XCircle } from "lucide-react";
 
-import type { BookingOut } from "@royal-vacation/api-client";
+import type { BookingCancelOut, BookingOut } from "@royal-vacation/api-client";
 import { ApiError, bookings } from "@/lib/api";
 import { CheckoutHeader } from "@/components/checkout/checkout-header";
+import { CancelBookingModal } from "@/components/bookings/cancel-booking-modal";
 
 const PENDING_PAYMENT = new Set(["processing", "requires_action", "requires_confirmation"]);
+const CANCELLABLE = new Set(["pending", "confirmed"]);
 
 export default function BookingConfirmationPage() {
   const params = useParams<{ id: string }>();
@@ -19,6 +21,7 @@ export default function BookingConfirmationPage() {
   const [booking, setBooking] = useState<BookingOut | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [cancelOpen, setCancelOpen] = useState(false);
   const polls = useRef(0);
 
   useEffect(() => {
@@ -91,6 +94,17 @@ export default function BookingConfirmationPage() {
                   </h1>
                   <p className="mt-1 text-sm text-muted-foreground">
                     A confirmation has been sent to {booking.guest_email}.
+                  </p>
+                </div>
+              ) : booking.status === "cancelled" ? (
+                <div className="flex flex-col items-center text-center">
+                  <XCircle className="h-12 w-12 text-destructive" />
+                  <h1 className="mt-3 font-heading text-2xl font-bold text-navy">
+                    Booking cancelled
+                  </h1>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    This booking has been cancelled. If you were charged, a refund will be issued
+                    to your original payment method.
                   </p>
                 </div>
               ) : (
@@ -166,7 +180,30 @@ export default function BookingConfirmationPage() {
                   Back to home
                 </Link>
               </div>
+
+              {CANCELLABLE.has(booking.status) && (
+                <div className="mt-4 border-t border-border pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setCancelOpen(true)}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-destructive/30 px-5 py-2.5 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/5"
+                  >
+                    <XCircle className="h-4 w-4" />
+                    Cancel booking
+                  </button>
+                </div>
+              )}
             </div>
+          )}
+
+          {booking && (
+            <CancelBookingModal
+              booking={booking}
+              token={token}
+              open={cancelOpen}
+              onClose={() => setCancelOpen(false)}
+              onCancelled={(result) => setBooking(result.booking)}
+            />
           )}
         </div>
       </main>

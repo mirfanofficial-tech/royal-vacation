@@ -154,3 +154,23 @@ class BookingOut(BaseModel):
 class AdminBookingRefundRequest(BaseModel):
     amount: Decimal | None = None
     reason: str | None = Field(default=None, max_length=255)
+
+
+class BookingCancelRequest(BaseModel):
+    """Guest-facing cancellation. `reason` is optional and informational."""
+
+    reason: str | None = Field(default=None, max_length=255)
+
+
+class BookingCancelOut(BaseModel):
+    """Result of a guest-initiated cancellation with its refund breakdown."""
+
+    booking: BookingOut
+    status: str = "cancelled"
+    refundable: bool
+    refund_amount: Decimal
+    refund_currency: str
+    original_total: Decimal
+    kept_amount: Decimal = Decimal("0")
+    held_to_pay: bool = False
+    cancelled_at: datetime | None = None
