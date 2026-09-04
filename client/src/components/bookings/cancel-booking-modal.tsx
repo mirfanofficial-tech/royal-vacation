@@ -203,7 +203,7 @@ export function CancelBookingModal({
                     </p>
                     <p className="mt-1 text-amber-700/90">
                       Your card was only authorised, not charged. Cancelling releases the hold and
-                      you won't pay anything.
+                      you won&apos;t pay anything.
                     </p>
                   </>
                 ) : (
