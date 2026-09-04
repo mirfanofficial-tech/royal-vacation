@@ -143,6 +143,20 @@
   html {
     @apply font-sans;
   }
+
+  /* Print: let content flow across multiple pages and avoid the app-shell
+     overflow/height constraints cutting content to a single screen. */
+  @media print {
+    html,
+    body {
+      height: auto !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+    }
+    @page {
+      margin: 14mm;
+    }
+  }
 }
 
 @layer utilities {

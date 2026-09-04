@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, CalendarX, CreditCard, Undo2 } from "lucide-react";
+import { Loader2, ArrowLeft, CalendarX, CreditCard, Printer, Undo2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { formatAED } from "@/lib/finance";
 import { getBooking } from "@/lib/reports";
-import { bookingMargin } from "@/lib/reports-data";
+import { bookingMargin, realBookingsToReport, reportBookings } from "@/lib/reports-data";
+import { useAdminBookings } from "@/lib/bookings";
 import { PermissionGuard } from "@/components/permission-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,20 +43,48 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
 
 export default function BookingDetailPage() {
   const params = useParams<{ id: string }>();
-  const booking = getBooking(params.id);
+  const { bookings: liveBookings, isLoading, error } = useAdminBookings({ limit: 200 });
+
+  // Resolve against real bookings first, falling back to the demo dataset.
+  const candidates =
+    liveBookings && liveBookings.length > 0
+      ? realBookingsToReport(liveBookings)
+      : (error ? reportBookings : []);
+
+  const booking =
+    candidates.length > 0
+      ? candidates.find((b) => b.id === params.id) ?? getBooking(params.id)
+      : getBooking(params.id);
+
+  if (isLoading && candidates.length === 0) {
+    return (
+      <PermissionGuard module="reports">
+        <div className="flex flex-col items-center justify-center gap-3 p-20">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Loading booking…</p>
+        </div>
+      </PermissionGuard>
+    );
+  }
 
   return (
     <PermissionGuard module="reports">
-      <div className="space-y-6 p-6 lg:p-8">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 text-muted-foreground"
-          render={<Link href="/reports/bookings" />}
-        >
-          <ArrowLeft data-icon="inline-start" />
-          Back to Booking Report
-        </Button>
+      <div className="space-y-6 p-6 lg:p-8 print:space-y-0 print:p-0">
+        <div className="flex items-center justify-between print:hidden">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-ml-2 text-muted-foreground"
+            render={<Link href="/reports/bookings" />}
+          >
+            <ArrowLeft data-icon="inline-start" />
+            Back to Booking Report
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
+            <Printer data-icon="inline-start" />
+            Print
+          </Button>
+        </div>
 
         {!booking ? (
           <Card>

@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { format } from "date-fns";
 import {
   BadgeCheck,
   CalendarCheck,
-  CircleDollarSign,
+  Eye,
   Loader2,
   MoreHorizontal,
   Search,
@@ -68,7 +69,7 @@ function errorMessage(err: unknown, fallback: string) {
 }
 
 function BookingsScreen() {
-  const { bookings, summary, isLoading, error, capturePayment, refundPayment, isMutating } =
+  const { bookings, summary, isLoading, error, refundPayment, isMutating } =
     useAdminBookings({ limit: 200 });
   const { can } = usePermissions();
   const canManage = can("bookings", "edit");
@@ -95,15 +96,6 @@ function BookingsScreen() {
     setNotice(msg);
     setActionError("");
     window.setTimeout(() => setNotice(""), 5000);
-  }
-
-  async function handleCapture(b: BookingOut) {
-    try {
-      await capturePayment(b.id);
-      flash(`Payment captured for ${b.reference}.`);
-    } catch (err) {
-      setActionError(errorMessage(err, "Couldn't capture this payment."));
-    }
   }
 
   async function handleRefund(b: BookingOut) {
@@ -226,12 +218,6 @@ function BookingsScreen() {
                 )}
                 {!isLoading &&
                   filtered.map((b) => {
-                    const canCapture = b.payment?.status === "requires_capture";
-                    const canRefund =
-                      b.payment != null &&
-                      ["succeeded", "requires_capture", "partially_refunded"].includes(
-                        b.payment.status,
-                      );
                     return (
                       <tr key={b.id} className="hover:bg-muted/40">
                         <td className="px-6 py-3">
@@ -289,37 +275,35 @@ function BookingsScreen() {
                           </Badge>
                         </td>
                         <td className="px-6 py-3 text-right">
-                          {canManage && (canCapture || canRefund) ? (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                aria-label="Booking actions"
-                                disabled={isMutating}
-                                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              aria-label="Booking actions"
+                              disabled={isMutating}
+                              className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                            >
+                              <MoreHorizontal className="size-4" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" alignOffset={-8}>
+                              <DropdownMenuItem
+                                render={<Link href={`/bookings/${b.reference}`} />}
                               >
-                                <MoreHorizontal className="size-4" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" alignOffset={-8}>
-                                {canCapture && (
-                                  <DropdownMenuItem onClick={() => handleCapture(b)}>
-                                    <CircleDollarSign />
-                                    Capture payment
-                                  </DropdownMenuItem>
-                                )}
-                                {canCapture && canRefund && <DropdownMenuSeparator />}
-                                {canRefund && (
+                                <Eye className="size-4" />
+                                View details
+                              </DropdownMenuItem>
+                              {canManage && (
+                                <>
+                                  <DropdownMenuSeparator />
                                   <DropdownMenuItem
                                     variant="destructive"
                                     onClick={() => handleRefund(b)}
                                   >
-                                    <Undo2 />
+                                    <Undo2 className="size-4" />
                                     Refund booking
                                   </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </td>
                       </tr>
                     );

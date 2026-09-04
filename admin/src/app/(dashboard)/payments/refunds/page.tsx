@@ -1,14 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Clock, Search, Undo2, Wallet } from "lucide-react";
+import { Clock, MoreVertical, Search, Undo2, Wallet } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import {
-  formatAED,
-  paymentRefunds,
-  type RefundStatus,
-} from "@/lib/payments";
+import { formatAED, type RefundStatus } from "@/lib/payments";
+import { usePaymentsData } from "@/lib/payments-hooks";
 import { PermissionGuard } from "@/components/permission-guard";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,6 +16,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const statusBadge: Record<RefundStatus, string> = {
   completed: "bg-rating/10 text-rating",
@@ -27,12 +30,13 @@ const statusBadge: Record<RefundStatus, string> = {
 };
 
 function RefundsPage() {
+  const { refunds, isLoading } = usePaymentsData();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"all" | RefundStatus>("all");
 
   const filtered = useMemo(
     () =>
-      paymentRefunds.filter((ref) => {
+      refunds.filter((ref) => {
         const q = query.trim().toLowerCase();
         const matchesQuery =
           !q ||
@@ -43,18 +47,26 @@ function RefundsPage() {
         const matchesStatus = status === "all" || ref.status === status;
         return matchesQuery && matchesStatus;
       }),
-    [query, status]
+    [refunds, query, status]
   );
 
-  const totalRefunded = paymentRefunds
+  const totalRefunded = refunds
     .filter((r) => r.status === "completed" || r.status === "processing")
     .reduce((s, r) => s + r.amount, 0);
-  const inFlight = paymentRefunds
+  const inFlight = refunds
     .filter((r) => r.status === "processing")
     .reduce((s, r) => s + r.amount, 0);
-  const pending = paymentRefunds
+  const pending = refunds
     .filter((r) => r.status === "pending")
     .reduce((s, r) => s + r.amount, 0);
+
+  if (isLoading && refunds.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 p-20">
+        <span className="text-sm text-muted-foreground">Loading refunds…</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6 lg:p-8">
@@ -135,6 +147,7 @@ function RefundsPage() {
                   <th className="px-6 py-2.5">Reason</th>
                   <th className="px-6 py-2.5">Status</th>
                   <th className="px-6 py-2.5 text-right">Refund</th>
+                  <th className="px-6 py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -163,11 +176,27 @@ function RefundsPage() {
                         of AED {formatAED(ref.original)} charged
                       </p>
                     </td>
+                    <td className="px-6 py-3 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <button className="inline-flex items-center justify-center size-8 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" />
+                          }
+                        >
+                          <MoreVertical className="size-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => window.location.href = `/reports/bookings/${ref.bookingRef}`}>
+                            View details
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-10 text-center text-sm text-muted-foreground">
+                    <td colSpan={8} className="px-6 py-10 text-center text-sm text-muted-foreground">
                       No refunds match your filters.
                     </td>
                   </tr>

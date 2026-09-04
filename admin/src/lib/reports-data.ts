@@ -304,6 +304,109 @@ export const reportBookings: ReportBooking[] = Array.from({ length: 52 }, (_, i)
   makeBooking(i + 1)
 ).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
+// --- real-data conversion ---------------------------------------------------
+// Maps the real bookings returned by `/api/v1/admin/bookings` into the report
+// shape. The backend stores a single `payment` object per booking (with the
+// captured/refunded amounts) rather than separate payment/refund lists, so we
+// derive synethic payment/refund rows from it. No reason/penalty is persisted
+// for cancellations, so those fields fall back to sensible defaults.
+
+import type { BookingOut } from "@royal-vacation/api-client";
+
+const LIVE_PAYMENT_METHODS: PaymentMethod[] = ["Stripe", "Checkout.com", "Tap"];
+const LIVE_REFUND_REASONS = ["Guest requested cancellation", "Service issue refund"];
+
+function liveDate(iso?: string | null): string {
+  return iso ? iso.slice(0, 10) : new Date().toISOString().slice(0, 10);
+}
+
+function livePaymentRows(b: BookingOut): ReportBooking {
+  const method = LIVE_PAYMENT_METHODS[0];
+  const payment = b.payment;
+  const status: ReportBookingStatus =
+    b.status === "confirmed" || b.status === "completed" || b.status === "cancelled" || b.status === "no_show"
+      ? b.status
+      : b.status === "pending"
+        ? "confirmed"
+        : "completed";
+  const paid = Number(payment?.amount_captured || 0) || Number(b.total_amount || 0);
+  const refunded = Number(payment?.amount_refunded || 0);
+  const capturedAt = liveDate(payment?.captured_at ?? b.created_at);
+
+  const payments: ReportPayment[] = payment
+    ? [
+        {
+          id: `${b.reference}-P1`,
+          date: capturedAt,
+          method,
+          gatewayRef: `INTENT-${b.reference}`,
+          status: payment.status === "failed" ? "failed" : "paid",
+          amount: paid,
+        },
+      ]
+    : [];
+
+  const refunds: ReportRefund[] =
+    refunded > 0
+      ? [
+          {
+            id: `${b.reference}-R1`,
+            date: liveDate(b.cancelled_at ?? b.created_at),
+            method,
+            gatewayRef: `REFUND-${b.reference}`,
+            reason: LIVE_REFUND_REASONS[0],
+            status: payment?.status === "refunded" ? "processed" : "pending",
+            amount: refunded,
+          },
+        ]
+      : [];
+
+  const cancellation =
+    b.status === "cancelled"
+      ? {
+          date: liveDate(b.cancelled_at ?? b.created_at),
+          reason: LIVE_REFUND_REASONS[0],
+          penalty: Math.max(0, paid - refunded),
+        }
+      : undefined;
+
+  const gross = Number(b.total_amount || 0);
+  const taxes = Number(b.taxes_fees || 0);
+
+  return {
+    id: b.reference,
+    supplierRef: `RATEHAWK-${b.reference}`,
+    createdAt: liveDate(b.created_at),
+    checkIn: b.check_in,
+    checkOut: b.check_out,
+    nights: b.nights,
+    hotel: b.property_name,
+    city: b.location ?? "Dubai",
+    guestName: [b.guest_first_name, b.guest_last_name].filter(Boolean).join(" ") || b.guest_email,
+    guestEmail: b.guest_email,
+    rooms: [
+      {
+        name: b.room_name,
+        occupancy: `${b.adults} adults`,
+        boardBasis: "Room only",
+      },
+    ],
+    channel: "Direct",
+    status,
+    currency: (b.currency as ReportBooking["currency"]) ?? "AED",
+    grossAmount: gross,
+    supplierCost: Math.max(0, gross - taxes),
+    taxesFees: taxes,
+    cancellation,
+    payments,
+    refunds,
+  };
+}
+
+export function realBookingsToReport(rows: BookingOut[]): ReportBooking[] {
+  return rows.map(livePaymentRows);
+}
+
 export const reportHotels = HOTELS.map((h) => h.hotel);
 export const reportChannels: ReportChannel[] = ["Direct", "Booking.com", "Airbnb", "Expedia"];
 export const reportPaymentMethods: PaymentMethod[] = [

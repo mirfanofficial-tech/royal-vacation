@@ -1,23 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  BadgeCheck,
-  CreditCard,
-  Receipt,
-  Search,
-  Wallet,
-} from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, BadgeCheck, CreditCard, MoreVertical, Receipt, Search, Wallet } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import {
-  formatAED,
-  paymentKpis,
-  paymentTransactions,
-  type PaymentTxnStatus,
-} from "@/lib/payments";
+import { formatAED, type PaymentTxnStatus } from "@/lib/payments";
+import { usePaymentsData } from "@/lib/payments-hooks";
 import { PermissionGuard } from "@/components/permission-guard";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -28,6 +16,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const statusBadge: Record<PaymentTxnStatus, string> = {
   paid: "bg-rating/10 text-rating",
@@ -53,43 +47,51 @@ function Delta({ value }: { value: number }) {
 }
 
 function TransactionsPage() {
+  const { transactions, isLoading } = usePaymentsData();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"all" | PaymentTxnStatus>("all");
 
+  const volume = transactions.reduce((s, t) => s + t.amount, 0);
+  const fees = transactions.reduce((s, t) => s + t.fee, 0);
+  const successCount = transactions.filter((t) => t.status === "paid").length;
+  const successRate = transactions.length ? (successCount / transactions.length) * 100 : 0;
+
   const kpis = [
     {
-      label: "Processed · 7 days",
-      value: `AED ${formatAED(paymentKpis.processedVolume)}`,
+      label: "Processed · all time",
+      value: `AED ${formatAED(volume)}`,
       delta: 12.4,
-      hint: "12 transactions",
+      hint: `${transactions.length} transactions`,
       icon: Wallet,
     },
     {
       label: "Success rate",
-      value: `${paymentKpis.successRate}%`,
+      value: `${successRate.toFixed(1)}%`,
       delta: 1.8,
       hint: "Gateway approved",
       icon: BadgeCheck,
     },
     {
       label: "Gateway fees",
-      value: `AED ${formatAED(paymentKpis.gatewayFees)}`,
+      value: `AED ${formatAED(fees)}`,
       delta: 3.1,
-      hint: "≈ 4.3% of volume",
+      hint: "Estimated processing fees",
       icon: CreditCard,
     },
     {
       label: "Outstanding invoices",
-      value: `AED ${formatAED(paymentKpis.outstandingInvoices)}`,
+      value: `AED ${formatAED(
+        transactions.reduce((s, t) => (t.status === "pending" ? s + t.amount : s), 0)
+      )}`,
       delta: -6.2,
-      hint: "Due within 30 days",
+      hint: "Pending amounts",
       icon: Receipt,
     },
   ];
 
   const filtered = useMemo(
     () =>
-      paymentTransactions.filter((txn) => {
+      transactions.filter((txn) => {
         const q = query.trim().toLowerCase();
         const matchesQuery =
           !q ||
@@ -100,12 +102,20 @@ function TransactionsPage() {
         const matchesStatus = status === "all" || txn.status === status;
         return matchesQuery && matchesStatus;
       }),
-    [query, status]
+    [transactions, query, status]
   );
 
-  const paid = paymentTransactions.filter((t) => t.status === "paid").length;
-  const pending = paymentTransactions.filter((t) => t.status === "pending").length;
-  const failed = paymentTransactions.filter((t) => t.status === "failed").length;
+  const paid = transactions.filter((t) => t.status === "paid").length;
+  const pending = transactions.filter((t) => t.status === "pending").length;
+  const failed = transactions.filter((t) => t.status === "failed").length;
+
+  if (isLoading && transactions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 p-20">
+        <span className="text-sm text-muted-foreground">Loading transactions…</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6 lg:p-8">
@@ -200,6 +210,7 @@ function TransactionsPage() {
                   <th className="px-6 py-2.5">Method</th>
                   <th className="px-6 py-2.5">Status</th>
                   <th className="px-6 py-2.5 text-right">Amount</th>
+                  <th className="px-6 py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -236,11 +247,27 @@ function TransactionsPage() {
                         </p>
                       )}
                     </td>
+                    <td className="px-6 py-3 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <button className="inline-flex items-center justify-center size-8 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" />
+                          }
+                        >
+                          <MoreVertical className="size-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => window.location.href = `/reports/bookings/${txn.bookingRef}`}>
+                            View details
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-10 text-center text-sm text-muted-foreground">
+                    <td colSpan={8} className="px-6 py-10 text-center text-sm text-muted-foreground">
                       No transactions match your filters.
                     </td>
                   </tr>

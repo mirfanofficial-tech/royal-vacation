@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download } from "lucide-react";
+import { Download, Eye, Loader2, MoreVertical } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { formatAED } from "@/lib/finance";
 import {
   downloadCsv,
+  optionsFor,
   rangeOptions,
   reportRegistry,
   toCsv,
@@ -15,10 +16,11 @@ import {
   type ReportFilters,
 } from "@/lib/reports";
 import {
-  reportChannels,
-  reportHotels,
-  reportPaymentMethods,
+  realBookingsToReport,
+  reportBookings,
+  type ReportBooking,
 } from "@/lib/reports-data";
+import { useAdminBookings } from "@/lib/bookings";
 import { AreaChart } from "@/components/finance-charts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +31,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const selectClass =
   "h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -42,12 +50,6 @@ const statusBadge: Record<string, string> = {
   processed: "bg-rating/10 text-rating",
   pending: "bg-amber-600/10 text-amber-600",
   failed: "bg-destructive/10 text-destructive",
-};
-
-const STATUS_OPTIONS: Record<string, string[]> = {
-  bookings: ["confirmed", "completed", "cancelled", "no_show"],
-  payments: ["paid", "pending", "failed"],
-  refunds: ["processed", "pending", "failed"],
 };
 
 function formatCell(value: string | number | undefined, format: ColumnFormat | undefined) {
@@ -68,31 +70,101 @@ export function ReportView({ reportKey }: { reportKey: string }) {
     method: "all",
   });
 
-  const result = useMemo(() => def.run(filters), [def, filters]);
+  // Real bookings from the backend, falling back to the demo dataset when the
+  // API is unavailable (e.g. reports opened without a live backend).
+  const { bookings: liveBookings, isLoading, error } = useAdminBookings({ limit: 200 });
+  const source = useMemo<ReportBooking[]>(() => {
+    if (liveBookings && liveBookings.length > 0) {
+      return realBookingsToReport(liveBookings);
+    }
+    if (error) {
+      return reportBookings;
+    }
+    return [];
+  }, [liveBookings, error]);
+
+  const opts = useMemo(() => optionsFor(def.key, source), [def.key, source]);
+
+  // Reset any filter whose selected value is no longer present in the live
+  // option set so we never silently filter to zero results.
+  const filtersRef = useRef(filters);
+  useEffect(() => {
+    const prev = filtersRef.current;
+    let next = { ...prev };
+    let changed = false;
+    if (prev.hotel !== "all" && !opts.hotels.includes(prev.hotel)) {
+      next = { ...next, hotel: "all" };
+      changed = true;
+    }
+    if (prev.channel !== "all" && !opts.channels.includes(prev.channel)) {
+      next = { ...next, channel: "all" };
+      changed = true;
+    }
+    if (prev.method !== "all" && !opts.methods.includes(prev.method)) {
+      next = { ...next, method: "all" };
+      changed = true;
+    }
+    if (changed) setFilters(next);
+    filtersRef.current = next;
+  }, [opts]);
+
+  const result = useMemo(() => {
+    if (source.length === 0) return null;
+    return def.run(filters, source);
+  }, [def, filters, source]);
 
   function set<K extends keyof ReportFilters>(key: K, value: ReportFilters[K]) {
     setFilters((prev) => ({ ...prev, [key]: value }));
   }
 
   function handleExport() {
-    downloadCsv(`${def.key}-report.csv`, toCsv(def.columns, result.rows));
+    if (result) downloadCsv(`${def.key}-report.csv`, toCsv(def.columns, result.rows));
   }
 
-  return (
-    <div className="space-y-6 p-6 lg:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+  if (isLoading && source.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 p-20">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Loading report data…</p>
+      </div>
+    );
+  }
+
+  if (!result) {
+    return (
+      <div className="space-y-6 p-6 lg:p-8">
         <div>
           <h1 className="text-2xl font-semibold text-navy">{def.title}</h1>
           <p className="text-sm text-muted-foreground">{def.description}</p>
         </div>
-        <Button variant="outline" onClick={handleExport} disabled={result.rows.length === 0}>
-          <Download data-icon="inline-start" />
-          Export CSV
-        </Button>
+        <Card>
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            No booking data available yet. Bookings made in the platform will appear here.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const data = result;
+
+  return (
+    <div className="space-y-6 p-6 lg:p-8 print:space-y-0 print:p-0">
+      <div className="flex flex-wrap items-start justify-between gap-4 print:hidden">
+        <div>
+          <h1 className="text-2xl font-semibold text-navy">{def.title}</h1>
+          <p className="text-sm text-muted-foreground">{def.description}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleExport} disabled={data.rows.length === 0}>
+            <Download data-icon="inline-start" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {result.summary.map((s) => (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 print:hidden">
+        {data.summary.map((s) => (
           <Card key={s.label}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -107,11 +179,11 @@ export function ReportView({ reportKey }: { reportKey: string }) {
       </div>
 
       <Card>
-        <CardHeader className="border-b">
+        <CardHeader className="border-b print:hidden">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <CardTitle>Results</CardTitle>
-              <CardDescription>{result.rows.length} row(s).</CardDescription>
+              <CardDescription>{data.rows.length} row(s).</CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {def.filters.includes("range") && (
@@ -136,7 +208,7 @@ export function ReportView({ reportKey }: { reportKey: string }) {
                   onChange={(e) => set("hotel", e.target.value)}
                 >
                   <option value="all">All hotels</option>
-                  {reportHotels.map((h) => (
+                  {opts.hotels.map((h) => (
                     <option key={h} value={h}>
                       {h}
                     </option>
@@ -151,7 +223,7 @@ export function ReportView({ reportKey }: { reportKey: string }) {
                   onChange={(e) => set("status", e.target.value)}
                 >
                   <option value="all">All statuses</option>
-                  {(STATUS_OPTIONS[def.key] ?? []).map((s) => (
+                  {opts.statuses.map((s) => (
                     <option key={s} value={s}>
                       {s.replace("_", " ")}
                     </option>
@@ -166,7 +238,7 @@ export function ReportView({ reportKey }: { reportKey: string }) {
                   onChange={(e) => set("channel", e.target.value)}
                 >
                   <option value="all">All channels</option>
-                  {reportChannels.map((c) => (
+                  {opts.channels.map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>
@@ -181,7 +253,7 @@ export function ReportView({ reportKey }: { reportKey: string }) {
                   onChange={(e) => set("method", e.target.value)}
                 >
                   <option value="all">All gateways</option>
-                  {reportPaymentMethods.map((m) => (
+                  {opts.methods.map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>
@@ -192,9 +264,9 @@ export function ReportView({ reportKey }: { reportKey: string }) {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {result.series && result.series.length > 1 && (
+          {data.series && data.series.length > 1 && (
             <div className="border-b border-border p-4">
-              <AreaChart data={result.series} />
+              <AreaChart data={data.series} />
             </div>
           )}
           <div className="overflow-x-auto">
@@ -209,47 +281,66 @@ export function ReportView({ reportKey }: { reportKey: string }) {
                       {c.header}
                     </th>
                   ))}
+                  <th className="px-4 py-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {result.rows.map((row, i) => {
+                {data.rows.map((row, i) => {
                   const href = row._href;
                   return (
-                  <tr
-                    key={i}
-                    onClick={href ? () => router.push(href) : undefined}
-                    className={cn("hover:bg-muted/40", href && "cursor-pointer")}
-                  >
-                    {def.columns.map((c) => (
-                      <td
-                        key={c.key}
-                        className={cn(
-                          "px-4 py-3",
-                          c.align === "right" && "text-right tabular-nums",
-                          c.key === "id" || c.key === "booking" ? "font-medium" : undefined
-                        )}
-                      >
-                        {c.format === "status" ? (
-                          <Badge
-                            className={cn(
-                              "rounded-full capitalize",
-                              statusBadge[String(row[c.key])] ?? "bg-muted text-muted-foreground"
-                            )}
-                          >
-                            {String(row[c.key]).replace("_", " ")}
-                          </Badge>
-                        ) : (
-                          formatCell(row[c.key], c.format)
+                    <tr
+                      key={i}
+                      className="hover:bg-muted/40"
+                    >
+                      {def.columns.map((c) => (
+                        <td
+                          key={c.key}
+                          className={cn(
+                            "px-4 py-3",
+                            c.align === "right" && "text-right tabular-nums",
+                            c.key === "id" || c.key === "booking" ? "font-medium" : undefined
+                          )}
+                        >
+                          {c.format === "status" ? (
+                            <Badge
+                              className={cn(
+                                "rounded-full capitalize",
+                                statusBadge[String(row[c.key])] ?? "bg-muted text-muted-foreground"
+                              )}
+                            >
+                              {String(row[c.key]).replace("_", " ")}
+                            </Badge>
+                          ) : (
+                            formatCell(row[c.key], c.format)
+                          )}
+                        </td>
+                      ))}
+                      <td className="px-4 py-3 text-right">
+                        {href && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <button className="inline-flex items-center justify-center size-8 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" />
+                              }
+                            >
+                              <MoreVertical className="size-4" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => router.push(href)}>
+                                <Eye className="size-4" />
+                                View details
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         )}
                       </td>
-                    ))}
-                  </tr>
+                    </tr>
                   );
                 })}
-                {result.rows.length === 0 && (
+                {data.rows.length === 0 && (
                   <tr>
                     <td
-                      colSpan={def.columns.length}
+                      colSpan={def.columns.length + 1}
                       className="px-4 py-12 text-center text-sm text-muted-foreground"
                     >
                       No data for the selected filters.

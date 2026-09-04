@@ -16,14 +16,18 @@ export default function DashboardLayout({
   return (
     <AuthGuard>
       <AdminThemeProvider>
-        <div className="flex h-screen overflow-hidden">
-          <AdminSidebar collapsed={collapsed} />
-          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            <AdminTopbar
-              collapsed={collapsed}
-              onToggleCollapse={() => setCollapsed((c) => !c)}
-            />
-            <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">{children}</main>
+        <div className="flex h-screen overflow-hidden print:block print:h-auto print:overflow-visible">
+          <div className="print:hidden">
+            <AdminSidebar collapsed={collapsed} />
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden print:block print:overflow-visible">
+            <div className="print:hidden">
+              <AdminTopbar
+                collapsed={collapsed}
+                onToggleCollapse={() => setCollapsed((c) => !c)}
+              />
+            </div>
+            <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto print:overflow-visible print:block print:h-auto">{children}</main>
           </div>
         </div>
       </AdminThemeProvider>

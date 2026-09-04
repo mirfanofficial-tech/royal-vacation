@@ -1,14 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FileText, Plus, Search, Send, Wallet } from "lucide-react";
+import Link from "next/link";
+import { Eye, FileText, MoreVertical, Plus, Search, Send, Wallet } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import {
-  formatAED,
-  paymentInvoices,
-  type InvoiceStatus,
-} from "@/lib/payments";
+import { formatAED, type InvoiceStatus } from "@/lib/payments";
+import { usePaymentsData } from "@/lib/payments-hooks";
 import { PermissionGuard } from "@/components/permission-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +18,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const statusBadge: Record<InvoiceStatus, string> = {
   paid: "bg-rating/10 text-rating",
@@ -36,12 +40,13 @@ const statusLabel: Record<InvoiceStatus, string> = {
 };
 
 function InvoicesPage() {
+  const { invoices, isLoading } = usePaymentsData();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"all" | InvoiceStatus>("all");
 
   const filtered = useMemo(
     () =>
-      paymentInvoices.filter((inv) => {
+      invoices.filter((inv) => {
         const q = query.trim().toLowerCase();
         const matchesQuery =
           !q ||
@@ -52,16 +57,24 @@ function InvoicesPage() {
         const matchesStatus = status === "all" || inv.status === status;
         return matchesQuery && matchesStatus;
       }),
-    [query, status]
+    [invoices, query, status]
   );
 
-  const total = paymentInvoices.reduce((s, inv) => s + inv.total, 0);
-  const paid = paymentInvoices
+  const total = invoices.reduce((s, inv) => s + inv.total, 0);
+  const paid = invoices
     .filter((inv) => inv.status === "paid")
     .reduce((s, inv) => s + inv.total, 0);
-  const outstanding = paymentInvoices
+  const outstanding = invoices
     .filter((inv) => inv.status !== "paid")
     .reduce((s, inv) => s + inv.total, 0);
+
+  if (isLoading && invoices.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 p-20">
+        <span className="text-sm text-muted-foreground">Loading invoices…</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6 lg:p-8">
@@ -155,6 +168,7 @@ function InvoicesPage() {
                   <th className="px-6 py-2.5">Due</th>
                   <th className="px-6 py-2.5">Status</th>
                   <th className="px-6 py-2.5 text-right">Total</th>
+                  <th className="px-6 py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -183,11 +197,28 @@ function InvoicesPage() {
                         incl. AED {formatAED(inv.tax)} VAT
                       </p>
                     </td>
+                    <td className="px-6 py-3 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <button className="inline-flex items-center justify-center size-8 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" />
+                          }
+                        >
+                          <MoreVertical className="size-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem render={<Link href={`/payments/invoices/${inv.id}`} />}>
+                            <Eye className="size-4" />
+                            View invoice
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-10 text-center text-sm text-muted-foreground">
+                    <td colSpan={8} className="px-6 py-10 text-center text-sm text-muted-foreground">
                       No invoices match your filters.
                     </td>
                   </tr>

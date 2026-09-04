@@ -8,9 +8,11 @@ import type { ReportSeriesPoint } from "@/lib/finance";
 import {
   bookingMargin,
   reportBookings,
+  reportChannels,
+  reportHotels,
+  reportPaymentMethods,
   type ReportBooking,
 } from "@/lib/reports-data";
-
 export type RangeId =
   | "this-month"
   | "last-30-days"
@@ -92,7 +94,52 @@ export interface ReportDef {
   group: "Bookings" | "Finance";
   filters: FilterKey[];
   columns: ReportColumn[];
-  run: (filters: ReportFilters) => ReportResult;
+  run: (filters: ReportFilters, bookings: ReportBooking[]) => ReportResult;
+}
+
+// --- Filter options ----------------------------------------------------------
+// The report filter dropdowns are populated dynamically from the rows actually
+// being shown, so they always match the data (real bookings when the backend is
+// up, the demo set as the fallback). Report-specific status lists are fixed per
+// report type because status semantics differ (booking vs payment vs refund).
+
+const STATUS_OPTIONS: Record<string, string[]> = {
+  bookings: ["confirmed", "completed", "cancelled", "no_show"],
+  payments: ["paid", "pending", "failed"],
+  refunds: ["processed", "pending", "failed"],
+};
+
+const uniqSorted = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b));
+
+export function reportStatusOptions(reportKey: string): string[] {
+  return STATUS_OPTIONS[reportKey] ?? [];
+}
+
+function collectHotels(source: ReportBooking[]): string[] {
+  return uniqSorted(source.map((b) => b.hotel).filter(Boolean));
+}
+function collectChannels(source: ReportBooking[]): string[] {
+  return uniqSorted(source.map((b) => b.channel));
+}
+function collectMethods(source: ReportBooking[]): string[] {
+  return uniqSorted(source.flatMap((b) => [...b.payments.map((p) => p.method), ...b.refunds.map((r) => r.method)]));
+}
+
+/** Filter options for a report, derived from `source` (with demo fallbacks). */
+export function optionsFor(
+  reportKey: string,
+  source: ReportBooking[]
+): { hotels: string[]; channels: string[]; methods: string[]; statuses: string[] } {
+  const hotels = collectHotels(source);
+  const channels = collectChannels(source);
+  const methods = collectMethods(source);
+  const statuses = reportStatusOptions(reportKey);
+  return {
+    hotels: hotels.length ? hotels : reportHotels,
+    channels: channels.length ? channels : reportChannels,
+    methods: methods.length ? methods : reportPaymentMethods,
+    statuses,
+  };
 }
 
 const aed = (n: number) => `AED ${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
@@ -109,8 +156,8 @@ function matchesCommon(b: ReportBooking, f: ReportFilters): boolean {
 
 // --- selectors -------------------------------------------------------------
 
-function selectBookings(f: ReportFilters): ReportResult {
-  const rows = reportBookings.filter(
+function selectBookings(f: ReportFilters, source: ReportBooking[]): ReportResult {
+  const rows = source.filter(
     (b) =>
       inRange(b.createdAt, f.range) &&
       matchesCommon(b, f) &&
@@ -139,8 +186,8 @@ function selectBookings(f: ReportFilters): ReportResult {
   };
 }
 
-function selectCancellations(f: ReportFilters): ReportResult {
-  const rows = reportBookings.filter(
+function selectCancellations(f: ReportFilters, source: ReportBooking[]): ReportResult {
+  const rows = source.filter(
     (b) =>
       b.status === "cancelled" &&
       b.cancellation != null &&
@@ -169,8 +216,8 @@ function selectCancellations(f: ReportFilters): ReportResult {
   };
 }
 
-function selectPayments(f: ReportFilters): ReportResult {
-  const flat = reportBookings.flatMap((b) =>
+function selectPayments(f: ReportFilters, source: ReportBooking[]): ReportResult {
+  const flat = source.flatMap((b) =>
     b.payments
       .filter(
         (p) =>
@@ -202,8 +249,8 @@ function selectPayments(f: ReportFilters): ReportResult {
   };
 }
 
-function selectRefunds(f: ReportFilters): ReportResult {
-  const flat = reportBookings.flatMap((b) =>
+function selectRefunds(f: ReportFilters, source: ReportBooking[]): ReportResult {
+  const flat = source.flatMap((b) =>
     b.refunds
       .filter(
         (r) =>
@@ -236,13 +283,13 @@ function selectRefunds(f: ReportFilters): ReportResult {
   };
 }
 
-function selectRevenue(f: ReportFilters): ReportResult {
+function selectRevenue(f: ReportFilters, source: ReportBooking[]): ReportResult {
   // Revenue recognised on bookings that weren't cancelled.
-  const base = reportBookings.filter(
+  const base = source.filter(
     (b) => b.status !== "cancelled" && inRange(b.createdAt, f.range) && matchesCommon(b, f)
   );
   const processedRefundsByMonth = new Map<string, number>();
-  for (const b of reportBookings) {
+  for (const b of source) {
     for (const r of b.refunds) {
       if (r.status !== "processed") continue;
       if (!inRange(r.date, f.range)) continue;
